@@ -313,6 +313,40 @@ def _calc_travel_seconds(
     return (time_first20 + time_rest) * 3600
 
 
+def calc_safe_distance(
+    speed: float,
+    hours_away: float,
+    ts_level: int = 0,
+    boots_bonus: float = 0.0,
+    artifact_mult: float = 1.0,
+) -> float:
+    """Calculate minimum one-way distance for a safe round trip.
+
+    Given how many hours troops should be away, returns the distance
+    so that a round trip takes at least that long.
+    Uses binary search on _calc_travel_seconds().
+    """
+    if hours_away <= 0 or speed <= 0:
+        return 0.0
+
+    budget_seconds = hours_away * 3600
+    max_speed = speed * artifact_mult * (1 + boots_bonus + 0.2 * ts_level)
+    upper = max_speed * hours_away / 2 * 1.1
+    lower = 0.0
+
+    for _ in range(100):
+        mid = (lower + upper) / 2
+        round_trip = 2 * _calc_travel_seconds(mid, speed, artifact_mult, boots_bonus, ts_level)
+        if abs(round_trip - budget_seconds) < 1.0:
+            return round(mid, 2)
+        if round_trip < budget_seconds:
+            lower = mid
+        else:
+            upper = mid
+
+    return round((lower + upper) / 2, 2)
+
+
 def detect_possible_units(
     distance: float,
     travel_seconds: float,
