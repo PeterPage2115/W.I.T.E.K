@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import re
 import time
 
 import aiohttp
@@ -18,7 +19,10 @@ from bot.utils import (
     FOOTER,
     TRIBE_EMOJI,
     TRIBE_NAMES,
+    TYPE_EMOJI,
+    UNIT_SPEEDS,
     WALL_BONUS,
+    calc_safe_distance,
     coords_display,
     parse_army_input,
     parse_coords,
@@ -600,6 +604,27 @@ def _build_comparison_embed(name1, stats1, growth1, name2, stats2, growth2):
 
 
 # ------------------------------------------------------------------ #
+# Time parsing helper
+# ------------------------------------------------------------------ #
+
+_TRIBE_CHOICE_MAP = {"Rzymianie": 1, "Germanie": 2, "Galowie": 3}
+
+
+def _parse_hours(text: str) -> float | None:
+    """Parse time input: '2.5' (hours) or '2:30' (h:mm) → float hours."""
+    text = text.strip()
+    m = re.match(r'^(\d+):(\d{1,2})$', text)
+    if m:
+        h, mins = int(m.group(1)), int(m.group(2))
+        return h + mins / 60.0 if mins < 60 else None
+    try:
+        val = float(text.replace(',', '.'))
+        return val if val >= 0 else None
+    except ValueError:
+        return None
+
+
+# ------------------------------------------------------------------ #
 # Cog
 # ------------------------------------------------------------------ #
 
@@ -1096,6 +1121,196 @@ class CombatSimModal(discord.ui.Modal):
             content = "⚠️ Część jednostek pominięto:\n" + "\n".join(all_errors)
 
         await interaction.response.send_message(content=content, embed=embed)
+
+    # ------------------------------------------------------------------ #
+    # /tbezpieczne — safe-send distance calculator
+    # ------------------------------------------------------------------ #
+
+    async def _find_safe_targets(self, cx, cy, min_dist, max_dist, map_size):
+        """Find villages in distance range [min_dist, max_dist] from (cx, cy).
+
+        Returns list of dicts sorted: unoccupied first, then by distance.
+        Limited to 15 results.
+        """
+        search_radius = int(max_dist) + 1
+
+        def _query():
+            from app.models import Snapshot, Village
+
+            snap = Snapshot.query.order_by(Snapshot.fetched_at.desc()).first()
+            if not snap:
+                return []
+
+            rows = Village.query.filter(
+                Village.snapshot_id == snap.id,
+                _bbox_filter(Village.x, cx, search_radius, map_size),
+                _bbox_filter(Village.y, cy, search_radius, map_size),
+            ).all()
+
+            results = []
+            for v in rows:
+                dist = torus_distance(cx, cy, v.x, v.y, map_size)
+                if min_dist <= dist <= max_dist:
+                    results.append({
+                        "x": v.x, "y": v.y,
+                        "name": v.name,
+                        "player": v.player_name or "",
+                        "alliance": v.alliance_name or "",
+                        "pop": v.population,
+                        "uid": v.uid,
+                        "dist": round(dist, 1),
+                    })
+            # Unoccupied first (uid == 0), then by distance
+            results.sort(key=lambda r: (r["uid"] != 0, r["dist"]))
+            return results[:15]
+
+        return await db_query(self.bot, _query)
+
+    @discord.slash_command(
+        name="tbezpieczne",
+        description="Kalkulator bezpiecznego wysyłania (min. odległość)",
+    )
+    @discord.option(
+        "czas", str,
+        description="Czas nieobecności: godziny (np. 2.5) lub h:mm (np. 2:30)",
+    )
+    @discord.option(
+        "plemie", str,
+        description="Plemię jednostek",
+        choices=["Rzymianie", "Germanie", "Galowie"],
+    )
+    @discord.option(
+        "ts", int,
+        description="Poziom Placu Turniejowego (0-20, domyślnie 0)",
+        required=False, default=0, min_value=0, max_value=20,
+    )
+    @discord.option(
+        "buty", float,
+        description="Bonus z butów bohatera (np. 0.25 = 25%, domyślnie 0)",
+        required=False, default=0.0,
+    )
+    @discord.option(
+        "kordy", str,
+        description="Twoje koordynaty (np. 76|43) — pokaże sugerowane cele",
+        required=False, default=None,
+    )
+    async def tbezpieczne(self, ctx: discord.ApplicationContext,
+                          czas: str, plemie: str, ts: int,
+                          buty: float, kordy: str | None):
+        hours = _parse_hours(czas)
+        if hours is None or hours <= 0:
+            await ctx.respond(
+                "❌ Nieprawidłowy czas. Użyj formatu `2.5` (godziny) "
+                "lub `2:30` (h:mm).",
+                ephemeral=True,
+            )
+            return
+
+        tribe_id = _TRIBE_CHOICE_MAP[plemie]
+        tribe_emoji = TRIBE_EMOJI.get(tribe_id, "")
+        units = UNIT_SPEEDS[tribe_id]
+
+        await ctx.defer()
+
+        # Calculate safe distance for each unit type
+        distances = []
+        for unit in units:
+            dist = calc_safe_distance(
+                speed=unit["speed"],
+                hours_away=hours,
+                ts_level=ts,
+                boots_bonus=buty,
+            )
+            distances.append({
+                "name": unit["name"],
+                "type": unit["type"],
+                "speed": unit["speed"],
+                "dist": dist,
+            })
+
+        # Sort by distance (shortest first)
+        distances.sort(key=lambda d: d["dist"])
+
+        # Build description
+        h_int = int(hours)
+        m_int = int((hours - h_int) * 60)
+        time_str = f"{h_int}h {m_int:02d}m" if h_int > 0 else f"{m_int}m"
+
+        desc_parts = [f"⏱️ Czas nieobecności: **{time_str}**"]
+        if ts > 0:
+            desc_parts.append(f"🏟️ Plac Turniejowy: **{ts}**")
+        if buty > 0:
+            desc_parts.append(f"👢 Buty bohatera: **+{buty:.0%}**")
+        desc = "\n".join(desc_parts)
+
+        embed = discord.Embed(
+            title=f"🛡️ Bezpieczne wysyłanie — {tribe_emoji} {plemie}",
+            description=desc,
+            color=COLOR_SUCCESS,
+        )
+
+        # Distance list
+        lines = []
+        for d in distances:
+            emoji = TYPE_EMOJI.get(d["type"], "")
+            lines.append(
+                f"{emoji} **{d['name']}** — {d['dist']:.1f} pól "
+                f"(💨 {d['speed']} pól/h)"
+            )
+        embed.add_field(
+            name="📏 Minimalne odległości (w jedną stronę)",
+            value="\n".join(lines) or "Brak danych",
+            inline=False,
+        )
+
+        # Optional: find nearby villages as targets
+        if kordy:
+            cx, cy = parse_coords(kordy)
+            if cx is not None:
+                # Use the slowest unit's distance as min, fastest as max (+20% margin)
+                min_dist = distances[0]["dist"]
+                max_dist = distances[-1]["dist"] * 1.2
+                map_size = self._map_size()
+                server_url = self._server_url()
+
+                targets = await self._find_safe_targets(
+                    cx, cy, min_dist, max_dist, map_size,
+                )
+
+                if targets:
+                    target_lines = []
+                    for t in targets:
+                        c = coords_display(server_url, t["x"], t["y"])
+                        if t["uid"] == 0:
+                            target_lines.append(
+                                f"🏜️ {c} — niezajęta ({t['dist']} pól)"
+                            )
+                        else:
+                            target_lines.append(
+                                f"🏘️ {c} — {t['player']} "
+                                f"[{t['alliance']}] pop {t['pop']} "
+                                f"({t['dist']} pól)"
+                            )
+                    embed.add_field(
+                        name="🎯 Sugerowane cele",
+                        value="\n".join(target_lines),
+                        inline=False,
+                    )
+                else:
+                    embed.add_field(
+                        name="🎯 Sugerowane cele",
+                        value="Brak wiosek w zakresie odległości.",
+                        inline=False,
+                    )
+            else:
+                embed.add_field(
+                    name="🎯 Sugerowane cele",
+                    value="⚠️ Nieprawidłowe koordynaty — pominięto.",
+                    inline=False,
+                )
+
+        embed.set_footer(text=FOOTER + " | Pamiętaj o czasie powrotu!")
+        await ctx.respond(embed=embed)
 
 
 def setup(bot):

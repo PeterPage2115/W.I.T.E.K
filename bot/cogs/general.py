@@ -83,7 +83,8 @@ class General(commands.Cog):
                 "`/tcropper` — Znajdź croppery (9c/15c) w okolicy\n"
                 "`/tszukaj` — Szukaj wiosek (po graczu, sojuszu, populacji)\n"
                 "`/tporownaj` — Porównaj dwa sojusze\n"
-                "`/tsymulacja` — Symulacja walki (kalkulator strat)"
+                "`/tsymulacja` — Symulacja walki (kalkulator strat)\n"
+                "⚔️ `/tbezpieczne` — Kalkulator bezpiecznego wysyłania (min. odległość)"
             ),
             inline=False,
         )
