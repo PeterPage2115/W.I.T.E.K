@@ -2,6 +2,7 @@
 
 import re
 from datetime import datetime, timedelta, timezone
+from math import ceil
 
 # ------------------------------------------------------------------ #
 # Travian Server Timezone (CEST = UTC+2 for European servers in summer)
@@ -865,4 +866,81 @@ def simulate_combat(
         "result": result,
         "att_remaining": att_remaining,
         "def_remaining": def_remaining,
+    }
+
+
+def _get_crop_for_unit(name: str) -> int:
+    """Get crop/h for a unit by canonical name. Returns 0 if unknown."""
+    return CROP_BY_NAME.get(name, 0)
+
+
+def calc_needed_defense(
+    attackers: dict[str, int],
+    defender_unit: str,
+    wall_level: int = 0,
+) -> dict | None:
+    """Calculate how many of `defender_unit` are needed to survive `attackers`.
+
+    Returns dict with count, att_type, total_att, effective_def_per_unit,
+    wall_mult, crop_per_hour — or None if defender_unit is unknown.
+    """
+    # Validate defender unit
+    def_stats = COMBAT_BY_NAME.get(defender_unit)
+    if def_stats is None:
+        return None
+
+    wall_level = max(0, min(20, wall_level))
+    wall_mult = 1 + WALL_BONUS[wall_level] / 100
+
+    # Sum attack power by type (same logic as simulate_combat)
+    inf_att = 0
+    cav_att = 0
+    for name, count in attackers.items():
+        stats = COMBAT_BY_NAME.get(name)
+        if not stats or count <= 0:
+            continue
+        power = stats["att"] * count
+        if stats["type"] in ("inf", "siege", "special"):
+            inf_att += power
+        else:  # cav
+            cav_att += power
+
+    total_att = inf_att + cav_att
+
+    if total_att == 0:
+        return {
+            "count": 0,
+            "att_type": "inf",
+            "total_att": 0,
+            "effective_def_per_unit": 0,
+            "wall_mult": wall_mult,
+            "crop_per_hour": 0,
+        }
+
+    # Majority type determines which defense stat applies
+    att_type = "cav" if cav_att > inf_att else "inf"
+    def_per_unit = def_stats["def_cav"] if att_type == "cav" else def_stats["def_inf"]
+    effective_def_per_unit = def_per_unit * wall_mult
+
+    if effective_def_per_unit <= 0:
+        # Defender unit has 0 relevant defense — can't win
+        return {
+            "count": 0,
+            "att_type": att_type,
+            "total_att": total_att,
+            "effective_def_per_unit": 0,
+            "wall_mult": wall_mult,
+            "crop_per_hour": 0,
+        }
+
+    needed = ceil(total_att / effective_def_per_unit)
+    crop = _get_crop_for_unit(defender_unit)
+
+    return {
+        "count": needed,
+        "att_type": att_type,
+        "total_att": total_att,
+        "effective_def_per_unit": round(effective_def_per_unit, 2),
+        "wall_mult": round(wall_mult, 2),
+        "crop_per_hour": needed * crop,
     }
