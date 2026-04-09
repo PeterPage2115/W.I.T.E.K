@@ -85,7 +85,8 @@ class General(commands.Cog):
                 "`/tporownaj` — Porównaj dwa sojusze\n"
                 "`/tsymulacja` — Symulacja walki (kalkulator strat)\n"
                 "⚔️ `/tbezpieczne` — Kalkulator bezpiecznego wysyłania (min. odległość)\n"
-                "🛡️ `/tileobrony` — Kalkulator obrony (ile wojsk potrzeba)"
+                "🛡️ `/tileobrony` — Kalkulator obrony (ile wojsk potrzeba)\n"
+                "🎯 `/tprzechwyc` — Kalkulator przechwycenia (kiedy wysłać def)"
             ),
             inline=False,
         )

@@ -25,6 +25,7 @@ from bot.utils import (
     UNIT_SPEEDS,
     WALL_BONUS,
     _COMBAT_ABBREV,
+    calc_interception_times,
     calc_needed_defense,
     calc_safe_distance,
     coords_display,
@@ -613,6 +614,22 @@ def _build_comparison_embed(name1, stats1, growth1, name2, stats2, growth2):
 # ------------------------------------------------------------------ #
 
 _TRIBE_CHOICE_MAP = {"Rzymianie": 1, "Germanie": 2, "Galowie": 3}
+
+
+def _format_duration(seconds: float) -> str:
+    """Format seconds as 'Xh Ym' or 'Ym Zs'."""
+    if seconds < 0:
+        return "—"
+    total = int(seconds)
+    h = total // 3600
+    m = (total % 3600) // 60
+    s = total % 60
+    if h > 0:
+        return f"{h}h {m:02d}m"
+    elif m > 0:
+        return f"{m}m {s:02d}s"
+    else:
+        return f"{s}s"
 
 
 def _parse_hours(text: str) -> float | None:
@@ -1420,6 +1437,129 @@ class CombatSimModal(discord.ui.Modal):
             )
 
         embed.set_footer(text=FOOTER)
+        await ctx.followup.send(embed=embed)
+
+    # ------------------------------------------------------------------ #
+    # /tprzechwyc — interception time calculator
+    # ------------------------------------------------------------------ #
+
+    @discord.slash_command(
+        name="tprzechwyc",
+        description="Kalkulator przechwycenia — kiedy wysłać def",
+    )
+    @discord.option("moja_wioska", str, description="Twoja wioska (skąd wysyłasz) np. 81|33")
+    @discord.option("cel", str, description="Atakowana wioska (dokąd wysyłasz) np. 76|43")
+    @discord.option("eta", str, description="Czas do ataku (h:mm) lub godziny np. 2:30 lub 2.5")
+    @discord.option(
+        "plemie", str, description="Twoje plemię",
+        choices=["Rzymianie", "Germanie", "Galowie"],
+    )
+    @discord.option(
+        "ts", int, description="Poziom Placu Turniejowego (0-20)",
+        required=False, default=0, min_value=0, max_value=20,
+    )
+    @discord.option(
+        "buty", float, description="Bonus butów bohatera (0, 0.25, 0.5, 0.75)",
+        required=False, default=0.0,
+    )
+    async def tprzechwyc(
+        self, ctx: discord.ApplicationContext,
+        moja_wioska: str, cel: str, eta: str,
+        plemie: str, ts: int, buty: float,
+    ):
+        await ctx.defer()
+
+        our_x, our_y = parse_coords(moja_wioska)
+        if our_x is None:
+            await ctx.followup.send(
+                "❌ Nieprawidłowe koordynaty Twojej wioski.",
+                ephemeral=True,
+            )
+            return
+
+        def_x, def_y = parse_coords(cel)
+        if def_x is None:
+            await ctx.followup.send(
+                "❌ Nieprawidłowe koordynaty atakowanej wioski.",
+                ephemeral=True,
+            )
+            return
+
+        hours = _parse_hours(eta)
+        if hours is None or hours <= 0:
+            await ctx.followup.send(
+                "❌ Nieprawidłowy czas. Użyj `2:30` (h:mm) lub `2.5` (godziny).",
+                ephemeral=True,
+            )
+            return
+
+        tribe_map = {"Rzymianie": 1, "Germanie": 2, "Galowie": 3}
+        tid = tribe_map[plemie]
+        attack_eta_seconds = hours * 3600
+
+        results = calc_interception_times(
+            our_x, our_y, def_x, def_y,
+            attack_eta_seconds, tid,
+            ts_level=ts, boots_bonus=buty,
+            map_size=self._map_size(),
+        )
+
+        dist = torus_distance(our_x, our_y, def_x, def_y, self._map_size())
+        server_url = self._server_url()
+
+        embed = discord.Embed(
+            title="🎯 Kalkulator przechwycenia",
+            description=(
+                f"📍 Twoja wioska: {coords_display(server_url, our_x, our_y)}\n"
+                f"🛡️ Cel (bronimy): {coords_display(server_url, def_x, def_y)}\n"
+                f"📏 Dystans: **{dist:.2f}** pól\n"
+                f"⏰ Atak za: **{hours:.1f}h** ({int(attack_eta_seconds)}s)\n"
+                f"🏟️ TS: **{ts}**"
+                + (f" | 👢 Buty: **{int(buty*100)}%**" if buty > 0 else "")
+            ),
+            color=COLOR_INFO,
+        )
+
+        can_lines = []
+        cant_lines = []
+
+        for r in results:
+            emoji = TYPE_EMOJI.get(r["type"], "")
+            travel_str = _format_duration(r["travel_seconds"])
+
+            if r["can_make_it"]:
+                send_str = _format_duration(r["send_in_seconds"])
+                can_lines.append(
+                    f"{emoji} **{r['name']}** ({r['speed']} pól/h)\n"
+                    f"  🕐 Podróż: {travel_str} | ✈️ Wyślij za: **{send_str}**"
+                )
+            else:
+                cant_lines.append(
+                    f"{emoji} **{r['name']}** — ❌ za wolny (podróż: {travel_str})"
+                )
+
+        if can_lines:
+            embed.add_field(
+                name="✅ Zdążą (kiedy wysłać)",
+                value="\n".join(can_lines)[:1024],
+                inline=False,
+            )
+
+        if cant_lines:
+            embed.add_field(
+                name="❌ Nie zdążą",
+                value="\n".join(cant_lines)[:1024],
+                inline=False,
+            )
+
+        if not can_lines and not cant_lines:
+            embed.add_field(
+                name="⚠️",
+                value="Brak danych o jednostkach tego plemienia.",
+                inline=False,
+            )
+
+        embed.set_footer(text=f"{FOOTER} | Czasy podróży bez bohatera (chyba że podano buty)")
         await ctx.followup.send(embed=embed)
 
 
