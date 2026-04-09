@@ -666,15 +666,17 @@ class Attacks(commands.Cog):
         else:
             def_text = f"📍 Koordynaty: {def_coord}\n⚠️ _Wioska nie znaleziona w danych_"
         if def_info:
-            def_text += f"\n🛡️ [{def_info['alliance']}] | {def_info['tribe_emoji']} {def_info['tribe_name']}"
+            alliance_part = f"[{def_info['alliance']}] | " if def_info.get('alliance', '').strip() else ""
+            def_text += f"\n🛡️ {alliance_part}{def_info['tribe_emoji']} {def_info['tribe_name']}"
         embed.add_field(name="🛡️ Cel ataku", value=def_text, inline=False)
 
         # --- Attacker ---
         atk_text = f"👤 **{attacker_name}**"
         if atk_info:
+            alliance_part = f" | ⚔️ [{atk_info['alliance']}]" if atk_info.get('alliance', '').strip() else ""
             atk_text += (
                 f"\n🏰 {atk_info['tribe_emoji']} {atk_info['tribe_name']}"
-                f" | ⚔️ [{atk_info['alliance']}]"
+                f"{alliance_part}"
                 f"\n📊 Pop: {atk_info['pop']:,} | 🏘️ {atk_info['villages']} wiosek"
             )
         else:

@@ -958,7 +958,7 @@ def _build_report_embed(parsed: dict, report_id: int, attack_id: int | None) -> 
         atk_trapped = _side_trapped_dict(atk)
 
         atk_text = ""
-        if atk.get("alliance"):
+        if atk.get("alliance", "").strip():
             atk_text += f"[{atk['alliance']}] "
         atk_text += f"**{atk.get('player', '?')}**"
         if atk.get("village"):
@@ -991,7 +991,7 @@ def _build_report_embed(parsed: dict, report_id: int, attack_id: int | None) -> 
         dfn_losses = _side_losses_dict(dfn)
 
         dfn_text = ""
-        if dfn.get("alliance"):
+        if dfn.get("alliance", "").strip():
             dfn_text += f"[{dfn['alliance']}] "
         dfn_text += f"**{dfn.get('player', '?')}**"
         if dfn.get("village"):
@@ -1322,10 +1322,10 @@ class Defense(commands.Cog):
 
         for r in reports:
             atk_text = r["atk_name"] or "?"
-            if r["atk_alliance"]:
+            if r["atk_alliance"] and str(r["atk_alliance"]).strip():
                 atk_text = f"[{r['atk_alliance']}] {atk_text}"
             dfn_text = r["def_name"] or "?"
-            if r["def_alliance"]:
+            if r["def_alliance"] and str(r["def_alliance"]).strip():
                 dfn_text = f"[{r['def_alliance']}] {dfn_text}"
 
             power_text = ""
