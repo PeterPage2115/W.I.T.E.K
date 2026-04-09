@@ -30,11 +30,21 @@ log = logging.getLogger(__name__)
 # Per-thread lock to serialize summary updates (rubber-duck finding #3)
 _thread_locks: dict[int, asyncio.Lock] = {}
 
+# Per-coordinate lock to prevent duplicate defense thread creation
+_coord_locks: dict[tuple[int, int], asyncio.Lock] = {}
+
 
 def _get_thread_lock(thread_id: int) -> asyncio.Lock:
     if thread_id not in _thread_locks:
         _thread_locks[thread_id] = asyncio.Lock()
     return _thread_locks[thread_id]
+
+
+def _get_coord_lock(x: int, y: int) -> asyncio.Lock:
+    key = (x, y)
+    if key not in _coord_locks:
+        _coord_locks[key] = asyncio.Lock()
+    return _coord_locks[key]
 
 
 class Attacks(commands.Cog):
@@ -218,27 +228,28 @@ class Attacks(commands.Cog):
                 return dt.forum_thread_id
             return None
 
-        existing_thread_id = await db_query(self.bot, _check_existing_thread)
+        async with _get_coord_lock(def_x, def_y):
+            existing_thread_id = await db_query(self.bot, _check_existing_thread)
 
-        if existing_thread_id:
-            # Add to existing thread instead of creating a new one
-            try:
-                thread = await self.bot.fetch_channel(existing_thread_id)
-                await thread.send(
-                    content=f"➕ **Kolejny atak #{report_id}** dodany do wątku",
-                    embed=embed,
+            if existing_thread_id:
+                # Add to existing thread instead of creating a new one
+                try:
+                    thread = await self.bot.fetch_channel(existing_thread_id)
+                    await thread.send(
+                        content=f"➕ **Kolejny atak #{report_id}** dodany do wątku",
+                        embed=embed,
+                    )
+                except Exception:
+                    log.exception("Nie udało się dodać ataku do istniejącego wątku %d", existing_thread_id)
+                await self._update_thread_summary(existing_thread_id)
+            else:
+                # Create new forum thread for defense coordination
+                defender_name = def_vill["player"] if def_vill else None
+                await self._create_defense_thread(
+                    ctx, report_id, embed, def_vill, def_x, def_y,
+                    defender_name, resolved_attacker, attack_unix,
+                    defense_info=defense_info,
                 )
-            except Exception:
-                log.exception("Nie udało się dodać ataku do istniejącego wątku %d", existing_thread_id)
-            await self._update_thread_summary(existing_thread_id)
-        else:
-            # Create new forum thread for defense coordination
-            defender_name = def_vill["player"] if def_vill else None
-            await self._create_defense_thread(
-                ctx, report_id, embed, def_vill, def_x, def_y,
-                defender_name, resolved_attacker, attack_unix,
-                defense_info=defense_info,
-            )
 
         log.info(
             "⚔️ Atak #%d: %s → (%d|%d) o %s (przez %s)",
