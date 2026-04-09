@@ -1,0 +1,376 @@
+{% extends "base.html" %}
+
+{% block title %}Atak #{{ attack.id }}{% endblock %}
+
+{% block nav_extra %}
+<a href="/attacks" class="text-trav-parchment/80 hover:text-trav-gold transition font-medium">⚔️ Ataki</a>
+{% endblock %}
+
+{% block content %}
+<!-- Back link -->
+<div class="mb-4">
+    <a href="/attacks" class="text-trav-parchment/70 hover:text-trav-gold text-sm transition">← Powrót do listy ataków</a>
+</div>
+
+<!-- Header -->
+<div class="mb-6">
+    <h1 class="font-medieval text-trav-parchment text-3xl font-bold mb-1 drop-shadow-lg">
+        <img src="https://cdn.legends.travian.com/gpack/417.3/img_ltr/legacy/a/att2.gif" alt="" class="inline w-8 h-8 mr-2">
+        Atak #{{ attack.id }}
+    </h1>
+    <div class="flex items-center gap-3 mt-2">
+        {% if attack.status == "reported" %}
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-red-600 text-white">🔴 Zgłoszony</span>
+        {% elif attack.status == "defending" %}
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-yellow-500 text-white">🟡 Broniony</span>
+        {% elif attack.status == "resolved" %}
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-600 text-white">🟢 Rozwiązany</span>
+        {% endif %}
+        {% if attack.created_at %}
+        <span class="text-trav-parchment/50 text-sm">Zgłoszono: {{ attack.created_at.strftime('%d.%m.%Y %H:%M') }} UTC</span>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Main Info Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+
+    <!-- Defender Info -->
+    <div class="trav-panel overflow-hidden">
+        <div class="trav-panel-header">
+            <h2 class="font-medieval text-base font-semibold">
+                <img src="https://cdn.legends.travian.com/gpack/417.3/img_ltr/legacy/a/def1.gif" alt="" class="inline w-4 h-4 mr-1">
+                Obrońca
+            </h2>
+        </div>
+        <div class="p-4 space-y-3">
+            <div>
+                <span class="text-trav-text-muted text-xs uppercase">Gracz</span>
+                <div class="font-semibold text-trav-brown-dark text-lg">{{ attack.defender_name or "—" }}</div>
+            </div>
+            {% if attack.defender_village %}
+            <div>
+                <span class="text-trav-text-muted text-xs uppercase">Wioska</span>
+                <div class="text-trav-text">{{ attack.defender_village }}</div>
+            </div>
+            {% endif %}
+            {% if attack.defender_x is not none and attack.defender_y is not none %}
+            <div>
+                <span class="text-trav-text-muted text-xs uppercase">Koordynaty</span>
+                <div>
+                    <a href="{{ server_url }}/karte.php?x={{ attack.defender_x }}&y={{ attack.defender_y }}"
+                       target="_blank"
+                       class="text-trav-blue hover:text-blue-700 font-semibold">
+                        ({{ attack.defender_x }}|{{ attack.defender_y }}) 🗺️
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Attacker Info -->
+    <div class="trav-panel overflow-hidden">
+        <div class="trav-panel-header">
+            <h2 class="font-medieval text-base font-semibold">
+                <img src="https://cdn.legends.travian.com/gpack/417.3/img_ltr/legacy/a/att2.gif" alt="" class="inline w-4 h-4 mr-1">
+                Atakujący
+            </h2>
+        </div>
+        <div class="p-4 space-y-3">
+            <div>
+                <span class="text-trav-text-muted text-xs uppercase">Gracz</span>
+                <div class="font-semibold text-trav-red text-lg">{{ attack.attacker_name or "Nieznany" }}</div>
+            </div>
+            {% if attack.attacker_alliance %}
+            <div>
+                <span class="text-trav-text-muted text-xs uppercase">Sojusz</span>
+                <div class="text-trav-text">[{{ attack.attacker_alliance }}]</div>
+            </div>
+            {% endif %}
+            {% if attack.attacker_x is not none and attack.attacker_y is not none %}
+            <div>
+                <span class="text-trav-text-muted text-xs uppercase">Koordynaty</span>
+                <div>
+                    <a href="{{ server_url }}/karte.php?x={{ attack.attacker_x }}&y={{ attack.attacker_y }}"
+                       target="_blank"
+                       class="text-trav-blue hover:text-blue-700 font-semibold">
+                        ({{ attack.attacker_x }}|{{ attack.attacker_y }}) 🗺️
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Attack Details -->
+<div class="trav-panel overflow-hidden mb-6">
+    <div class="trav-panel-header">
+        <h2 class="font-medieval text-base font-semibold">📊 Szczegóły ataku</h2>
+    </div>
+    <div class="p-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <!-- Attack Time -->
+            <div>
+                <span class="text-trav-text-muted text-xs uppercase">Czas ataku</span>
+                <div class="font-bold text-trav-red text-lg">{{ attack.attack_time or "—" }}</div>
+            </div>
+
+            <!-- Distance -->
+            <div>
+                <span class="text-trav-text-muted text-xs uppercase">Dystans</span>
+                <div class="font-bold text-trav-brown-dark text-lg">
+                    {% if distance is not none %}{{ "%.1f"|format(distance) }} pól{% else %}—{% endif %}
+                </div>
+            </div>
+
+            <!-- Wall Level -->
+            <div>
+                <span class="text-trav-text-muted text-xs uppercase">Poziom muru</span>
+                <div class="font-bold text-trav-brown-dark text-lg">
+                    {% if attack.wall_level is not none %}{{ attack.wall_level }}{% else %}—{% endif %}
+                </div>
+            </div>
+
+            <!-- Reporter -->
+            <div>
+                <span class="text-trav-text-muted text-xs uppercase">Zgłaszający</span>
+                <div class="text-trav-text font-medium">{{ attack.reported_by_name or "—" }}</div>
+            </div>
+        </div>
+
+        <!-- Crop Info -->
+        {% if attack.crop_amount is not none or attack.crop_production is not none %}
+        <div class="mt-4 pt-4 border-t border-trav-brown/20">
+            <div class="grid grid-cols-2 gap-4">
+                {% if attack.crop_amount is not none %}
+                <div>
+                    <span class="text-trav-text-muted text-xs uppercase">
+                        <span class="trav-res trav-crop"></span> Zboże w spichlerzu
+                    </span>
+                    <div class="font-bold text-trav-brown-dark">{{ "{:,}".format(attack.crop_amount) }}</div>
+                </div>
+                {% endif %}
+                {% if attack.crop_production is not none %}
+                <div>
+                    <span class="text-trav-text-muted text-xs uppercase">
+                        <span class="trav-res trav-crop"></span> Produkcja zboża
+                    </span>
+                    <div class="font-bold text-trav-brown-dark">{{ "{:,}".format(attack.crop_production) }}/h</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Notes -->
+        {% if attack.notes %}
+        <div class="mt-4 pt-4 border-t border-trav-brown/20">
+            <span class="text-trav-text-muted text-xs uppercase">Notatki</span>
+            <div class="mt-1 text-trav-text bg-trav-parchment-light/50 rounded p-3 text-sm">{{ attack.notes }}</div>
+        </div>
+        {% endif %}
+
+        <!-- Resolved info -->
+        {% if attack.status == "resolved" and attack.resolved_at %}
+        <div class="mt-4 pt-4 border-t border-trav-brown/20">
+            <span class="text-trav-text-muted text-xs uppercase">Rozwiązano</span>
+            <div class="text-trav-green font-semibold">✅ {{ attack.resolved_at.strftime('%d.%m.%Y %H:%M') }} UTC</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Defense Thread -->
+{% if thread %}
+<div class="trav-panel overflow-hidden mb-6">
+    <div class="trav-panel-header">
+        <h2 class="font-medieval text-base font-semibold">🛡️ Wątek obrony</h2>
+    </div>
+    <div class="p-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+                <span class="text-trav-text-muted text-xs uppercase">Status wątku</span>
+                <div class="font-medium {% if thread.status == 'active' %}text-trav-red{% else %}text-trav-green{% endif %}">
+                    {{ thread.status | capitalize }}
+                </div>
+            </div>
+            {% if thread.wall_level is not none %}
+            <div>
+                <span class="text-trav-text-muted text-xs uppercase">Mur</span>
+                <div class="font-bold text-trav-brown-dark">Poziom {{ thread.wall_level }}</div>
+            </div>
+            {% endif %}
+            {% if thread.crop_amount is not none %}
+            <div>
+                <span class="text-trav-text-muted text-xs uppercase">Zboże</span>
+                <div class="font-bold text-trav-brown-dark">{{ "{:,}".format(thread.crop_amount) }}</div>
+            </div>
+            {% endif %}
+            {% if thread.crop_production is not none %}
+            <div>
+                <span class="text-trav-text-muted text-xs uppercase">Produkcja</span>
+                <div class="font-bold text-trav-brown-dark">{{ "{:,}".format(thread.crop_production) }}/h</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Support Troops -->
+{% if support %}
+<div class="trav-panel overflow-hidden mb-6">
+    <div class="trav-panel-header">
+        <h2 class="font-medieval text-base font-semibold">
+            <img src="https://cdn.legends.travian.com/gpack/417.3/img_ltr/legacy/a/def1.gif" alt="" class="inline w-4 h-4 mr-1">
+            Wysłane wsparcie ({{ support | length }})
+        </h2>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-trav-text-muted text-xs uppercase border-b-2 border-trav-brown/20 bg-trav-parchment-dark/50">
+                    <th class="px-4 py-2.5 text-left">Gracz</th>
+                    <th class="px-4 py-2.5 text-center">Skąd</th>
+                    <th class="px-4 py-2.5 text-left">Wojska</th>
+                    <th class="px-4 py-2.5 text-right">Zboże</th>
+                    <th class="px-4 py-2.5 text-center">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in support %}
+                <tr class="hover-row border-b border-trav-brown/10">
+                    <td class="px-4 py-2 font-medium text-trav-text">{{ s.obj.player_name or "—" }}</td>
+                    <td class="px-4 py-2 text-center">
+                        <a href="{{ server_url }}/karte.php?x={{ s.obj.from_x }}&y={{ s.obj.from_y }}"
+                           target="_blank"
+                           class="text-trav-blue hover:text-blue-700 text-xs">
+                            ({{ s.obj.from_x }}|{{ s.obj.from_y }})
+                        </a>
+                    </td>
+                    <td class="px-4 py-2 text-xs text-trav-text-light">
+                        {% for unit, count in s.troops.items() %}
+                        <span class="inline-block bg-trav-parchment-dark/40 rounded px-1.5 py-0.5 mr-1 mb-0.5">{{ unit }}: {{ count }}</span>
+                        {% endfor %}
+                        {% if not s.troops %}—{% endif %}
+                    </td>
+                    <td class="px-4 py-2 text-right text-trav-text-light">
+                        {% if s.obj.crop_consumption %}{{ s.obj.crop_consumption }}{% else %}—{% endif %}
+                    </td>
+                    <td class="px-4 py-2 text-center">
+                        {% if s.obj.status == "arrived" %}
+                        <span class="text-trav-green font-semibold text-xs">✅ Na miejscu</span>
+                        {% elif s.obj.status == "in_transit" %}
+                        <span class="text-trav-gold font-semibold text-xs">🚶 W drodze</span>
+                        {% elif s.obj.status == "recalled" %}
+                        <span class="text-trav-text-muted font-semibold text-xs">↩️ Wycofany</span>
+                        {% else %}
+                        <span class="text-xs">{{ s.obj.status }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Battle Reports -->
+{% if reports %}
+<div class="trav-panel overflow-hidden mb-6">
+    <div class="trav-panel-header">
+        <h2 class="font-medieval text-base font-semibold">⚔️ Raporty bitewne ({{ reports | length }})</h2>
+    </div>
+    <div class="divide-y divide-trav-brown/20">
+        {% for r in reports %}
+        <div class="p-4">
+            <div class="flex items-center justify-between mb-3">
+                <div class="font-semibold text-trav-brown-dark">
+                    {{ r.obj.attacker_name or "?" }} vs {{ r.obj.defender_name or "?" }}
+                </div>
+                {% if r.obj.result %}
+                <span class="text-xs font-bold px-2 py-1 rounded
+                    {% if r.obj.result == 'wygrana_obrony' %}bg-green-100 text-green-800
+                    {% elif r.obj.result == 'przegrana_obrony' %}bg-red-100 text-red-800
+                    {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                    {% if r.obj.result == "wygrana_obrony" %}🛡️ Wygrana obrony
+                    {% elif r.obj.result == "przegrana_obrony" %}💀 Przegrana obrony
+                    {% elif r.obj.result == "remis" %}⚖️ Remis
+                    {% elif r.obj.result == "szpieg" %}🔍 Szpieg
+                    {% else %}{{ r.obj.result }}{% endif %}
+                </span>
+                {% endif %}
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <!-- Attacker troops -->
+                <div>
+                    <div class="text-trav-text-muted uppercase mb-1">Atakujący wojska</div>
+                    <div class="flex flex-wrap gap-1">
+                        {% for unit, count in r.attacker_troops.items() %}
+                        <span class="bg-red-50 border border-red-200 rounded px-1.5 py-0.5">{{ unit }}: {{ count }}
+                            {% if r.attacker_losses.get(unit) %}
+                            <span class="text-trav-red">(−{{ r.attacker_losses[unit] }})</span>
+                            {% endif %}
+                        </span>
+                        {% endfor %}
+                        {% if not r.attacker_troops %}—{% endif %}
+                    </div>
+                </div>
+
+                <!-- Defender troops -->
+                <div>
+                    <div class="text-trav-text-muted uppercase mb-1">Broniący wojska</div>
+                    <div class="flex flex-wrap gap-1">
+                        {% for unit, count in r.defender_troops.items() %}
+                        <span class="bg-green-50 border border-green-200 rounded px-1.5 py-0.5">{{ unit }}: {{ count }}
+                            {% if r.defender_losses.get(unit) %}
+                            <span class="text-trav-red">(−{{ r.defender_losses[unit] }})</span>
+                            {% endif %}
+                        </span>
+                        {% endfor %}
+                        {% if not r.defender_troops %}—{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bounty -->
+            {% if r.bounty %}
+            <div class="mt-3 text-xs">
+                <span class="text-trav-text-muted uppercase">Łupy:</span>
+                {% for res, amount in r.bounty.items() %}
+                <span class="ml-2">
+                    {% if res == "lumber" %}<span class="trav-res trav-lumber"></span>
+                    {% elif res == "clay" %}<span class="trav-res trav-clay"></span>
+                    {% elif res == "iron" %}<span class="trav-res trav-iron"></span>
+                    {% elif res == "crop" %}<span class="trav-res trav-crop"></span>
+                    {% else %}{{ res }}:{% endif %}
+                    {{ "{:,}".format(amount) }}
+                </span>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if r.obj.created_at %}
+            <div class="mt-2 text-xs text-trav-text-muted">
+                Dodano: {{ r.obj.created_at.strftime('%d.%m.%Y %H:%M') }}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- No support/reports message -->
+{% if not support and not reports %}
+<div class="trav-panel p-6 text-center mb-6">
+    <div class="text-3xl mb-2">🛡️</div>
+    <p class="text-trav-text-muted text-sm">Brak danych o wsparciu i raportach bitewnych dla tego ataku.</p>
+</div>
+{% endif %}
+
+{% endblock %}

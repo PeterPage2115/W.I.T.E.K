@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% block title %}Raport #{{ report.id }}{% endblock %}
+
+{% block nav_extra %}
+<a href="/reports" class="text-trav-parchment/80 hover:text-trav-gold transition font-medium">📜 Raporty</a>
+{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<div class="mb-4 text-sm">
+    <a href="/reports" class="text-trav-parchment/60 hover:text-trav-gold transition">📜 Raporty</a>
+    <span class="text-trav-parchment/40 mx-1">→</span>
+    <span class="text-trav-parchment/80">#{{ report.id }}</span>
+</div>
+
+<!-- Header -->
+<div class="mb-6">
+    <h1 class="font-medieval text-trav-parchment text-3xl font-bold mb-1 drop-shadow-lg">
+        📋 Raport #{{ report.id }}
+        {% if result == "wygrana_obrony" %}
+        <span class="text-trav-green">🛡️</span>
+        {% elif result == "przegrana_obrony" %}
+        <span class="text-trav-red">💀</span>
+        {% elif result == "szpieg" %}
+        <span>🔍</span>
+        {% else %}
+        <span>⚖️</span>
+        {% endif %}
+    </h1>
+    <p class="text-trav-parchment/60 text-sm">
+        {% if result == "wygrana_obrony" %}Wygrana obrony
+        {% elif result == "przegrana_obrony" %}Przegrana obrony
+        {% elif result == "szpieg" %}Szpiegostwo
+        {% else %}Remis{% endif %}
+        {% if report.created_at %} — {{ report.created_at.strftime('%d.%m.%Y %H:%M') }}{% endif %}
+        {% if report.is_manual %} <span class="bg-trav-gold/20 text-trav-gold px-2 py-0.5 rounded text-xs ml-2">Ręczny</span>{% endif %}
+    </p>
+</div>
+
+<!-- Summary Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <!-- Battle power -->
+    <div class="trav-panel p-4">
+        <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-2">⚡ Siła w walce</div>
+        {% if report.battle_power_atk or report.battle_power_def %}
+        <div class="flex items-baseline gap-2">
+            <span class="text-xl font-bold text-trav-red">{{ "{:,}".format(report.battle_power_atk or 0) }}</span>
+            <span class="text-trav-text-muted text-sm">vs</span>
+            <span class="text-xl font-bold text-trav-green-dark">{{ "{:,}".format(report.battle_power_def or 0) }}</span>
+        </div>
+        {% else %}
+        <div class="text-trav-text-muted">Brak danych</div>
+        {% endif %}
+    </div>
+
+    <!-- Total troops -->
+    <div class="trav-panel p-4">
+        <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-2">🎯 Wojska</div>
+        <div class="flex items-baseline gap-2">
+            <span class="text-xl font-bold text-trav-red">{{ atk_troops_total }}</span>
+            <span class="text-trav-text-muted text-sm">vs</span>
+            <span class="text-xl font-bold text-trav-green-dark">{{ def_troops_total }}</span>
+        </div>
+        <div class="text-xs text-trav-text-muted mt-1">
+            Straty: <span class="text-trav-red">{{ atk_losses_total }}</span> vs <span class="text-trav-green-dark">{{ def_losses_total }}</span>
+        </div>
+    </div>
+
+    <!-- Bounty -->
+    <div class="trav-panel p-4">
+        <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-2">💰 Zdobycz</div>
+        {% if bounty %}
+        <div class="space-y-1 text-sm">
+            {% if bounty.wood is defined %}
+            <div><span class="trav-res trav-lumber"></span> {{ "{:,}".format(bounty.wood|int) if bounty.wood else 0 }}</div>
+            {% endif %}
+            {% if bounty.clay is defined %}
+            <div><span class="trav-res trav-clay"></span> {{ "{:,}".format(bounty.clay|int) if bounty.clay else 0 }}</div>
+            {% endif %}
+            {% if bounty.iron is defined %}
+            <div><span class="trav-res trav-iron"></span> {{ "{:,}".format(bounty.iron|int) if bounty.iron else 0 }}</div>
+            {% endif %}
+            {% if bounty.crop is defined %}
+            <div><span class="trav-res trav-crop"></span> {{ bounty.crop }}</div>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="text-trav-text-muted">Brak zdobyczy</div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Attacker Section -->
+<div class="trav-panel overflow-hidden mb-6">
+    <div class="trav-panel-header flex items-center justify-between">
+        <h2 class="font-medieval text-base font-semibold">
+            <span class="trav-move trav-att mr-1"></span>
+            ⚔️ Napastnik
+        </h2>
+    </div>
+    <div class="p-4">
+        <!-- Player info -->
+        <div class="mb-4">
+            <div class="text-lg font-semibold text-trav-text">
+                {% if report.attacker_alliance %}
+                <span class="text-trav-text-light">[{{ report.attacker_alliance }}]</span>
+                {% endif %}
+                {{ report.attacker_name or "Nieznany" }}
+            </div>
+            {% if report.attacker_village %}
+            <div class="text-sm text-trav-text-light">z osady <strong>{{ report.attacker_village }}</strong></div>
+            {% endif %}
+        </div>
+
+        <!-- Troop table -->
+        {% if atk_table %}
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-trav-text-muted text-xs uppercase border-b border-trav-brown/20">
+                    <th class="px-2 py-1.5 text-left">Jednostka</th>
+                    <th class="px-2 py-1.5 text-right">Wysłane</th>
+                    <th class="px-2 py-1.5 text-right">Straty 💀</th>
+                    <th class="px-2 py-1.5 text-right">Złapane 🪤</th>
+                    <th class="px-2 py-1.5 text-right">Przeżyło</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for unit in atk_table %}
+                <tr class="hover-row border-b border-trav-brown/10">
+                    <td class="px-2 py-1.5 font-medium text-trav-text">{{ unit.name }}</td>
+                    <td class="px-2 py-1.5 text-right">{{ "{:,}".format(unit.sent) }}</td>
+                    <td class="px-2 py-1.5 text-right {% if unit.lost > 0 %}text-trav-red font-medium{% else %}text-trav-text-muted{% endif %}">
+                        {{ "{:,}".format(unit.lost) }}
+                    </td>
+                    <td class="px-2 py-1.5 text-right {% if unit.trapped > 0 %}text-yellow-700 font-medium{% else %}text-trav-text-muted{% endif %}">
+                        {{ "{:,}".format(unit.trapped) }}
+                    </td>
+                    <td class="px-2 py-1.5 text-right {% if unit.sent - unit.lost - unit.trapped > 0 %}text-trav-green font-medium{% else %}text-trav-text-muted{% endif %}">
+                        {{ "{:,}".format(unit.sent - unit.lost - unit.trapped) }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="border-t-2 border-trav-brown/30 font-semibold">
+                    <td class="px-2 py-1.5">Suma</td>
+                    <td class="px-2 py-1.5 text-right">{{ "{:,}".format(atk_troops_total) }}</td>
+                    <td class="px-2 py-1.5 text-right text-trav-red">{{ "{:,}".format(atk_losses_total) }}</td>
+                    <td class="px-2 py-1.5 text-right"></td>
+                    <td class="px-2 py-1.5 text-right text-trav-green">{{ "{:,}".format(atk_troops_total - atk_losses_total) }}</td>
+                </tr>
+            </tfoot>
+        </table>
+        {% else %}
+        <div class="text-trav-text-muted text-sm">Brak danych o wojskach napastnika</div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Defender Section -->
+<div class="trav-panel overflow-hidden mb-6">
+    <div class="trav-panel-header flex items-center justify-between">
+        <h2 class="font-medieval text-base font-semibold">
+            <span class="trav-move trav-def mr-1"></span>
+            🛡️ Obrońca
+        </h2>
+    </div>
+    <div class="p-4">
+        <!-- Player info -->
+        <div class="mb-4">
+            <div class="text-lg font-semibold text-trav-text">
+                {% if report.defender_alliance %}
+                <span class="text-trav-text-light">[{{ report.defender_alliance }}]</span>
+                {% endif %}
+                {{ report.defender_name or "Nieznany" }}
+            </div>
+            {% if report.defender_village %}
+            <div class="text-sm text-trav-text-light">z osady <strong>{{ report.defender_village }}</strong></div>
+            {% endif %}
+        </div>
+
+        <!-- Troop table -->
+        {% if def_table %}
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-trav-text-muted text-xs uppercase border-b border-trav-brown/20">
+                    <th class="px-2 py-1.5 text-left">Jednostka</th>
+                    <th class="px-2 py-1.5 text-right">Wojska</th>
+                    <th class="px-2 py-1.5 text-right">Straty 💀</th>
+                    <th class="px-2 py-1.5 text-right">Przeżyło</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for unit in def_table %}
+                <tr class="hover-row border-b border-trav-brown/10">
+                    <td class="px-2 py-1.5 font-medium text-trav-text">{{ unit.name }}</td>
+                    <td class="px-2 py-1.5 text-right">{{ "{:,}".format(unit.sent) }}</td>
+                    <td class="px-2 py-1.5 text-right {% if unit.lost > 0 %}text-trav-red font-medium{% else %}text-trav-text-muted{% endif %}">
+                        {{ "{:,}".format(unit.lost) }}
+                    </td>
+                    <td class="px-2 py-1.5 text-right {% if unit.sent - unit.lost > 0 %}text-trav-green font-medium{% else %}text-trav-text-muted{% endif %}">
+                        {{ "{:,}".format(unit.sent - unit.lost) }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="border-t-2 border-trav-brown/30 font-semibold">
+                    <td class="px-2 py-1.5">Suma</td>
+                    <td class="px-2 py-1.5 text-right">{{ "{:,}".format(def_troops_total) }}</td>
+                    <td class="px-2 py-1.5 text-right text-trav-red">{{ "{:,}".format(def_losses_total) }}</td>
+                    <td class="px-2 py-1.5 text-right text-trav-green">{{ "{:,}".format(def_troops_total - def_losses_total) }}</td>
+                </tr>
+            </tfoot>
+        </table>
+        {% else %}
+        <div class="text-trav-text-muted text-sm">Brak danych o wojskach obrońcy</div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Links -->
+<div class="flex flex-wrap gap-3">
+    {% if linked_attack %}
+    <a href="/attacks/{{ linked_attack.id }}"
+       class="px-4 py-2 bg-trav-brown text-trav-parchment text-sm rounded hover:bg-trav-brown-dark transition font-medium">
+        ⚔️ Powiązany atak #{{ linked_attack.id }}
+    </a>
+    {% endif %}
+    <a href="/reports"
+       class="px-4 py-2 bg-trav-parchment/80 text-trav-brown text-sm rounded hover:bg-trav-parchment transition font-medium">
+        ← Powrót do listy
+    </a>
+</div>
+{% endblock %}

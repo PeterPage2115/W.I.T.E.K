@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Panel Obrony{% endblock %}
+
+{% block nav_extra %}
+<a href="/defense" class="text-trav-gold font-semibold">🛡️ Obrona</a>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="mb-6">
+    <h1 class="font-medieval text-trav-parchment text-3xl font-bold mb-1 drop-shadow-lg">
+        <img src="https://cdn.legends.travian.com/gpack/417.3/img_ltr/legacy/a/def1.gif" alt="" class="inline w-8 h-8 mr-2">
+        Panel Obrony
+    </h1>
+    <p class="text-trav-parchment/60 text-sm">Koordynacja obrony wiosek sojuszu</p>
+</div>
+
+<!-- Stats Cards -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <div class="trav-panel p-4">
+        <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-1">🟢 Aktywne wątki</div>
+        <div class="text-2xl font-bold text-trav-green">{{ active }}</div>
+    </div>
+    <div class="trav-panel p-4">
+        <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-1">⚪ Rozwiązane</div>
+        <div class="text-2xl font-bold text-trav-text-muted">{{ resolved }}</div>
+    </div>
+    <div class="trav-panel p-4">
+        <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-1">🏰 Wojska w garnizonach</div>
+        <div class="text-2xl font-bold text-trav-brown-dark">{{ "{:,}".format(total_garrison_troops) }}</div>
+    </div>
+    <div class="trav-panel p-4">
+        <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-1">🛡️ Jednostki wsparcia</div>
+        <div class="text-2xl font-bold text-trav-blue">{{ "{:,}".format(total_support_troops) }}</div>
+    </div>
+</div>
+
+<!-- Filter Tabs -->
+<div class="flex flex-wrap gap-2 mb-4">
+    {% set filters = [("all", "Wszystkie", "📋"), ("active", "Aktywne", "🟢"), ("resolved", "Rozwiązane", "⚪")] %}
+    {% for value, label, icon in filters %}
+    <a href="/defense{% if value != 'all' %}?status={{ value }}{% endif %}"
+       class="px-4 py-2 rounded-md text-sm font-medium transition
+              {% if status_filter == value %}
+              bg-trav-brown text-trav-parchment shadow-md
+              {% else %}
+              bg-trav-parchment/80 text-trav-brown hover:bg-trav-parchment hover:shadow
+              {% endif %}">
+        {{ icon }} {{ label }}
+    </a>
+    {% endfor %}
+</div>
+
+<!-- Defense Threads Table -->
+<div class="trav-panel overflow-hidden">
+    <div class="trav-panel-header">
+        <h2 class="font-medieval text-base font-semibold">
+            <img src="https://cdn.legends.travian.com/gpack/417.3/img_ltr/legacy/a/def1.gif" alt="" class="inline w-4 h-4 mr-1">
+            Wątki obrony ({{ threads | length }})
+        </h2>
+    </div>
+
+    {% if threads %}
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-trav-text-muted text-xs uppercase border-b-2 border-trav-brown/20 bg-trav-parchment-dark/50">
+                    <th class="px-3 py-2.5 text-center">Status</th>
+                    <th class="px-3 py-2.5 text-left">Wioska</th>
+                    <th class="px-3 py-2.5 text-left">Obrońca</th>
+                    <th class="px-3 py-2.5 text-center">Mur</th>
+                    <th class="px-3 py-2.5 text-center">Ataki</th>
+                    <th class="px-3 py-2.5 text-center">Wsparcie</th>
+                    <th class="px-3 py-2.5 text-right"><span class="trav-res trav-crop"></span> Zboże</th>
+                    <th class="px-3 py-2.5 text-center">Ostatnia aktywność</th>
+                    <th class="px-3 py-2.5 text-center"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in threads %}
+                <tr class="hover-row border-b border-trav-brown/10">
+                    <!-- Status -->
+                    <td class="px-3 py-2 text-center">
+                        {% if t.obj.status == "active" %}
+                        <span class="inline-block w-6 h-6 leading-6 text-center" title="Aktywny">🟢</span>
+                        {% else %}
+                        <span class="inline-block w-6 h-6 leading-6 text-center" title="Rozwiązany">⚪</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Village + coords -->
+                    <td class="px-3 py-2">
+                        <div class="font-medium text-trav-text">{{ t.obj.defender_village or "—" }}</div>
+                        <a href="{{ server_url }}/karte.php?x={{ t.obj.defender_x }}&y={{ t.obj.defender_y }}"
+                           target="_blank"
+                           class="text-xs text-trav-blue hover:text-blue-700"
+                           title="Pokaż na mapie">
+                            ({{ t.obj.defender_x }}|{{ t.obj.defender_y }}) 🗺️
+                        </a>
+                    </td>
+
+                    <!-- Defender player -->
+                    <td class="px-3 py-2 text-trav-text">{{ t.obj.defender_player or "—" }}</td>
+
+                    <!-- Wall level -->
+                    <td class="px-3 py-2 text-center font-semibold text-trav-brown-dark">
+                        {% if t.obj.wall_level is not none %}{{ t.obj.wall_level }}{% else %}—{% endif %}
+                    </td>
+
+                    <!-- Attack count -->
+                    <td class="px-3 py-2 text-center">
+                        {% if t.attack_count > 0 %}
+                        <span class="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-full text-xs font-bold bg-red-100 text-trav-red">{{ t.attack_count }}</span>
+                        {% else %}
+                        <span class="text-trav-text-muted">0</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Support count -->
+                    <td class="px-3 py-2 text-center">
+                        {% if t.support_count > 0 %}
+                        <span class="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-full text-xs font-bold bg-green-100 text-trav-green">{{ t.support_count }}</span>
+                        {% else %}
+                        <span class="text-trav-text-muted">0</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Total crop -->
+                    <td class="px-3 py-2 text-right text-trav-text-light">
+                        {% if t.total_crop > 0 %}{{ "{:,}".format(t.total_crop) }}{% else %}—{% endif %}
+                    </td>
+
+                    <!-- Last activity -->
+                    <td class="px-3 py-2 text-center text-xs text-trav-text-muted">
+                        {% if t.last_activity %}
+                        {{ t.last_activity.strftime('%d.%m %H:%M') }}
+                        {% endif %}
+                    </td>
+
+                    <!-- Detail link -->
+                    <td class="px-3 py-2 text-center">
+                        <a href="/defense/{{ t.obj.id }}"
+                           class="inline-block px-3 py-1 bg-trav-brown text-trav-parchment text-xs rounded hover:bg-trav-brown-dark transition">
+                            Szczegóły →
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <!-- Empty state -->
+    <div class="p-8 text-center">
+        <div class="text-4xl mb-3">🛡️</div>
+        <h3 class="font-medieval text-trav-brown-dark text-lg font-bold mb-2">Brak wątków obrony</h3>
+        <p class="text-trav-text-muted text-sm">
+            {% if status_filter != "all" %}
+            Brak wątków o statusie „{{ status_filter }}". <a href="/defense" class="text-trav-blue hover:text-blue-700">Pokaż wszystkie</a>
+            {% else %}
+            Nie utworzono jeszcze żadnych wątków obrony. Użyj komendy <code class="bg-trav-brown-dark/10 px-1 rounded">/tatak</code> na Discordzie, aby zgłosić atak.
+            {% endif %}
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

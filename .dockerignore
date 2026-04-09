@@ -1,0 +1,41 @@
+# ── Git ──
+.git
+.github
+
+# ── Python cache ──
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+
+# ── Środowisko i sekrety ──
+.env
+.env.*
+!.env.example
+venv/
+.venv/
+
+# ── Lokalne bazy SQLite ──
+witek.db
+*.db
+
+# ── Testy (nie potrzebne w produkcji) ──
+tests/
+
+# ── Dokumentacja ──
+docs/
+*.md
+!README.md
+
+# ── IDE / system ──
+.vscode
+.idea
+Thumbs.db
+.DS_Store
+
+# ── Cache danych (pobierane w runtime) ──
+data_cache/
+
+# ── Docker (nie kopiujemy do obrazu) ──
+Dockerfile
+docker-compose*.yml

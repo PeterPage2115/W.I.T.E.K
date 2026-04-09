@@ -1,0 +1,183 @@
+"""WITEK — Entrypoint.
+
+Usage:
+    python run.py                 # Start Flask web server
+    python run.py --collect       # Fetch map.sql and store snapshot
+    python run.py --scheduled     # Start Flask + scheduled daily collection
+    python run.py --bot-only      # Run only the Discord bot (no Flask)
+"""
+
+import argparse
+import asyncio
+import logging
+import os
+import signal
+import threading
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+
+log = logging.getLogger(__name__)
+
+from app import create_app
+from app.map_sql.collector import collect_and_store
+
+
+# ------------------------------------------------------------------ #
+# Discord bot runner (executed in a separate thread)
+# ------------------------------------------------------------------ #
+
+def _run_bot_thread(flask_app, token):
+    """Start the Discord bot in its own asyncio event loop."""
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    from bot.bot import create_bot
+
+    bot = create_bot(flask_app)
+
+    try:
+        loop.run_until_complete(bot.start(token))
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        loop.run_until_complete(bot.close())
+    finally:
+        loop.close()
+
+
+def _start_bot(flask_app):
+    """Launch the Discord bot in a daemon thread.
+
+    Returns the thread, or None if no DISCORD_TOKEN is configured.
+    Guards against Flask debug-mode reloader spawning duplicate bots.
+    """
+    token = flask_app.config.get("DISCORD_TOKEN")
+    if not token:
+        log.warning("DISCORD_TOKEN nie ustawiony — bot Discord nie wystartuje")
+        return None
+
+    # Flask reloader forks a child process. Only start the bot in the
+    # child (WERKZEUG_RUN_MAIN == "true") or when the reloader is off.
+    if flask_app.config.get("DEBUG") and os.environ.get("WERKZEUG_RUN_MAIN") != "true":
+        return None
+
+    thread = threading.Thread(
+        target=_run_bot_thread,
+        args=(flask_app, token),
+        daemon=True,
+        name="discord-bot",
+    )
+    thread.start()
+    log.info("Bot Discord uruchomiony w tle (thread: %s)", thread.name)
+    return thread
+
+
+def main():
+    parser = argparse.ArgumentParser(description="WITEK — Travian Alliance Tool")
+    parser.add_argument(
+        "--collect", action="store_true", help="Fetch map.sql and store snapshot now"
+    )
+    parser.add_argument(
+        "--from-file", type=str, help="Import map.sql from local file instead of fetching"
+    )
+    parser.add_argument(
+        "--scheduled",
+        action="store_true",
+        help="Start Flask with scheduled daily collection",
+    )
+    parser.add_argument(
+        "--bot-only",
+        action="store_true",
+        help="Run only the Discord bot (no Flask web server)",
+    )
+    parser.add_argument("--port", type=int, default=5000, help="Flask port")
+    args = parser.parse_args()
+
+    app = create_app()
+
+    # -- One-shot commands ------------------------------------------------ #
+
+    if args.collect:
+        print("🗺️  Pobieranie map.sql...")
+        snapshot = collect_and_store(app)
+        if snapshot:
+            print(f"✅ Snapshot #{snapshot.id}: {snapshot.village_count} wiosek")
+        else:
+            print("❌ Nie udało się pobrać danych")
+        return
+
+    if args.from_file:
+        from app.map_sql.collector import store_snapshot
+
+        print(f"📂 Importuję z pliku: {args.from_file}")
+        with open(args.from_file, "r", encoding="utf-8") as f:
+            raw = f.read()
+        with app.app_context():
+            snapshot = store_snapshot(raw)
+        print(f"✅ Snapshot #{snapshot.id}: {snapshot.village_count} wiosek")
+        return
+
+    # -- Bot-only mode ---------------------------------------------------- #
+
+    if args.bot_only:
+        token = app.config.get("DISCORD_TOKEN")
+        if not token:
+            print("❌ DISCORD_TOKEN nie ustawiony w .env")
+            return
+
+        print("🤖 WITEK — tryb bot-only (Ctrl+C aby zatrzymać)")
+
+        from bot.bot import create_bot
+
+        bot = create_bot(app)
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        def _shutdown(sig, frame):
+            log.info("Zamykanie bota...")
+            loop.call_soon_threadsafe(loop.stop)
+
+        signal.signal(signal.SIGINT, _shutdown)
+        signal.signal(signal.SIGTERM, _shutdown)
+
+        try:
+            loop.run_until_complete(bot.start(token))
+        except (KeyboardInterrupt, SystemExit):
+            loop.run_until_complete(bot.close())
+        finally:
+            loop.close()
+        return
+
+    # -- Scheduled collection --------------------------------------------- #
+
+    if args.scheduled:
+        from apscheduler.schedulers.background import BackgroundScheduler
+
+        scheduler = BackgroundScheduler()
+        scheduler.add_job(
+            collect_and_store,
+            "cron",
+            args=[app],
+            hour=app.config["FETCH_HOUR"],
+            minute=app.config["FETCH_MINUTE"],
+            id="daily_map_sql",
+        )
+        scheduler.start()
+        print(
+            f"⏰ Scheduler: map.sql co dzień o {app.config['FETCH_HOUR']:02d}:{app.config['FETCH_MINUTE']:02d} UTC"
+        )
+
+    # -- Start Discord bot in background thread --------------------------- #
+
+    _start_bot(app)
+
+    # -- Start Flask ------------------------------------------------------ #
+
+    print(f"⚔️  WITEK startuje na http://localhost:{args.port}")
+    app.run(host="0.0.0.0", port=args.port, debug=app.config["DEBUG"])
+
+
+if __name__ == "__main__":
+    main()

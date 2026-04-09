@@ -1,0 +1,27 @@
+# Web Framework
+Flask==3.1.*
+Flask-WTF==1.2.*
+
+# Database
+Flask-SQLAlchemy==3.1.*
+SQLAlchemy==2.0.*
+alembic==1.15.*
+psycopg2-binary==2.9.*
+
+# HTTP
+requests==2.32.*
+aiohttp>=3.9
+
+# Scheduler
+APScheduler==3.10.*
+
+# Discord Bot (Pycord)
+py-cord==2.6.*
+audioop-lts>=0.2.1;python_version>="3.13"  # removed from stdlib in 3.13
+
+# Config
+python-dotenv==1.1.*
+PyYAML==6.0.*
+
+# Dev tools
+pytest==8.3.*

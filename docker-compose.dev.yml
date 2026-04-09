@@ -1,0 +1,35 @@
+# WITEK — Docker Compose (deweloperski)
+# Uruchomienie: docker compose -f docker-compose.dev.yml up
+#
+# Tryb deweloperski:
+#   - Kod montowany z dysku (zmiany widoczne od razu po restarcie)
+#   - SQLite zamiast PostgreSQL (prostsze, bez dodatkowego kontenera)
+#   - FLASK_DEBUG włączony
+
+services:
+  # ---------- Aplikacja WITEK (tryb deweloperski) ----------
+  # Używa SQLite — nie potrzebuje kontenera bazy danych.
+  # Lokalny kod jest montowany jako wolumen, więc zmiany w plikach
+  # są od razu widoczne w kontenerze (restart kontenera wystarczy).
+  witek-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: witek-app-dev
+    ports:
+      - "${WITEK_PORT:-5000}:5000"
+    env_file:
+      - .env
+    environment:
+      FLASK_DEBUG: "true"
+      # Puste DATABASE_URL = SQLite (domyślne zachowanie aplikacji)
+      DATABASE_URL: ""
+    volumes:
+      # Montujemy kod źródłowy — edytujesz lokalnie, kontener widzi zmiany
+      - ./app:/app/app:ro
+      - ./bot:/app/bot:ro
+      - ./config:/app/config:ro
+      - ./migrations:/app/migrations:ro
+      - ./run.py:/app/run.py:ro
+      # Plik SQLite zapisywany na hoście (dane nie giną po usunięciu kontenera)
+      - ./witek.db:/app/witek.db

@@ -1,0 +1,53 @@
+# WITEK — CI Pipeline
+# Uruchamiane przy push na main/develop oraz pull requestach do main
+
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── Testy i walidacja składni ───────────────────────────────────
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: python -m pytest tests/ -v --tb=short
+
+      - name: Lint (basic)
+        run: python -m py_compile run.py && echo "Syntax OK"
+
+  # ── Budowanie i test obrazu Docker ──────────────────────────────
+  docker:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t witek:latest .
+
+      - name: Test Docker image
+        run: |
+          docker run --rm -d --name witek-test -p 5000:5000 \
+            -e FLASK_SECRET_KEY=test \
+            -e FLASK_DEBUG=false \
+            witek:latest
+          sleep 10
+          curl -f http://localhost:5000/ || exit 1
+          docker stop witek-test

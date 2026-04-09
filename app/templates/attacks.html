@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}Panel Ataków{% endblock %}
+
+{% block nav_extra %}
+<a href="/attacks" class="text-trav-gold font-semibold">⚔️ Ataki</a>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="mb-6">
+    <h1 class="font-medieval text-trav-parchment text-3xl font-bold mb-1 drop-shadow-lg">
+        <img src="https://cdn.legends.travian.com/gpack/417.3/img_ltr/legacy/a/att2.gif" alt="" class="inline w-8 h-8 mr-2">
+        Panel Ataków
+    </h1>
+    <p class="text-trav-parchment/60 text-sm">Zgłoszenia ataków na wioski sojuszu</p>
+</div>
+
+<!-- Stats Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="trav-panel p-4">
+        <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-1">📋 Wszystkie</div>
+        <div class="text-2xl font-bold text-trav-brown-dark">{{ total }}</div>
+    </div>
+    <div class="trav-panel p-4">
+        <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-1">🔴 Aktywne</div>
+        <div class="text-2xl font-bold text-trav-red">{{ active }}</div>
+    </div>
+    <div class="trav-panel p-4">
+        <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-1">✅ Rozwiązane</div>
+        <div class="text-2xl font-bold text-trav-green">{{ resolved }}</div>
+    </div>
+</div>
+
+<!-- Filter Tabs -->
+<div class="flex flex-wrap gap-2 mb-4">
+    {% set filters = [("all", "Wszystkie", "📋"), ("reported", "Zgłoszone", "🔴"), ("defending", "Bronione", "🟡"), ("resolved", "Rozwiązane", "🟢")] %}
+    {% for value, label, icon in filters %}
+    <a href="/attacks{% if value != 'all' %}?status={{ value }}{% endif %}"
+       class="px-4 py-2 rounded-md text-sm font-medium transition
+              {% if status_filter == value %}
+              bg-trav-brown text-trav-parchment shadow-md
+              {% else %}
+              bg-trav-parchment/80 text-trav-brown hover:bg-trav-parchment hover:shadow
+              {% endif %}">
+        {{ icon }} {{ label }}
+    </a>
+    {% endfor %}
+</div>
+
+<!-- Attack Table -->
+<div class="trav-panel overflow-hidden">
+    <div class="trav-panel-header">
+        <h2 class="font-medieval text-base font-semibold">
+            <img src="https://cdn.legends.travian.com/gpack/417.3/img_ltr/legacy/a/att2.gif" alt="" class="inline w-4 h-4 mr-1">
+            Zgłoszenia ataków ({{ attacks | length }})
+        </h2>
+    </div>
+
+    {% if attacks %}
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-trav-text-muted text-xs uppercase border-b-2 border-trav-brown/20 bg-trav-parchment-dark/50">
+                    <th class="px-3 py-2.5 text-center">Status</th>
+                    <th class="px-3 py-2.5 text-left">ID</th>
+                    <th class="px-3 py-2.5 text-left">Obrońca</th>
+                    <th class="px-3 py-2.5 text-left">Atakujący</th>
+                    <th class="px-3 py-2.5 text-center">Czas ataku</th>
+                    <th class="px-3 py-2.5 text-right">Dystans</th>
+                    <th class="px-3 py-2.5 text-left">Zgłaszający</th>
+                    <th class="px-3 py-2.5 text-center">Data</th>
+                    <th class="px-3 py-2.5 text-center"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for attack in attacks %}
+                <tr class="hover-row border-b border-trav-brown/10">
+                    <!-- Status -->
+                    <td class="px-3 py-2 text-center">
+                        {% if attack.status == "reported" %}
+                        <span class="inline-block w-6 h-6 leading-6 text-center" title="Zgłoszony">🔴</span>
+                        {% elif attack.status == "defending" %}
+                        <span class="inline-block w-6 h-6 leading-6 text-center" title="Broniony">🟡</span>
+                        {% elif attack.status == "resolved" %}
+                        <span class="inline-block w-6 h-6 leading-6 text-center" title="Rozwiązany">🟢</span>
+                        {% else %}
+                        <span class="inline-block w-6 h-6 leading-6 text-center">⚪</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- ID -->
+                    <td class="px-3 py-2 text-trav-text-muted font-mono text-xs">#{{ attack.id }}</td>
+
+                    <!-- Defender -->
+                    <td class="px-3 py-2">
+                        <div class="font-medium text-trav-text">{{ attack.defender_name or "—" }}</div>
+                        {% if attack.defender_village %}
+                        <div class="text-xs text-trav-text-light">{{ attack.defender_village }}</div>
+                        {% endif %}
+                        {% if attack.defender_x is not none and attack.defender_y is not none %}
+                        <a href="{{ server_url }}/karte.php?x={{ attack.defender_x }}&y={{ attack.defender_y }}"
+                           target="_blank"
+                           class="text-xs text-trav-blue hover:text-blue-700"
+                           title="Pokaż na mapie">
+                            ({{ attack.defender_x }}|{{ attack.defender_y }}) 🗺️
+                        </a>
+                        {% endif %}
+                    </td>
+
+                    <!-- Attacker -->
+                    <td class="px-3 py-2">
+                        <div class="font-medium text-trav-red">{{ attack.attacker_name or "Nieznany" }}</div>
+                        {% if attack.attacker_alliance %}
+                        <div class="text-xs text-trav-text-light">[{{ attack.attacker_alliance }}]</div>
+                        {% endif %}
+                        {% if attack.attacker_x is not none and attack.attacker_y is not none %}
+                        <a href="{{ server_url }}/karte.php?x={{ attack.attacker_x }}&y={{ attack.attacker_y }}"
+                           target="_blank"
+                           class="text-xs text-trav-blue hover:text-blue-700"
+                           title="Pokaż na mapie">
+                            ({{ attack.attacker_x }}|{{ attack.attacker_y }}) 🗺️
+                        </a>
+                        {% endif %}
+                    </td>
+
+                    <!-- Attack time -->
+                    <td class="px-3 py-2 text-center">
+                        {% if attack.attack_time %}
+                        <span class="font-semibold text-trav-red">{{ attack.attack_time }}</span>
+                        {% else %}
+                        <span class="text-trav-text-muted">—</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Distance -->
+                    <td class="px-3 py-2 text-right text-trav-text-light">
+                        {% if attack.attacker_x is not none and attack.attacker_y is not none and attack.defender_x is not none and attack.defender_y is not none %}
+                        {{ "%.1f"|format(((attack.attacker_x - attack.defender_x)**2 + (attack.attacker_y - attack.defender_y)**2)**0.5) }}
+                        {% else %}
+                        —
+                        {% endif %}
+                    </td>
+
+                    <!-- Reporter -->
+                    <td class="px-3 py-2 text-trav-text-light text-xs">{{ attack.reported_by_name or "—" }}</td>
+
+                    <!-- Created date -->
+                    <td class="px-3 py-2 text-center text-xs text-trav-text-muted">
+                        {% if attack.created_at %}
+                        {{ attack.created_at.strftime('%d.%m %H:%M') }}
+                        {% endif %}
+                    </td>
+
+                    <!-- Detail link -->
+                    <td class="px-3 py-2 text-center">
+                        <a href="/attacks/{{ attack.id }}"
+                           class="inline-block px-3 py-1 bg-trav-brown text-trav-parchment text-xs rounded hover:bg-trav-brown-dark transition">
+                            Szczegóły →
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <!-- Empty state -->
+    <div class="p-8 text-center">
+        <div class="text-4xl mb-3">🛡️</div>
+        <h3 class="font-medieval text-trav-brown-dark text-lg font-bold mb-2">Brak zgłoszeń</h3>
+        <p class="text-trav-text-muted text-sm">
+            {% if status_filter != "all" %}
+            Brak ataków o statusie „{{ status_filter }}". <a href="/attacks" class="text-trav-blue hover:text-blue-700">Pokaż wszystkie</a>
+            {% else %}
+            Nie zgłoszono jeszcze żadnych ataków. Użyj komendy <code class="bg-trav-brown-dark/10 px-1 rounded">/tatak</code> na Discordzie.
+            {% endif %}
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

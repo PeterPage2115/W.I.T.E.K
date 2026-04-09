@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="mb-6">
+    <h1 class="font-medieval text-trav-parchment text-3xl font-bold mb-1 drop-shadow-lg">Panel Dowodzenia</h1>
+    <p class="text-trav-parchment/60 text-sm">Przegląd serwera ts31.x3.europe.travian.com</p>
+</div>
+
+{% if not snapshot %}
+<div class="trav-panel p-6 text-center">
+    <h2 class="text-xl font-bold text-trav-red mb-2">⚠️ Brak danych</h2>
+    <p class="text-trav-text">Nie pobrano jeszcze map.sql. Uruchom kolektor danych:</p>
+    <code class="block mt-3 bg-trav-brown-dark text-trav-parchment p-3 rounded text-sm font-mono">python run.py --collect</code>
+</div>
+{% else %}
+
+<!-- Stats Cards -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <div class="trav-panel p-4">
+        <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-1">🏘️ Wioski</div>
+        <div class="text-2xl font-bold text-trav-brown-dark">{{ "{:,}".format(snapshot.village_count or 0) }}</div>
+    </div>
+    <div class="trav-panel p-4">
+        <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-1">🏰 Sojusze</div>
+        <div class="text-2xl font-bold text-trav-brown-dark">{{ top_alliances | length }}+</div>
+    </div>
+    <div class="trav-panel p-4">
+        <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-1">👥 Gracze</div>
+        <div class="text-2xl font-bold text-trav-brown-dark">{{ top_players | length }}+</div>
+    </div>
+    <div class="trav-panel p-4">
+        <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-1">📡 Snapshot</div>
+        <div class="text-lg font-bold text-trav-green-dark">{{ snapshot.fetched_at.strftime('%d.%m.%Y %H:%M') }}</div>
+    </div>
+</div>
+
+<!-- Two columns -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+    <!-- Top Alliances -->
+    <div class="trav-panel overflow-hidden">
+        <div class="trav-panel-header">
+            <h2 class="font-medieval text-base font-semibold">🏰 Top Sojusze</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-trav-text-muted text-xs uppercase border-b-2 border-trav-brown/20 bg-trav-parchment-dark/50">
+                        <th class="px-4 py-2.5 text-left">#</th>
+                        <th class="px-4 py-2.5 text-left">Sojusz</th>
+                        <th class="px-4 py-2.5 text-right">Członkowie</th>
+                        <th class="px-4 py-2.5 text-right">Populacja</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in top_alliances %}
+                    <tr class="hover-row border-b border-trav-brown/10 {% if loop.index <= 3 %}bg-trav-parchment-light/30{% endif %}">
+                        <td class="px-4 py-2 text-trav-text-muted font-bold">{{ loop.index }}</td>
+                        <td class="px-4 py-2">
+                            <a href="/alliance/{{ a.aid }}" class="text-trav-brown-dark hover:text-trav-gold transition font-semibold">
+                                {{ a.name }}
+                            </a>
+                        </td>
+                        <td class="px-4 py-2 text-right text-trav-text-light">{{ a.member_count }}</td>
+                        <td class="px-4 py-2 text-right font-semibold text-trav-text">{{ "{:,}".format(a.total_pop) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Top Players -->
+    <div class="trav-panel overflow-hidden">
+        <div class="trav-panel-header">
+            <h2 class="font-medieval text-base font-semibold">👑 Top Gracze</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-trav-text-muted text-xs uppercase border-b-2 border-trav-brown/20 bg-trav-parchment-dark/50">
+                        <th class="px-4 py-2.5 text-left">#</th>
+                        <th class="px-4 py-2.5 text-left">Gracz</th>
+                        <th class="px-4 py-2.5 text-left">Plemię</th>
+                        <th class="px-4 py-2.5 text-right">Wioski</th>
+                        <th class="px-4 py-2.5 text-right">Populacja</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in top_players %}
+                    <tr class="hover-row border-b border-trav-brown/10 {% if loop.index <= 3 %}bg-trav-parchment-light/30{% endif %}">
+                        <td class="px-4 py-2 text-trav-text-muted font-bold">{{ loop.index }}</td>
+                        <td class="px-4 py-2">
+                            <a href="/player/{{ p.uid }}" class="text-trav-blue hover:text-blue-700 transition font-medium">
+                                {{ p.name }}
+                            </a>
+                        </td>
+                        <td class="px-4 py-2">
+                            {% if p.tid == 1 %}<span class="trav-tribe trav-tribe-roman" title="Rzymianie"></span>
+                            {% elif p.tid == 2 %}<span class="trav-tribe trav-tribe-teuton" title="Germanie"></span>
+                            {% elif p.tid == 3 %}<span class="trav-tribe trav-tribe-gaul" title="Galowie"></span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-2 text-right text-trav-text-light">{{ p.village_count }}</td>
+                        <td class="px-4 py-2 text-right font-semibold text-trav-text">{{ "{:,}".format(p.total_pop) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endif %}
+{% endblock %}

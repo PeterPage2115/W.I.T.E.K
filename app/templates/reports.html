@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block title %}Raporty Bitewne{% endblock %}
+
+{% block nav_extra %}
+<a href="/reports" class="text-trav-gold font-semibold">📜 Raporty</a>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="mb-6">
+    <h1 class="font-medieval text-trav-parchment text-3xl font-bold mb-1 drop-shadow-lg">
+        📜 Raporty Bitewne
+    </h1>
+    <p class="text-trav-parchment/60 text-sm">Sparsowane raporty z bitew — przeglądaj i analizuj</p>
+</div>
+
+<!-- Stats -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+    <div class="trav-panel p-4">
+        <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-1">📋 Wszystkie raporty</div>
+        <div class="text-2xl font-bold text-trav-brown-dark">{{ total }}</div>
+    </div>
+    <div class="trav-panel p-4">
+        <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-1">📄 Strona</div>
+        <div class="text-2xl font-bold text-trav-brown-dark">{{ page }} / {{ total_pages }}</div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="trav-panel p-4 mb-6">
+    <form method="get" action="/reports" class="flex flex-wrap gap-3 items-end">
+        <div>
+            <label class="block text-xs text-trav-text-muted mb-1">Gracz</label>
+            <input type="text" name="player" value="{{ player_filter or '' }}"
+                   placeholder="Szukaj gracza..."
+                   class="px-3 py-1.5 rounded border border-trav-brown/30 bg-trav-parchment-light text-sm text-trav-text focus:outline-none focus:ring-1 focus:ring-trav-gold">
+        </div>
+        <div>
+            <label class="block text-xs text-trav-text-muted mb-1">ID ataku</label>
+            <input type="number" name="attack_id" value="{{ attack_id or '' }}"
+                   placeholder="#"
+                   class="px-3 py-1.5 rounded border border-trav-brown/30 bg-trav-parchment-light text-sm text-trav-text w-24 focus:outline-none focus:ring-1 focus:ring-trav-gold">
+        </div>
+        <button type="submit"
+                class="px-4 py-1.5 bg-trav-brown text-trav-parchment text-sm rounded hover:bg-trav-brown-dark transition font-medium">
+            🔍 Szukaj
+        </button>
+        {% if player_filter or attack_id %}
+        <a href="/reports" class="px-4 py-1.5 bg-trav-parchment/80 text-trav-brown text-sm rounded hover:bg-trav-parchment transition font-medium">
+            ✖ Wyczyść
+        </a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Reports Table -->
+<div class="trav-panel overflow-hidden">
+    <div class="trav-panel-header">
+        <h2 class="font-medieval text-base font-semibold">
+            📜 Raporty ({{ reports | length }}{% if total > reports | length %} z {{ total }}{% endif %})
+        </h2>
+    </div>
+
+    {% if reports %}
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-trav-text-muted text-xs uppercase border-b-2 border-trav-brown/20 bg-trav-parchment-dark/50">
+                    <th class="px-3 py-2.5 text-center">Wynik</th>
+                    <th class="px-3 py-2.5 text-left">ID</th>
+                    <th class="px-3 py-2.5 text-left">⚔️ Napastnik</th>
+                    <th class="px-3 py-2.5 text-left">🛡️ Obrońca</th>
+                    <th class="px-3 py-2.5 text-center">Siła</th>
+                    <th class="px-3 py-2.5 text-center">Wojska</th>
+                    <th class="px-3 py-2.5 text-center">Atak</th>
+                    <th class="px-3 py-2.5 text-center">Data</th>
+                    <th class="px-3 py-2.5 text-center"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in reports %}
+                <tr class="hover-row border-b border-trav-brown/10">
+                    <!-- Result -->
+                    <td class="px-3 py-2 text-center">
+                        {% if r.result == "wygrana_obrony" %}
+                        <span title="Wygrana obrony">🛡️</span>
+                        {% elif r.result == "przegrana_obrony" %}
+                        <span title="Przegrana obrony">💀</span>
+                        {% elif r.result == "szpieg" %}
+                        <span title="Szpiegostwo">🔍</span>
+                        {% else %}
+                        <span title="Remis">⚖️</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- ID -->
+                    <td class="px-3 py-2 text-trav-text-muted font-mono text-xs">#{{ r.obj.id }}</td>
+
+                    <!-- Attacker -->
+                    <td class="px-3 py-2">
+                        <div class="font-medium text-trav-red">{{ r.obj.attacker_name or "Nieznany" }}</div>
+                        {% if r.obj.attacker_alliance %}
+                        <div class="text-xs text-trav-text-light">[{{ r.obj.attacker_alliance }}]</div>
+                        {% endif %}
+                        {% if r.obj.attacker_village %}
+                        <div class="text-xs text-trav-text-muted">{{ r.obj.attacker_village }}</div>
+                        {% endif %}
+                    </td>
+
+                    <!-- Defender -->
+                    <td class="px-3 py-2">
+                        <div class="font-medium text-trav-green-dark">{{ r.obj.defender_name or "Nieznany" }}</div>
+                        {% if r.obj.defender_alliance %}
+                        <div class="text-xs text-trav-text-light">[{{ r.obj.defender_alliance }}]</div>
+                        {% endif %}
+                        {% if r.obj.defender_village %}
+                        <div class="text-xs text-trav-text-muted">{{ r.obj.defender_village }}</div>
+                        {% endif %}
+                    </td>
+
+                    <!-- Battle power -->
+                    <td class="px-3 py-2 text-center text-xs">
+                        {% if r.obj.battle_power_atk or r.obj.battle_power_def %}
+                        <span class="text-trav-red">{{ "{:,}".format(r.obj.battle_power_atk or 0) }}</span>
+                        <span class="text-trav-text-muted">vs</span>
+                        <span class="text-trav-green-dark">{{ "{:,}".format(r.obj.battle_power_def or 0) }}</span>
+                        {% else %}
+                        <span class="text-trav-text-muted">—</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Troop counts -->
+                    <td class="px-3 py-2 text-center text-xs">
+                        <span class="text-trav-red">{{ r.atk_total }}</span>
+                        <span class="text-trav-text-muted">vs</span>
+                        <span class="text-trav-green-dark">{{ r.def_total }}</span>
+                    </td>
+
+                    <!-- Linked attack -->
+                    <td class="px-3 py-2 text-center">
+                        {% if r.obj.attack_report_id %}
+                        <a href="/attacks/{{ r.obj.attack_report_id }}"
+                           class="text-xs text-trav-blue hover:text-blue-700"
+                           title="Powiązany atak">#{{ r.obj.attack_report_id }}</a>
+                        {% else %}
+                        <span class="text-trav-text-muted text-xs">—</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Date -->
+                    <td class="px-3 py-2 text-center text-xs text-trav-text-muted">
+                        {% if r.obj.created_at %}
+                        {{ r.obj.created_at.strftime('%d.%m %H:%M') }}
+                        {% endif %}
+                    </td>
+
+                    <!-- Detail link -->
+                    <td class="px-3 py-2 text-center">
+                        <a href="/reports/{{ r.obj.id }}"
+                           class="inline-block px-3 py-1 bg-trav-brown text-trav-parchment text-xs rounded hover:bg-trav-brown-dark transition">
+                            Szczegóły →
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="p-4 flex justify-center gap-2 border-t border-trav-brown/20">
+        {% if page > 1 %}
+        <a href="/reports?page={{ page - 1 }}{% if player_filter %}&player={{ player_filter }}{% endif %}{% if attack_id %}&attack_id={{ attack_id }}{% endif %}"
+           class="px-3 py-1 bg-trav-parchment/80 text-trav-brown text-sm rounded hover:bg-trav-parchment transition">
+            ← Poprzednia
+        </a>
+        {% endif %}
+        <span class="px-3 py-1 text-trav-text-muted text-sm">{{ page }} / {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="/reports?page={{ page + 1 }}{% if player_filter %}&player={{ player_filter }}{% endif %}{% if attack_id %}&attack_id={{ attack_id }}{% endif %}"
+           class="px-3 py-1 bg-trav-parchment/80 text-trav-brown text-sm rounded hover:bg-trav-parchment transition">
+            Następna →
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <!-- Empty state -->
+    <div class="p-8 text-center">
+        <div class="text-4xl mb-3">📜</div>
+        <h3 class="font-medieval text-trav-brown-dark text-lg font-bold mb-2">Brak raportów</h3>
+        <p class="text-trav-text-muted text-sm">
+            {% if player_filter or attack_id %}
+            Brak raportów pasujących do filtrów. <a href="/reports" class="text-trav-blue hover:text-blue-700">Pokaż wszystkie</a>
+            {% else %}
+            Nie dodano jeszcze żadnych raportów. Użyj komendy <code class="bg-trav-brown-dark/10 px-1 rounded">/traport</code> na Discordzie.
+            {% endif %}
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

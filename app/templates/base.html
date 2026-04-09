@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}WITEK{% endblock %} — Witek</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CDN (dev — replace with build in prod) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        trav: {
+                            bg: '#3a5a20',
+                            'bg-dark': '#2d4a18',
+                            parchment: '#f5e6c8',
+                            'parchment-dark': '#e8d4a8',
+                            'parchment-light': '#faf2e3',
+                            brown: '#5e463a',
+                            'brown-dark': '#3c2a20',
+                            'brown-light': '#8b6f5e',
+                            gold: '#c8a415',
+                            'gold-light': '#e0c850',
+                            red: '#c0392b',
+                            green: '#5a9a0a',
+                            'green-dark': '#3d6b07',
+                            blue: '#2980b9',
+                            text: '#3c2a1a',
+                            'text-light': '#6b5440',
+                            'text-muted': '#8b7a68',
+                        }
+                    },
+                    fontFamily: {
+                        medieval: ['Cinzel', 'serif'],
+                        body: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background: linear-gradient(180deg, #4a6d28 0%, #3a5a20 30%, #2d4a18 100%);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+        }
+        .font-medieval { font-family: 'Cinzel', serif; }
+
+        /* Travian-style parchment panels */
+        .trav-panel {
+            background: linear-gradient(135deg, #f5e6c8 0%, #ede0c0 50%, #e8d4a8 100%);
+            border: 2px solid #8b6f5e;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.3);
+        }
+        .trav-panel-header {
+            background: linear-gradient(180deg, #5e463a 0%, #4a3628 100%);
+            border-bottom: 2px solid #3c2a20;
+            color: #f5e6c8;
+            padding: 8px 16px;
+            border-radius: 4px 4px 0 0;
+        }
+        .trav-nav {
+            background: linear-gradient(180deg, #4a3628 0%, #3c2a20 100%);
+            border-bottom: 3px solid #c8a415;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #3a5a20; }
+        ::-webkit-scrollbar-thumb { background: #8b6f5e; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #c8a415; }
+
+        /* Table row hover */
+        .hover-row:hover { background-color: #e8d4a8 !important; }
+        .hover-row { transition: background 0.15s; }
+
+        /* Travian unit icon sprites */
+        .trav-unit {
+            display: inline-block;
+            width: 16px; height: 16px;
+            background-size: 160px 16px;
+            vertical-align: middle;
+        }
+        /* Unit sprite sheets — individual unit icons not available on CDN; using tribe emblem as fallback */
+        .trav-unit-roman { background-image: url('https://cdn.legends.travian.com/gpack/417.3/img_ltr/global/tribes/roman_small.png'); background-size: contain; background-repeat: no-repeat; }
+        .trav-unit-teuton { background-image: url('https://cdn.legends.travian.com/gpack/417.3/img_ltr/global/tribes/teuton_small.png'); background-size: contain; background-repeat: no-repeat; }
+        .trav-unit-gaul { background-image: url('https://cdn.legends.travian.com/gpack/417.3/img_ltr/global/tribes/gaul_small.png'); background-size: contain; background-repeat: no-repeat; }
+
+        /* Movement icons */
+        .trav-move { display: inline-block; width: 16px; height: 16px; vertical-align: middle; }
+        .trav-att { background: url('https://cdn.legends.travian.com/gpack/417.3/img_ltr/legacy/a/att1.gif') no-repeat center; background-size: contain; }
+        .trav-raid { background: url('https://cdn.legends.travian.com/gpack/417.3/img_ltr/legacy/a/att2.gif') no-repeat center; background-size: contain; }
+        .trav-def { background: url('https://cdn.legends.travian.com/gpack/417.3/img_ltr/legacy/a/def1.gif') no-repeat center; background-size: contain; }
+
+        /* Resource icons */
+        .trav-res { display: inline-block; width: 18px; height: 12px; vertical-align: middle; background-size: contain; background-repeat: no-repeat; }
+        .trav-lumber { background-image: url('https://cdn.legends.travian.com/gpack/417.3/img_ltr/global/resources/lumber_small.png'); }
+        .trav-clay { background-image: url('https://cdn.legends.travian.com/gpack/417.3/img_ltr/global/resources/clay_small.png'); }
+        .trav-iron { background-image: url('https://cdn.legends.travian.com/gpack/417.3/img_ltr/global/resources/iron_small.png'); }
+        .trav-crop { background-image: url('https://cdn.legends.travian.com/gpack/417.3/img_ltr/global/resources/crop_small.png'); }
+
+        /* Tribe emblems */
+        .trav-tribe { display: inline-block; width: 24px; height: 24px; background-size: contain; background-repeat: no-repeat; vertical-align: middle; }
+        .trav-tribe-roman { background-image: url('https://cdn.legends.travian.com/gpack/417.3/img_ltr/global/tribes/roman_medium.png'); }
+        .trav-tribe-teuton { background-image: url('https://cdn.legends.travian.com/gpack/417.3/img_ltr/global/tribes/teuton_medium.png'); }
+        .trav-tribe-gaul { background-image: url('https://cdn.legends.travian.com/gpack/417.3/img_ltr/global/tribes/gaul_medium.png'); }
+
+        /* Gold coin accent */
+        .gold-coin {
+            display: inline-block; width: 20px; height: 20px; border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, #f0d860, #c8a415, #8b7010);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+        }
+    </style>
+
+    {% block head %}{% endblock %}
+</head>
+<body class="min-h-screen">
+    <!-- Navigation — dark wood bar -->
+    <nav class="trav-nav sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-14">
+                <!-- Logo -->
+                <a href="/" class="flex items-center space-x-3 group">
+                    <span class="gold-coin"></span>
+                    <span class="font-medieval text-trav-gold text-xl font-bold tracking-wide group-hover:text-trav-gold-light transition">WITEK</span>
+                </a>
+
+                <!-- Nav Links -->
+                <div class="flex items-center space-x-5 text-sm">
+                    <a href="/" class="text-trav-parchment/80 hover:text-trav-gold transition font-medium">📊 Dashboard</a>
+                    <a href="/attacks" class="text-trav-parchment/80 hover:text-trav-gold transition font-medium">⚔️ Ataki</a>
+                    <a href="/defense" class="text-trav-parchment/80 hover:text-trav-gold transition font-medium">🛡️ Obrona</a>
+                    <a href="/map" class="text-trav-parchment/80 hover:text-trav-gold transition font-medium">🗺️ Mapa</a>
+                    <a href="/reports" class="text-trav-parchment/80 hover:text-trav-gold transition font-medium">📜 Raporty</a>
+                    {% block nav_extra %}{% endblock %}
+                </div>
+
+                <!-- Auth -->
+                <div class="flex items-center space-x-3">
+                {% if current_user %}
+                    <span class="text-trav-gold text-xs">👤 {{ current_user.discord_name }}</span>
+                    <a href="/auth/logout" class="text-trav-parchment/60 hover:text-trav-red text-xs transition">Wyloguj</a>
+                {% else %}
+                    <a href="/auth/login" class="text-trav-gold hover:text-trav-gold-light text-xs font-medium transition">🔒 Zaloguj</a>
+                {% endif %}
+                </div>
+
+                <!-- Data freshness -->
+                {% if snapshot %}
+                <div class="text-xs text-trav-parchment/60 text-right leading-tight">
+                    📡 {{ snapshot.fetched_at.strftime('%d.%m %H:%M') }} UTC
+                    <br>
+                    🏘️ {{ snapshot.village_count | default(0) }} wiosek
+                </div>
+                {% else %}
+                <div class="text-xs text-trav-red font-medium">⚠️ Brak danych</div>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="mb-4 space-y-2">
+            {% for category, message in messages %}
+            <div class="px-4 py-2 rounded text-sm
+                {% if category == 'error' %}bg-trav-red/20 text-trav-red border border-trav-red/30
+                {% elif category == 'success' %}bg-trav-green/20 text-trav-parchment border border-trav-green/30
+                {% elif category == 'warning' %}bg-trav-gold/20 text-trav-text border border-trav-gold/30
+                {% else %}bg-trav-blue/20 text-trav-parchment border border-trav-blue/30{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-12 py-5 text-center text-xs text-trav-bg-dark/60">
+        <span class="text-trav-parchment/40">⚔️ WITEK — Wirtualny Informator Taktyczno-Ekonomiczny Koalicji</span>
+        <br><span class="text-trav-parchment/30">Na cześć Gucio (Witolda) 🎮</span>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

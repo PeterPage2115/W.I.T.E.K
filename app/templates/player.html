@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block title %}{{ player.name }}{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<!-- Player Header -->
+<div class="trav-panel p-5 mb-6">
+    <div class="flex items-center space-x-4">
+        {% if player.tid == 1 %}<span class="trav-tribe trav-tribe-roman" style="width:36px;height:36px;"></span>
+        {% elif player.tid == 2 %}<span class="trav-tribe trav-tribe-teuton" style="width:36px;height:36px;"></span>
+        {% elif player.tid == 3 %}<span class="trav-tribe trav-tribe-gaul" style="width:36px;height:36px;"></span>
+        {% else %}<span class="text-3xl">👤</span>{% endif %}
+        <div>
+            <h1 class="font-medieval text-trav-brown-dark text-2xl font-bold">{{ player.name }}</h1>
+            <p class="text-trav-text-light text-sm">
+                {{ tribe_name }} •
+                {% if player.alliance_name %}
+                <a href="/alliance/{{ player.aid }}" class="text-trav-gold hover:text-trav-gold-light font-semibold">{{ player.alliance_name }}</a>
+                {% else %}
+                Bez sojuszu
+                {% endif %}
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="trav-panel p-4">
+        <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-1">Populacja</div>
+        <div class="text-2xl font-bold text-trav-brown-dark">{{ "{:,}".format(player.total_pop) }}</div>
+    </div>
+    <div class="trav-panel p-4">
+        <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-1">Wioski</div>
+        <div class="text-2xl font-bold text-trav-brown-dark">{{ player.village_count }}</div>
+    </div>
+    <div class="trav-panel p-4">
+        <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-1">Średnia populacja</div>
+        <div class="text-2xl font-bold text-trav-brown-dark">
+            {% if player.village_count %}{{ "{:,.0f}".format(player.total_pop / player.village_count) }}{% else %}0{% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Population History Chart -->
+<div class="trav-panel overflow-hidden mb-6">
+    <div class="trav-panel-header">
+        <h2 class="font-medieval text-base font-semibold">📈 Historia populacji</h2>
+    </div>
+    <div class="p-4">
+        <div id="chart-placeholder" class="text-center text-trav-text-muted py-8">
+            ⏳ Ładowanie wykresu...
+        </div>
+        <canvas id="popChart" style="display:none;"></canvas>
+    </div>
+</div>
+
+<!-- Villages Table -->
+<div class="trav-panel overflow-hidden">
+    <div class="trav-panel-header">
+        <h2 class="font-medieval text-base font-semibold">🏘️ Wioski ({{ villages | length }})</h2>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-trav-text-muted text-xs uppercase border-b-2 border-trav-brown/20 bg-trav-parchment-dark/50">
+                    <th class="px-4 py-2.5 text-left">#</th>
+                    <th class="px-4 py-2.5 text-left">Nazwa</th>
+                    <th class="px-4 py-2.5 text-center">Koordynaty</th>
+                    <th class="px-4 py-2.5 text-right">Populacja</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in villages %}
+                <tr class="hover-row border-b border-trav-brown/10">
+                    <td class="px-4 py-2 text-trav-text-muted">{{ loop.index }}</td>
+                    <td class="px-4 py-2 font-medium text-trav-text">{{ v.name }}</td>
+                    <td class="px-4 py-2 text-center text-trav-text-light">({{ v.x }}|{{ v.y }})</td>
+                    <td class="px-4 py-2 text-right font-semibold text-trav-text">{{ "{:,}".format(v.population) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    const uid = {{ player.uid }};
+    const placeholder = document.getElementById('chart-placeholder');
+    const canvas = document.getElementById('popChart');
+
+    fetch('/api/player/' + uid + '/population')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.history.length < 2) {
+                placeholder.innerHTML = '💡 Za mało danych — potrzeba co najmniej 2 snapshotów, aby wyświetlić wykres.';
+                return;
+            }
+
+            placeholder.style.display = 'none';
+            canvas.style.display = 'block';
+
+            var labels = data.history.map(function(h) {
+                var d = new Date(h.date);
+                return d.toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                    + ' ' + d.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
+            });
+
+            new Chart(canvas.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Populacja',
+                            data: data.history.map(function(h) { return h.total_pop; }),
+                            borderColor: '#5a9a0a',
+                            backgroundColor: 'rgba(90, 154, 10, 0.15)',
+                            pointBackgroundColor: '#7bc618',
+                            pointBorderColor: '#5a9a0a',
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            borderWidth: 2.5,
+                            fill: true,
+                            tension: 0.3,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Wioski',
+                            data: data.history.map(function(h) { return h.villages; }),
+                            borderColor: '#c8a415',
+                            backgroundColor: 'rgba(200, 164, 21, 0.10)',
+                            pointBackgroundColor: '#e0c850',
+                            pointBorderColor: '#c8a415',
+                            pointRadius: 3,
+                            pointHoverRadius: 5,
+                            borderWidth: 2,
+                            borderDash: [6, 3],
+                            fill: false,
+                            tension: 0.3,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#3c2a1a',
+                                font: { family: "'Inter', sans-serif", size: 12 }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: '#4a3628',
+                            titleColor: '#f5e6c8',
+                            bodyColor: '#e8d4a8',
+                            borderColor: '#c8a415',
+                            borderWidth: 1,
+                            titleFont: { family: "'Cinzel', serif", size: 13, weight: 'bold' },
+                            bodyFont: { family: "'Inter', sans-serif", size: 12 },
+                            callbacks: {
+                                label: function(ctx) {
+                                    var val = ctx.parsed.y;
+                                    if (ctx.dataset.label === 'Populacja') {
+                                        return 'Populacja: ' + val.toLocaleString('pl-PL');
+                                    }
+                                    return 'Wioski: ' + val;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: '#6b5440',
+                                font: { family: "'Inter', sans-serif", size: 10 },
+                                maxRotation: 45
+                            },
+                            grid: { color: 'rgba(139, 111, 94, 0.2)' }
+                        },
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Populacja',
+                                color: '#5a9a0a',
+                                font: { family: "'Cinzel', serif", size: 12, weight: 'bold' }
+                            },
+                            ticks: {
+                                color: '#6b5440',
+                                font: { family: "'Inter', sans-serif", size: 11 },
+                                callback: function(v) { return v.toLocaleString('pl-PL'); }
+                            },
+                            grid: { color: 'rgba(139, 111, 94, 0.15)' },
+                            beginAtZero: false
+                        },
+                        y1: {
+                            type: 'linear',
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Wioski',
+                                color: '#c8a415',
+                                font: { family: "'Cinzel', serif", size: 12, weight: 'bold' }
+                            },
+                            ticks: {
+                                color: '#6b5440',
+                                font: { family: "'Inter', sans-serif", size: 11 },
+                                stepSize: 1
+                            },
+                            grid: { drawOnChartArea: false }
+                        }
+                    }
+                }
+            });
+        })
+        .catch(function() {
+            placeholder.innerHTML = '❌ Nie udało się załadować danych wykresu.';
+        });
+})();
+</script>
+{% endblock %}

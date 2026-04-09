@@ -1,0 +1,70 @@
+# WITEK — Docker Compose (produkcja)
+# Uruchomienie: docker compose up -d
+# Konfiguracja: skopiuj .env.example → .env i uzupełnij wartości
+
+services:
+  # ---------- Baza danych PostgreSQL ----------
+  # Przechowuje wszystkie dane WITEK-a: snapshoty map.sql, graczy, sojusze.
+  # Dane są zachowane w wolumenie "witek-pgdata" nawet po usunięciu kontenera.
+  witek-db:
+    image: postgres:16-alpine
+    container_name: witek-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-witek}
+      POSTGRES_USER: ${POSTGRES_USER:-witek}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Ustaw POSTGRES_PASSWORD w pliku .env}
+    volumes:
+      - witek-pgdata:/var/lib/postgresql/data
+    networks:
+      - witek-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-witek} -d ${POSTGRES_DB:-witek}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ---------- Aplikacja WITEK (Flask + Discord bot + scheduler) ----------
+  # Serwer webowy z dashboardem, bot Discord i codzienny scheduler pobierający map.sql.
+  # Łączy się z bazą PostgreSQL przez zmienną DATABASE_URL.
+  witek-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: witek-app
+    restart: unless-stopped
+    ports:
+      - "${WITEK_PORT:-5000}:5000"
+    env_file:
+      - .env
+    environment:
+      # Nadpisujemy DATABASE_URL żeby wskazywał na kontener PostgreSQL
+      DATABASE_URL: postgresql://${POSTGRES_USER:-witek}:${POSTGRES_PASSWORD}@witek-db:5432/${POSTGRES_DB:-witek}
+      FLASK_DEBUG: "false"
+    volumes:
+      # Konfiguracja YAML (opcjonalnie montowana z hosta)
+      - ./config/config.yaml:/app/config/config.yaml:ro
+    depends_on:
+      witek-db:
+        condition: service_healthy
+    networks:
+      - witek-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+# ---------- Wolumeny ----------
+# Trwałe dane PostgreSQL — przetrwają restart i usunięcie kontenerów
+volumes:
+  witek-pgdata:
+    name: witek-pgdata
+
+# ---------- Sieć ----------
+# Wewnętrzna sieć łącząca aplikację z bazą danych
+networks:
+  witek-net:
+    name: witek-net
