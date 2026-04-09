@@ -198,3 +198,57 @@ Falangita\tMiecznik
         assert parsed["attacker"]["troops"] == [100, 50]
         assert parsed["attacker"]["losses"] == [10, 5]
         assert parsed["attacker"]["trapped"] is None
+
+
+# ------------------------------------------------------------------ #
+# Kill cost parsing
+# ------------------------------------------------------------------ #
+class TestKillCostParsing:
+    """Test extraction of 'Koszt zabitych' from battle reports."""
+
+    def test_parse_kill_cost_basic(self):
+        report_text = (
+            "Atakujący\tOrzel\n"
+            "08.04.26, 21:11:02\n"
+            "Napastnik\n"
+            "[UFO] Orzel z osady Osada\n"
+            "Pałkarz\n"
+            "100\n"
+            "50\n"
+            "Obrońca\n"
+            "[TT] Knight z osady Zamek\n"
+            "Falangita\n"
+            "200\n"
+            "30\n"
+            "Koszt zabitych\n"
+            "Drewno\t5000\tDrewno\t3000\n"
+            "Glina\t4000\tGlina\t2500\n"
+            "Żelazo\t6000\tŻelazo\t4000\n"
+            "Zboże\t2000\tZboże\t1500\n"
+        )
+        result = parse_battle_report(report_text)
+        assert result["kill_cost_atk"] == {
+            "Drewno": 5000, "Glina": 4000, "Żelazo": 6000, "Zboże": 2000
+        }
+        assert result["kill_cost_def"] == {
+            "Drewno": 3000, "Glina": 2500, "Żelazo": 4000, "Zboże": 1500
+        }
+
+    def test_parse_no_kill_cost(self):
+        report_text = (
+            "Atakujący\tOrzel\n"
+            "08.04.26, 21:11:02\n"
+            "Napastnik\n"
+            "[UFO] Orzel z osady Osada\n"
+            "Pałkarz\n"
+            "100\n"
+            "50\n"
+            "Obrońca\n"
+            "[TT] Knight z osady Zamek\n"
+            "Falangita\n"
+            "200\n"
+            "30\n"
+        )
+        result = parse_battle_report(report_text)
+        assert result.get("kill_cost_atk") is None
+        assert result.get("kill_cost_def") is None

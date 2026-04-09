@@ -235,8 +235,37 @@ def parse_battle_report(raw: str) -> dict:
 
     # Statistics section (optional)
     stats = {}
+    kill_cost_atk = {}
+    kill_cost_def = {}
+    in_kill_cost = False
+
     while i < len(lines):
         line = lines[i].strip()
+
+        if re.match(r'(?i)^koszt\s+zabitych', line):
+            in_kill_cost = True
+            i += 1
+            continue
+
+        if in_kill_cost:
+            if not line:
+                in_kill_cost = False
+                i += 1
+                continue
+            parts = [p.strip() for p in line.split('\t') if p.strip()]
+            if len(parts) >= 2:
+                try:
+                    kill_cost_atk[parts[0]] = int(re.sub(r'[\s.]', '', parts[1]))
+                except (ValueError, IndexError):
+                    pass
+            if len(parts) >= 4:
+                try:
+                    kill_cost_def[parts[2]] = int(re.sub(r'[\s.]', '', parts[3]))
+                except (ValueError, IndexError):
+                    pass
+            i += 1
+            continue
+
         if "Siła w walce" in line or "siła" in line.lower():
             parts = line.split("\t")
             if len(parts) >= 3:
@@ -255,6 +284,8 @@ def parse_battle_report(raw: str) -> dict:
                     pass
         i += 1
     result["stats"] = stats
+    result["kill_cost_atk"] = kill_cost_atk if kill_cost_atk else None
+    result["kill_cost_def"] = kill_cost_def if kill_cost_def else None
 
     return result
 
@@ -649,6 +680,8 @@ class ReportModal(discord.ui.Modal):
                 defender_troops=json.dumps(_side_to_dict(dfn), ensure_ascii=False) if dfn else None,
                 defender_losses=json.dumps(_side_losses_dict(dfn), ensure_ascii=False) if dfn else None,
                 bounty=json.dumps(parsed.get("bounty"), ensure_ascii=False) if parsed.get("bounty") else None,
+                kill_cost_atk=json.dumps(parsed.get("kill_cost_atk"), ensure_ascii=False) if parsed.get("kill_cost_atk") else None,
+                kill_cost_def=json.dumps(parsed.get("kill_cost_def"), ensure_ascii=False) if parsed.get("kill_cost_def") else None,
                 battle_power_atk=parsed.get("stats", {}).get("power_atk"),
                 battle_power_def=parsed.get("stats", {}).get("power_def"),
                 raw_text=raw_hash,
@@ -1024,6 +1057,21 @@ def _build_report_embed(parsed: dict, report_id: int, attack_id: int | None) -> 
             ),
             inline=False,
         )
+
+    # Kill cost
+    kill_cost_atk = parsed.get("kill_cost_atk")
+    kill_cost_def = parsed.get("kill_cost_def")
+    if kill_cost_atk or kill_cost_def:
+        kc_text = ""
+        if kill_cost_atk:
+            kc_text += "⚔️ **Napastnik:**\n"
+            for res, amount in kill_cost_atk.items():
+                kc_text += f"  {res}: {amount:,}\n"
+        if kill_cost_def:
+            kc_text += "🛡️ **Obrońca:**\n"
+            for res, amount in kill_cost_def.items():
+                kc_text += f"  {res}: {amount:,}\n"
+        embed.add_field(name="💀 Koszt zabitych", value=kc_text[:1024], inline=False)
 
     # Stats
     stats = parsed.get("stats", {})
