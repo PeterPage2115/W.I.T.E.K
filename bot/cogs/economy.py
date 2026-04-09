@@ -12,7 +12,9 @@ from sqlalchemy import func, or_
 
 from bot.bot import db_query
 from bot.utils import (
+    COMBAT_BY_NAME,
     COLOR_ATTACK,
+    COLOR_DEFENSE,
     COLOR_INFO,
     COLOR_SUCCESS,
     COLOR_WARNING,
@@ -22,8 +24,11 @@ from bot.utils import (
     TYPE_EMOJI,
     UNIT_SPEEDS,
     WALL_BONUS,
+    _COMBAT_ABBREV,
+    calc_needed_defense,
     calc_safe_distance,
     coords_display,
+    normalize_unit_name,
     parse_army_input,
     parse_coords,
     simulate_combat,
@@ -1311,6 +1316,111 @@ class CombatSimModal(discord.ui.Modal):
 
         embed.set_footer(text=FOOTER + " | Pamiętaj o czasie powrotu!")
         await ctx.respond(embed=embed)
+
+    # ------------------------------------------------------------------
+    # /tileobrony — defense calculator
+    # ------------------------------------------------------------------
+
+    @discord.slash_command(
+        name="tileobrony",
+        description="Kalkulator obrony — ile wojsk potrzeba do odparcia ataku",
+    )
+    @discord.option(
+        "atakujacy", str,
+        description="Skład armii np. Imperians:500,EC:200 lub imp:500,ec:200",
+    )
+    @discord.option(
+        "jednostka", str,
+        description="Jednostka obronna np. Pretorianin, Falangita, pret",
+    )
+    @discord.option(
+        "mur", int, description="Poziom muru (0-20)", required=False, default=0,
+        min_value=0, max_value=20,
+    )
+    async def tileobrony(
+        self, ctx: discord.ApplicationContext,
+        atakujacy: str, jednostka: str, mur: int,
+    ):
+        await ctx.defer()
+
+        army, errors = parse_army_input(atakujacy)
+        if not army:
+            await ctx.followup.send(
+                "❌ Nie rozpoznano żadnych jednostek.\n"
+                "💡 Format: `Imperians:500,EC:200` lub `imp:500,ec:200`",
+                ephemeral=True,
+            )
+            return
+
+        # Normalize defender unit name
+        defender_canonical = normalize_unit_name(jednostka)
+        if not defender_canonical:
+            defender_canonical = _COMBAT_ABBREV.get(jednostka.lower())
+        if not defender_canonical or defender_canonical not in COMBAT_BY_NAME:
+            await ctx.followup.send(
+                f"❌ Nieznana jednostka obronna: `{jednostka}`\n"
+                "💡 Przykłady: Pretorianin, Falangita, Włócznik, Paladyn",
+                ephemeral=True,
+            )
+            return
+
+        result = calc_needed_defense(army, defender_canonical, mur)
+        if result is None:
+            await ctx.followup.send(
+                "❌ Nie udało się obliczyć obrony.",
+                ephemeral=True,
+            )
+            return
+
+        # Build embed
+        embed = discord.Embed(
+            title="🛡️ Kalkulator obrony",
+            description="⚠️ _Przybliżenie — nie uwzględnia morale, bohatera ani artefaktów_",
+            color=COLOR_DEFENSE,
+        )
+
+        # Attacker summary
+        atk_lines = []
+        for name, count in army.items():
+            stats = COMBAT_BY_NAME.get(name, {})
+            emoji = TYPE_EMOJI.get(stats.get("type", ""), "")
+            atk_lines.append(f"{emoji} {name}: **{count:,}**")
+        embed.add_field(
+            name=f"⚔️ Atakujący (siła: {result['total_att']:,})",
+            value="\n".join(atk_lines)[:1024],
+            inline=False,
+        )
+
+        # Attack type
+        type_label = "Piechota" if result["att_type"] == "inf" else "Kawaleria"
+        embed.add_field(
+            name="🎯 Typ ataku",
+            value=f"Większość siły: **{type_label}** → obrona liczy def vs {type_label.lower()}",
+            inline=False,
+        )
+
+        # Defense result
+        def_stat = result["effective_def_per_unit"]
+        wall_text = f"Mur lvl {mur}: **×{result['wall_mult']:.2f}**" if mur > 0 else "Bez muru"
+        embed.add_field(
+            name=f"🛡️ Potrzeba: **{result['count']:,}× {defender_canonical}**",
+            value=(
+                f"Obrona/szt: **{def_stat}** (vs {type_label.lower()})\n"
+                f"🧱 {wall_text}\n"
+                f"🌾 Zużycie zboża: **{result['crop_per_hour']:,}/h**"
+            ),
+            inline=False,
+        )
+
+        if errors:
+            embed.add_field(
+                name="⚠️ Ostrzeżenia",
+                value="\n".join(errors)[:512],
+                inline=False,
+            )
+
+        embed.set_footer(text=FOOTER)
+        await ctx.followup.send(embed=embed)
 
 
 def setup(bot):

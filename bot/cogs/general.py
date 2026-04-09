@@ -84,7 +84,8 @@ class General(commands.Cog):
                 "`/tszukaj` — Szukaj wiosek (po graczu, sojuszu, populacji)\n"
                 "`/tporownaj` — Porównaj dwa sojusze\n"
                 "`/tsymulacja` — Symulacja walki (kalkulator strat)\n"
-                "⚔️ `/tbezpieczne` — Kalkulator bezpiecznego wysyłania (min. odległość)"
+                "⚔️ `/tbezpieczne` — Kalkulator bezpiecznego wysyłania (min. odległość)\n"
+                "🛡️ `/tileobrony` — Kalkulator obrony (ile wojsk potrzeba)"
             ),
             inline=False,
         )
