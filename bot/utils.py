@@ -944,3 +944,52 @@ def calc_needed_defense(
         "wall_mult": round(wall_mult, 2),
         "crop_per_hour": needed * crop,
     }
+
+
+# ------------------------------------------------------------------ #
+# Interception send-time calculator (Task 9)
+# ------------------------------------------------------------------ #
+
+def calc_interception_times(
+    our_x: int, our_y: int,
+    def_x: int, def_y: int,
+    attack_eta_seconds: float,
+    our_tribe: int,
+    ts_level: int = 0,
+    boots_bonus: float = 0.0,
+    artifact_mult: float = 1.0,
+    map_size: int = 401,
+) -> list[dict]:
+    """Calculate when to send each unit type to intercept an attack.
+
+    For each unit in our tribe, computes travel time to the defender village
+    and derives the latest send time so troops arrive before the attack.
+
+    Returns:
+        List of dicts sorted by send time (most urgent first):
+            name, type, speed, travel_seconds, send_in_seconds, can_make_it
+    """
+    distance = torus_distance(our_x, our_y, def_x, def_y, map_size)
+
+    units = UNIT_SPEEDS.get(our_tribe, [])
+    results = []
+
+    for unit in units:
+        travel = _calc_travel_seconds(
+            distance, unit["speed"], artifact_mult, boots_bonus, ts_level,
+        )
+        send_in = attack_eta_seconds - travel
+        can_make = send_in >= 0
+
+        results.append({
+            "name": unit["name"],
+            "type": unit["type"],
+            "speed": unit["speed"],
+            "travel_seconds": round(travel, 1),
+            "send_in_seconds": round(send_in, 1),
+            "can_make_it": can_make,
+        })
+
+    # Sort: most urgent first (smallest send_in_seconds that's still positive)
+    results.sort(key=lambda r: (not r["can_make_it"], r["send_in_seconds"]))
+    return results
