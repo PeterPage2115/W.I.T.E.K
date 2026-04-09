@@ -17,6 +17,8 @@ def _ensure_columns(app):
             "result": "TEXT",
             "is_manual": "BOOLEAN DEFAULT 0",
             "reported_by_name": "TEXT",
+            "kill_cost_atk": "TEXT",
+            "kill_cost_def": "TEXT",
         },
     }
     engine = db.engine

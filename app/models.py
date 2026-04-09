@@ -183,6 +183,8 @@ class BattleReport(db.Model):
     bounty = db.Column(db.Text)  # JSON
     battle_power_atk = db.Column(db.Integer)
     battle_power_def = db.Column(db.Integer)
+    kill_cost_atk = db.Column(db.Text, nullable=True)  # JSON {resource: amount}
+    kill_cost_def = db.Column(db.Text, nullable=True)  # JSON {resource: amount}
     raw_text = db.Column(db.Text)
     result = db.Column(db.Text)  # wygrana_obrony / przegrana_obrony / remis / szpieg
     is_manual = db.Column(db.Boolean, default=False)
