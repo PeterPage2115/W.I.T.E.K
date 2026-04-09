@@ -2,91 +2,92 @@
 
 > Wirtualny Informator Taktyczno-Ekonomiczny Koalicji
 > Serwer: ts31.x3.europe.travian.com (x3 speed)
+> Wersja: **1.0.0** | 357 testów ✅ | 10 cogów | 25+ komend
 
 ## ✅ Zrealizowane
 
-### Faza 1 — Szkielet
-- [x] Flask + Discord bot w jednym procesie
-- [x] Parsowanie `map.sql` (publiczne dane wiosek)
-- [x] Modele bazy: Snapshot, Village, Player, Alliance
-- [x] Web dashboard (ciemny motyw Travian)
-- [x] Docker Compose (dev: SQLite, prod: PostgreSQL)
+### Slice 1 — Szkielet i Dane
+- [x] Flask + Discord bot w jednym procesie (`run.py`)
+- [x] Parsowanie `map.sql` (publiczne dane ~14k wiosek)
+- [x] Modele bazy: Snapshot, Village, Player, Alliance, User
+- [x] Web dashboard (ciemny motyw Travian, MedievalSharp)
+- [x] Docker Compose dev (SQLite) + prod (PostgreSQL)
 - [x] Codzienny scheduler pobierania mapy
 
-### Faza 2 — Tożsamość i Ataki
+### Slice 2 — Tożsamość i Ataki
 - [x] `/tlink`, `/tunlink`, `/twhoami` — łączenie kont Discord ↔ Travian
-- [x] `/tatak` — zgłaszanie ataków (kordy atakującego wymagane)
+- [x] `/tatak` — zgłaszanie ataków z auto-wątkami na #obrona
 - [x] `/tdodaj` — dodawanie ataków do istniejącego wątku
 - [x] `/tataki` — lista aktywnych ataków
 - [x] `/trozwiaz` — zamykanie zgłoszeń + archiwizacja wątku
 - [x] Analiza podróży jednostek (prędkość x3, dystans torusowy)
-- [x] Automatyczne wątki na forum #obrona
+- [x] Ping roli @Def, reuse wątków, auto-detekcja koordynatów
 
-### Faza 3 — Obrona i Wojska
+### Slice 3 — Obrona i Wojska
 - [x] Parser raportów bitewnych (state machine, polski)
 - [x] Normalizacja polskich nazw jednostek (tabela aliasów)
 - [x] Zużycie zboża dla wszystkich jednostek (3 nacje + natura + bohater)
-- [x] `/traport` — wklejanie raportów (modal)
+- [x] `/traport` — wklejanie raportów (modal) + `/traport_reczny`
 - [x] `/twojska` — rejestracja wojsk w wiosce
 - [x] `/twsparcie` — rejestracja wsparcia między wioskami
 - [x] `/tstan` — stan obrony wioski (garnizon + wsparcie)
-- [x] `/traporty` — lista raportów bitewnych
-- [x] Modele: VillageTroops, TroopSupport, BattleReport
-- [x] WAL mode dla SQLite (współbieżność)
-- [x] Duplikacja raportów — detekcja SHA-256
+- [x] Modele: VillageTroops, TroopSupport, BattleReport, AttackReport
+- [x] WAL mode dla SQLite + duplikacja raportów (SHA-256)
 
-## 🔧 W trakcie
-
-### Faza 3.5 — Ulepszenia wątków obrony ✅
-- [x] Edytowalny embed podsumowania w wątku (aktualizowany przy nowych atakach)
-- [x] Lista atakowanych wiosek w głównej wiadomości (zamiast ikony nacji)
-- [x] Ping roli @Def (gracze defensywni)
-- [x] Usunięcie ikony nacji z embeda ataku
-- [x] Reuse istniejących wątków (/tatak nie tworzy duplikatów)
-- [x] Auto-detekcja koordynatów w wątku (/twojska, /twsparcie, /tstan, /tdodaj)
-- [x] Szczegóły wsparcia w podsumowaniu (jednostki + zboże per wsparcie)
-- [x] Auto-fill atakującego z koordynatów wioski źródłowej
-- [x] Walidacja koordynatów celu w /tdodaj (muszą pasować do wątku)
-- [ ] Poprawki parsera raportów (mobilne wsparcie)
-- [ ] Wsparcie dla graczy mobilnych (`/traport_reczny`)
-
-### Faza 4 — Koordynacja Defensywy (w toku)
+### Slice 4 — Koordynacja Defensywy
 - [x] Formuły Travian (dystans torusowy, czas podróży, prędkości jednostek x3)
 - [x] `/tdef <kordy>` — kto z sojuszu może wysłać def, posortowane po ETA
-- [ ] Automatyczne liczenie całkowitego defu w wątku (garnizon + wsparcie)
+- [x] Edytowalny embed podsumowania w wątku (aktualizowany przy nowych atakach)
+- [x] Szczegóły wsparcia w podsumowaniu (jednostki + zboże per wsparcie)
+
+### Slice 5 — Rozpoznanie, Symulacja i Dashboard
+- [x] `/tsymulacja` — symulator bitwy (kalkulacja wyniku walki)
+- [x] `/tporownaj` — porównanie sojuszy
+- [x] `/tcropper` — wyszukiwanie cropperów (9c/15c)
+- [x] `/tdigest` — dzienne podsumowanie zmian na serwerze
+- [x] `/tszukaj` — wyszukiwanie graczy/wiosek
+- [x] `/tnieaktywni` — detekcja nieaktywnych graczy
+- [x] `/tstats` — statystyki serwera (gracze, sojusze, top 5)
+- [x] `/tinfo` — info o bocie + uptime
+- [x] `/thelp` — lista komend
+- [x] Mapa 2D wiosek (interaktywna, Canvas)
+- [x] Web: Dashboard (/), Attacks (/attacks), Defense (/defense), Map (/map)
+- [x] Web: Profile graczy i sojuszy z wykresami populacji (Chart.js)
+- [x] 10 cogów: alerts, attacks, defense, digest, economy, general, identity, recon, monitor, simulator
+- [x] 357 testów pytest ✅
+
+## 🔧 W trakcie (Sprint 2)
+
+### Kalkulatory taktyczne
+- [ ] `/tbezpieczne` — kalkulator bezpiecznego wysyłania surowców
+- [ ] `/tileobrony` — ile obrony potrzeba na daną armię
+- [ ] `/tprzechwyc` — kalkulator przechwytywania ataków (timing)
+
+### Poprawki i ulepszenia
+- [ ] Bugfixy parsera raportów (edge cases, mobilne wsparcie)
+- [ ] Enhanced parser — lepsza obsługa formatów raportów
+- [ ] Bilans zbożowy wioski pod obroną (produkcja vs zużycie)
 
 ## 📋 Planowane
 
-### Faza 4 — Koordynacja Defensywy (kontynuacja)
-- [ ] Bilans zbożowy wioski pod obroną (produkcja vs zużycie)
+### Bezpieczeństwo i deploy
+- [ ] Discord OAuth do dashboardu web
+- [ ] RBAC — role-based access control (lider/oficer/członek)
+- [ ] Deploy produkcyjny (VPS + domena + HTTPS)
+
+### Automatyzacja
 - [ ] Powiadomienia o zbliżających się atakach (np. 30 min przed)
-- [ ] Oznaczanie statusu ataku (reported → defending → resolved)
-
-### Faza 5 — Dashboard Web
-- [x] Wykresy historii populacji (Chart.js)
-- [x] Strona szczegółów gracza (info + wykres + wioski)
-- [x] Strona szczegółów sojuszu (info + wykres + członkowie)
-- [ ] Mapa 2D wiosek (interaktywna, Canvas/SVG)
-- [ ] Lista raportów bitewnych w przeglądarce
-- [ ] Stan obrony wiosek — widok web
-- [ ] Porównanie sojuszy (populacja, liczba graczy)
-- [ ] Detekcja nieaktywnych graczy (brak wzrostu populacji >X dni)
-
-### Faza 6 — Alerty i Automatyzacja
-- [ ] Webhook: alerty o spadkach populacji (zniszczone wioski)
-- [ ] Wykrywanie nowych wiosek wrogów w okolicy
 - [ ] Automatyczne rozwiązywanie ataków po czasie uderzenia
-- [ ] Raport dzienny: podsumowanie aktywności serwera
+- [ ] Webhook: alerty o spadkach populacji (zniszczone wioski)
 
-### Faza 7 — Zaawansowane
-- [ ] Symulator bitwy (kalkulacja wyniku walki)
-- [ ] Planner farm listy (wioski do grabieży)
-- [ ] Kalkulator czasu budowy/badań
+### Rozszerzenia
+- [ ] Browser extension do importu raportów z gry
 - [ ] Eksport danych do CSV/JSON
+- [ ] Planner farm listy (wioski do grabieży)
 
 ## 💡 Pomysły (do rozważenia)
-- Integracja z Travian API (jeśli zadziała: travian4api)
-- Bot do automatycznego skanowania raportów ze screenshotów (OCR)
+- Integracja z Travian API (travian4api)
+- OCR — skanowanie raportów ze screenshotów
 - System rankingowy graczy w sojuszu
 - Kalkulator artefaktów i bonusów
 - System rotacji obrony (grafik dyżurów)
@@ -98,13 +99,13 @@ run.py                  # Flask + bot + scheduler
 ├── app/                # Flask (dashboard + API)
 │   ├── models.py       # SQLAlchemy modele
 │   ├── map_sql/        # Parser map.sql
-│   └── routes/         # Blueprints web
+│   └── routes/         # Blueprints web (dashboard, players, alliances, attacks, defense, map)
 ├── bot/                # Discord bot (py-cord)
 │   ├── bot.py          # create_bot(), db_query()
 │   ├── utils.py        # Stałe, prędkości, zboże
-│   └── cogs/           # Moduły komend
+│   └── cogs/           # 10 modułów komend
 ├── config/             # YAML config
-├── tests/              # pytest
+├── tests/              # 357 testów pytest
 └── docker-compose.yml  # Produkcja (PostgreSQL)
 ```
 

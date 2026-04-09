@@ -119,7 +119,7 @@ class General(commands.Cog):
         last_sync = await db_query(self.bot, _get_last_sync)
 
         embed = discord.Embed(title="🤖 WITEK — Informacje", color=COLOR_GOLD)
-        embed.add_field(name="Wersja", value="0.1.0", inline=True)
+        embed.add_field(name="Wersja", value="1.0.0", inline=True)
         embed.add_field(name="Uptime", value=f"{hours}h {minutes}m", inline=True)
         embed.add_field(name="Serwery", value=str(len(self.bot.guilds)), inline=True)
         embed.add_field(name="Ostatnia synchronizacja", value=last_sync, inline=False)
