@@ -72,8 +72,9 @@
         <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-2">💰 Zdobycz</div>
         {% if bounty %}
         <div class="space-y-1 text-sm">
-            {% if bounty.wood is defined %}
-            <div><span class="trav-res trav-lumber"></span> {{ "{:,}".format(bounty.wood|int) if bounty.wood else 0 }}</div>
+            {% set lumber_val = bounty.lumber if bounty.lumber is defined else (bounty.wood if bounty.wood is defined else none) %}
+            {% if lumber_val is not none %}
+            <div><span class="trav-res trav-lumber"></span> {{ "{:,}".format(lumber_val|int) }}</div>
             {% endif %}
             {% if bounty.clay is defined %}
             <div><span class="trav-res trav-clay"></span> {{ "{:,}".format(bounty.clay|int) if bounty.clay else 0 }}</div>
@@ -82,7 +83,10 @@
             <div><span class="trav-res trav-iron"></span> {{ "{:,}".format(bounty.iron|int) if bounty.iron else 0 }}</div>
             {% endif %}
             {% if bounty.crop is defined %}
-            <div><span class="trav-res trav-crop"></span> {{ bounty.crop }}</div>
+            <div><span class="trav-res trav-crop"></span> {{ "{:,}".format(bounty.crop|int) if bounty.crop else 0 }}</div>
+            {% endif %}
+            {% if bounty.carry_used is defined and bounty.carry_max is defined %}
+            <div class="text-trav-text-muted mt-1">🎒 {{ "{:,}".format(bounty.carry_used|int) }}/{{ "{:,}".format(bounty.carry_max|int) }}</div>
             {% endif %}
         </div>
         {% else %}

@@ -236,6 +236,38 @@
   // ─── Parsers ───────────────────────────────────────────
 
   /**
+   * Parse combat statistics section (battle power, kill cost)
+   * Travian HTML: div.combatStatistics > table.combatStatistic
+   * Labels in <th>, values in <td> > span.value (numbers may have spaces like "1 755")
+   */
+  function parseStatistics(reportEl) {
+    const stats = {};
+    const table = reportEl.querySelector('table.combatStatistic');
+    if (!table) return stats;
+
+    const rows = table.querySelectorAll('tbody tr');
+    for (const row of rows) {
+      const label = row.querySelector('th')?.textContent?.trim().toLowerCase() || '';
+      const valueCells = row.querySelectorAll('td');
+      if (valueCells.length < 2) continue;
+
+      const atkText = valueCells[0]?.querySelector('.value')?.textContent?.replace(/\D/g, '') || '';
+      const defText = valueCells[1]?.querySelector('.value')?.textContent?.replace(/\D/g, '') || '';
+      const atkVal = parseInt(atkText, 10);
+      const defVal = parseInt(defText, 10);
+
+      if (label.includes('siła') || label.includes('power') || label.includes('strength')) {
+        if (!isNaN(atkVal)) stats.battle_power_atk = atkVal;
+        if (!isNaN(defVal)) stats.battle_power_def = defVal;
+      } else if (label.includes('koszt') || label.includes('cost')) {
+        if (!isNaN(atkVal)) stats.kill_cost_atk = atkVal;
+        if (!isNaN(defVal)) stats.kill_cost_def = defVal;
+      }
+    }
+    return stats;
+  }
+
+  /**
    * Parse battle report page (#reportWrapper)
    */
   function parseReport() {
@@ -254,12 +286,16 @@
     const attackerEl = reportEl.querySelector('.role.attacker');
     const defenderEl = reportEl.querySelector('.role.defender');
 
+    // Combat statistics (battle power, kill cost)
+    const statistics = parseStatistics(reportEl);
+
     const result = {
       report_id: reportId,
       subject,
       time,
       attacker: attackerEl ? parseRoleSection(attackerEl) : { troops: {}, losses: {} },
       defender: defenderEl ? parseRoleSection(defenderEl) : { troops: {}, losses: {} },
+      ...statistics,
     };
 
     return result;

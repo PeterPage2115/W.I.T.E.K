@@ -73,16 +73,31 @@ def receive_report():
 
     from app.models import BattleReport
 
+    # Extension sends "player" key; also support legacy "name" key
+    atk_name = attacker.get("player") or attacker.get("name", "?")
+    def_name = defender.get("player") or defender.get("name", "?")
+
+    # Bounty lives inside attacker data (extension) or at top level (legacy)
+    bounty_data = attacker.get("bounty") or data.get("bounty", {})
+
     report = BattleReport(
         reported_by_discord="extension",
         reported_by_name="Chrome Extension",
-        attacker_name=attacker.get("name", "?"),
+        attacker_name=atk_name,
+        attacker_alliance=attacker.get("alliance", ""),
+        attacker_village=attacker.get("village", ""),
         attacker_troops=json.dumps(attacker.get("troops", {})),
         attacker_losses=json.dumps(attacker.get("losses", {})),
-        defender_name=defender.get("name", "?"),
+        defender_name=def_name,
+        defender_alliance=defender.get("alliance", ""),
+        defender_village=defender.get("village", ""),
         defender_troops=json.dumps(defender.get("troops", {})),
         defender_losses=json.dumps(defender.get("losses", {})),
-        bounty=json.dumps(data.get("bounty", {})),
+        bounty=json.dumps(bounty_data),
+        battle_power_atk=data.get("battle_power_atk"),
+        battle_power_def=data.get("battle_power_def"),
+        kill_cost_atk=json.dumps(data.get("kill_cost_atk")) if data.get("kill_cost_atk") else None,
+        kill_cost_def=json.dumps(data.get("kill_cost_def")) if data.get("kill_cost_def") else None,
         raw_text=json.dumps({"source": "extension", "report_id": data.get("report_id")}),
     )
 
@@ -90,7 +105,7 @@ def receive_report():
     db.session.commit()
 
     log.info("Extension report saved: id=%s, att=%s vs def=%s",
-             report.id, attacker.get("name"), defender.get("name"))
+             report.id, atk_name, def_name)
 
     return jsonify({"ok": True, "report_id": report.id}), 201
 

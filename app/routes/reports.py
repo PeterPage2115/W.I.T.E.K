@@ -9,6 +9,51 @@ from ..models import BattleReport, AttackReport, Snapshot
 bp = Blueprint("reports", __name__)
 
 
+# ── Unit ID → name mapping ──────────────────────────────────
+# Travian unit IDs: Romans 1-10, Teutons 11-20, Gauls 21-30,
+# Nature 31-40, Natars 41-50, Egyptians 51-60, Huns 61-70,
+# Vikings 71-80, Spartans 81-90
+_UNIT_NAMES: dict[str, str] = {}
+
+
+def _build_unit_names() -> dict[str, str]:
+    """Build unit ID → name mapping from tribes.py."""
+    try:
+        from bot.tribes import TRIBES
+        names = {"hero": "Bohater"}
+        for tid, tribe in TRIBES.items():
+            base = (tid - 1) * 10 if tid <= 5 else (tid - 1) * 10  # tid 6-9 skip 4,5
+            # Actual Travian numbering: tid=1→1-10, tid=2→11-20, tid=3→21-30,
+            # tid=4(nature)→31-40, tid=5(natars)→41-50,
+            # tid=6→51-60, tid=7→61-70, tid=8→71-80, tid=9→81-90
+            if tid <= 3:
+                base = (tid - 1) * 10
+            elif tid == 6:
+                base = 50
+            elif tid == 7:
+                base = 60
+            elif tid == 8:
+                base = 70
+            elif tid == 9:
+                base = 80
+            else:
+                continue
+            for i, unit in enumerate(tribe.units):
+                unit_id = str(base + i + 1)
+                names[unit_id] = unit.name
+        return names
+    except Exception:
+        return {"hero": "Bohater"}
+
+
+def _get_unit_name(unit_id: str) -> str:
+    """Get human-readable unit name for a Travian unit ID."""
+    global _UNIT_NAMES
+    if not _UNIT_NAMES:
+        _UNIT_NAMES = _build_unit_names()
+    return _UNIT_NAMES.get(unit_id, f"Jednostka #{unit_id}")
+
+
 def _safe_json(text):
     """Parse JSON string, return empty dict on failure."""
     if not text:
@@ -127,26 +172,28 @@ def report_detail(report_id):
     # Build troop tables: list of (name, sent, lost, trapped)
     atk_table = []
     all_atk_units = set(atk_troops.keys()) | set(atk_losses.keys())
-    for name in all_atk_units:
+    for uid in all_atk_units:
         atk_table.append({
-            "name": name,
-            "sent": atk_troops.get(name, 0),
-            "lost": atk_losses.get(name, 0),
-            "trapped": atk_trapped.get(name, 0),
+            "name": _get_unit_name(uid),
+            "sent": atk_troops.get(uid, 0),
+            "lost": atk_losses.get(uid, 0),
+            "trapped": atk_trapped.get(uid, 0),
         })
 
     def_table = []
     all_def_units = set(def_troops.keys()) | set(def_losses.keys())
-    for name in all_def_units:
+    for uid in all_def_units:
         def_table.append({
-            "name": name,
-            "sent": def_troops.get(name, 0),
-            "lost": def_losses.get(name, 0),
+            "name": _get_unit_name(uid),
+            "sent": def_troops.get(uid, 0),
+            "lost": def_losses.get(uid, 0),
         })
 
-    # Total resources from bounty
+    # Total resources from bounty (only actual resources, not carry)
+    _RESOURCE_KEYS = {"lumber", "wood", "clay", "iron", "crop"}
     bounty_total = sum(
-        int(v) for v in bounty.values() if isinstance(v, (int, float))
+        int(v) for k, v in bounty.items()
+        if k in _RESOURCE_KEYS and isinstance(v, (int, float))
         or (isinstance(v, str) and v.isdigit())
     ) if bounty else 0
 
