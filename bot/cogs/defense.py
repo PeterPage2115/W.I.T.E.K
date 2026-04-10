@@ -44,13 +44,33 @@ REPORT_UNIT_ORDER: dict[int, list[str]] = {
         "Grom Teutatesa", "Jeździec druidzki", "Haeduan",
         "Taran", "Trebusz", "Wódz", "Osadnik",
     ],
+    6: [  # Egyptians
+        "Slave Militia", "Ash Warden", "Khopesh Warrior",
+        "Sopdu Explorer", "Anhur Guard", "Resheph Chariot",
+        "Ram", "Catapult", "Nomarch", "Settler",
+    ],
+    7: [  # Huns
+        "Mercenary", "Bowman", "Spotter",
+        "Steppe Rider", "Marksman", "Marauder",
+        "Ram", "Catapult", "Logades", "Settler",
+    ],
+    8: [  # Vikings
+        "Thrall", "Shield Maiden", "Berserker",
+        "Heimdall's Eye", "Huskarl Rider", "Valkyrie's Blessing",
+        "Ram", "Catapult", "Jarl", "Settler",
+    ],
+    9: [  # Spartans
+        "Hoplite", "Sentinel", "Shieldsman",
+        "Twinsteel Therion", "Elpida Rider", "Corinthian Crusher",
+        "Ram", "Catapult", "Ephor", "Settler",
+    ],
 }
 
 # Map any recognized unit name to a tribe_id for auto-detection
 _UNIT_TO_TRIBE: dict[str, int] = {}
 for _tid, _names in REPORT_UNIT_ORDER.items():
     for _n in _names:
-        if _n not in ("Taran", "Osadnik"):  # shared across tribes
+        if _n not in ("Taran", "Osadnik", "Ram", "Catapult", "Settler"):  # shared across tribes
             _UNIT_TO_TRIBE[_n] = _tid
 
 

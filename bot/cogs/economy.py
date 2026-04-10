@@ -19,6 +19,7 @@ from bot.utils import (
     COLOR_SUCCESS,
     COLOR_WARNING,
     FOOTER,
+    AVAILABLE_TRIBES,
     TRIBE_EMOJI,
     TRIBE_NAMES,
     TYPE_EMOJI,
@@ -613,7 +614,7 @@ def _build_comparison_embed(name1, stats1, growth1, name2, stats2, growth2):
 # Time parsing helper
 # ------------------------------------------------------------------ #
 
-_TRIBE_CHOICE_MAP = {"Rzymianie": 1, "Germanie": 2, "Galowie": 3}
+_TRIBE_CHOICE_MAP = {TRIBE_NAMES[tid]: tid for tid in AVAILABLE_TRIBES}
 
 
 def _format_duration(seconds: float) -> str:
