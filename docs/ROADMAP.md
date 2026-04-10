@@ -2,7 +2,7 @@
 
 > Wirtualny Informator Taktyczno-Ekonomiczny Koalicji
 > Serwer: ts31.x3.europe.travian.com (x3 speed)
-> Wersja: **1.1.0** | 442 testów ✅ | 10 cogów | 30 komend
+> Wersja: **1.2.0** | 453 testów ✅ | 10 cogów | 30 komend | Chrome Extension MVP
 
 ## ✅ Zrealizowane
 
@@ -79,6 +79,16 @@
 - [x] Testy integracyjne (smoke testy cogów, infra pytest-asyncio)
 - [x] 442 testy pytest ✅
 
+### Sprint 3 Phase 2 — Chrome Extension MVP
+- [x] Webhook API: `POST /api/ext/report`, `/troops`, `/incoming` z tokenem `X-Witek-Token`
+- [x] CORS preflight (OPTIONS bez auth) dla rozszerzenia Chrome
+- [x] Chrome Extension scaffold (Manifest V3)
+- [x] Content script z detekcją stron Travian (raporty, wioski, Rally Point)
+- [x] Parsery: raport bitewny, przegląd wojsk, nadchodzące ataki
+- [x] Service Worker (relay content script → API)
+- [x] Popup UI (ciemny motyw Travian, konfiguracja serwera + token)
+- [x] 453 testy pytest ✅
+
 ## 📋 Planowane
 
 ### Bezpieczeństwo i deploy
@@ -92,7 +102,8 @@
 - [ ] Webhook: alerty o spadkach populacji (zniszczone wioski)
 
 ### Rozszerzenia
-- [ ] Browser extension do importu raportów z gry
+- [x] Browser extension do importu raportów z gry (MVP)
+- [ ] Chrome Web Store publication
 - [ ] Eksport danych do CSV/JSON
 - [ ] Planner farm listy (wioski do grabieży)
 - [x] Bilans zbożowy wioski
@@ -111,13 +122,18 @@ run.py                  # Flask + bot + scheduler
 ├── app/                # Flask (dashboard + API)
 │   ├── models.py       # SQLAlchemy modele
 │   ├── map_sql/        # Parser map.sql
-│   └── routes/         # Blueprints web (dashboard, players, alliances, attacks, defense, map)
+│   └── routes/         # Blueprints web (dashboard, players, alliances, attacks, defense, map, api_ext)
 ├── bot/                # Discord bot (py-cord)
 │   ├── bot.py          # create_bot(), db_query()
 │   ├── utils.py        # Stałe, prędkości, zboże
 │   └── cogs/           # 10 modułów komend
+├── extension/          # Chrome Extension (Manifest V3)
+│   ├── manifest.json   # Uprawnienia, content scripts
+│   ├── content/        # Parsery stron Travian
+│   ├── background/     # Service Worker (API relay)
+│   └── popup/          # UI ustawień
 ├── config/             # YAML config
-├── tests/              # 442 testów pytest
+├── tests/              # 453 testów pytest
 └── docker-compose.yml  # Produkcja (PostgreSQL)
 ```
 
