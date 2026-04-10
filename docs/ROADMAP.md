@@ -2,7 +2,7 @@
 
 > Wirtualny Informator Taktyczno-Ekonomiczny Koalicji
 > Serwer: ts31.x3.europe.travian.com (x3 speed)
-> Wersja: **1.0.0** | 385 testów ✅ | 10 cogów | 30 komend
+> Wersja: **1.1.0** | 442 testów ✅ | 10 cogów | 30 komend
 
 ## ✅ Zrealizowane
 
@@ -70,6 +70,15 @@
 - [x] Fix: limit 1024 znaków w polu embed (sugerowane cele)
 - [x] 385 testów pytest ✅
 
+### Sprint 3 Phase 1 — Nowe Nacje + Ulepszenia
+- [x] `bot/tribes.py` — zunifikowane definicje 7 nacji (Romans, Teutons, Gauls, Egyptians, Huns, Vikings, Spartans)
+- [x] Refaktor `utils.py` — wszystkie słowniki generowane z tribes.py (-172 linii hardcoded)
+- [x] Konfiguracja per-serwer (speed_multiplier, troop_speed_multiplier, available_tribes)
+- [x] Auto-rozwiązywanie ataków po upływie czasu (tasks.loop co 5 min, konfigurowalne)
+- [x] `/tzboza` — bilans zbożowy wioski (garnizon + wsparcie vs produkcja)
+- [x] Testy integracyjne (smoke testy cogów, infra pytest-asyncio)
+- [x] 442 testy pytest ✅
+
 ## 📋 Planowane
 
 ### Bezpieczeństwo i deploy
@@ -79,13 +88,14 @@
 
 ### Automatyzacja
 - [ ] Powiadomienia o zbliżających się atakach (np. 30 min przed)
-- [ ] Automatyczne rozwiązywanie ataków po czasie uderzenia
+- [x] Automatyczne rozwiązywanie ataków po czasie uderzenia
 - [ ] Webhook: alerty o spadkach populacji (zniszczone wioski)
 
 ### Rozszerzenia
 - [ ] Browser extension do importu raportów z gry
 - [ ] Eksport danych do CSV/JSON
 - [ ] Planner farm listy (wioski do grabieży)
+- [x] Bilans zbożowy wioski
 
 ## 💡 Pomysły (do rozważenia)
 - Integracja z Travian API (travian4api)
@@ -107,7 +117,7 @@ run.py                  # Flask + bot + scheduler
 │   ├── utils.py        # Stałe, prędkości, zboże
 │   └── cogs/           # 10 modułów komend
 ├── config/             # YAML config
-├── tests/              # 385 testów pytest
+├── tests/              # 442 testów pytest
 └── docker-compose.yml  # Produkcja (PostgreSQL)
 ```
 
