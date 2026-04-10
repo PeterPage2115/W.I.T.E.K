@@ -12,7 +12,7 @@ import time as _time
 from datetime import datetime, timezone
 
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 
 from bot.bot import db_query
 from bot.utils import (
@@ -52,6 +52,14 @@ class Attacks(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+
+    def cog_load(self):
+        if not getattr(self.bot, '_testing', False):
+            self.auto_resolve_loop.start()
+
+    def cog_unload(self):
+        if self.auto_resolve_loop.is_running():
+            self.auto_resolve_loop.cancel()
 
     def _server_url(self) -> str:
         return self.bot.flask_app.config.get(
@@ -1291,6 +1299,92 @@ class Attacks(commands.Cog):
                 log.warning("Brak uprawnień do edycji starter message %d", thread_id)
             except Exception:
                 log.exception("Błąd edycji summary w wątku %d", thread_id)
+
+    # ------------------------------------------------------------------ #
+    # Auto-resolve expired attacks
+    # ------------------------------------------------------------------ #
+
+    def _do_auto_resolve(self, threshold_minutes: int) -> list[dict]:
+        """DB-side auto-resolve logic. Returns list of resolved thread info dicts."""
+        from app.database import db
+        from app.models import AttackReport, DefenseThread
+
+        now = datetime.now(timezone.utc)
+        now_unix = int(now.timestamp())
+        threshold_unix = now_unix - (threshold_minutes * 60)
+
+        resolved = []
+
+        # Thread-level: find active DefenseThreads
+        active_threads = DefenseThread.query.filter_by(status="active").all()
+        for dt in active_threads:
+            reports = AttackReport.query.filter(
+                AttackReport.forum_thread_id == dt.forum_thread_id,
+                AttackReport.status != "resolved",
+            ).all()
+
+            if not reports:
+                continue
+
+            all_expired = all(
+                r.attack_unix and r.attack_unix < threshold_unix
+                for r in reports
+            )
+            if not all_expired:
+                continue
+
+            report_ids = []
+            for r in reports:
+                r.status = "resolved"
+                r.resolved_at = now
+                r.auto_resolved = True
+                report_ids.append(r.id)
+
+            dt.status = "resolved"
+            resolved.append({"thread_id": dt.forum_thread_id, "report_ids": report_ids})
+
+        # Orphan reports (no thread)
+        orphans = AttackReport.query.filter(
+            AttackReport.forum_thread_id.is_(None),
+            AttackReport.status != "resolved",
+            AttackReport.attack_unix.isnot(None),
+            AttackReport.attack_unix < threshold_unix,
+        ).all()
+        for r in orphans:
+            r.status = "resolved"
+            r.resolved_at = now
+            r.auto_resolved = True
+
+        db.session.commit()
+        return resolved
+
+    @tasks.loop(minutes=5)
+    async def auto_resolve_loop(self):
+        """Automatically resolve expired attack reports."""
+        try:
+            if not getattr(self.bot, 'flask_app', None):
+                return
+
+            from app.config import Config
+            threshold_minutes = Config.AUTO_RESOLVE_AFTER_MINUTES
+
+            resolved_threads = await db_query(self.bot, lambda: self._do_auto_resolve(threshold_minutes))
+
+            for thread_info in (resolved_threads or []):
+                try:
+                    thread = await self.bot.fetch_channel(thread_info["thread_id"])
+                    ids_text = ", ".join(f"#{i}" for i in thread_info["report_ids"])
+                    await thread.send(f"🕐 Ataki {ids_text} automatycznie rozwiązane (czas ataku minął)")
+                    await thread.edit(archived=True)
+                except Exception:
+                    log.exception("Auto-resolve: nie udało się zarchiwizować wątku %s",
+                                  thread_info.get("thread_id"))
+        except Exception:
+            log.exception("Auto-resolve loop error")
+
+    @auto_resolve_loop.before_loop
+    async def before_auto_resolve(self):
+        await self.bot.wait_until_ready()
 
 
 def setup(bot):
