@@ -137,6 +137,9 @@ python -m pytest tests/ -v
 | `/tszukaj` | Search villages by player, alliance, population, radius |
 | `/tporownaj` | Compare two alliances side-by-side |
 | `/tsymulacja` | Combat simulator — calculate battle losses (modal) |
+| `/tbezpieczne` | Safe-send calculator — min distance for absence time |
+| `/tileobrony` | Defense calculator — how much def needed vs attacking army |
+| `/tprzechwyc` | Interception calculator — when to send def to arrive on time |
 | `/tdigest` | Weekly alliance digest (population, members, attacks) |
 | `/tmonitor` | Enable/disable personal village monitoring (DM alerts) |
 | `/tmonitor_ustawienia` | Adjust monitoring thresholds (pop drop, radius) |

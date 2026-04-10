@@ -2,7 +2,7 @@
 
 > Wirtualny Informator Taktyczno-Ekonomiczny Koalicji
 > Serwer: ts31.x3.europe.travian.com (x3 speed)
-> Wersja: **1.0.0** | 357 testów ✅ | 10 cogów | 25+ komend
+> Wersja: **1.0.0** | 385 testów ✅ | 10 cogów | 30 komend
 
 ## ✅ Zrealizowane
 
@@ -56,17 +56,19 @@
 - [x] 10 cogów: alerts, attacks, defense, digest, economy, general, identity, recon, monitor, simulator
 - [x] 357 testów pytest ✅
 
-## 🔧 W trakcie (Sprint 2)
-
-### Kalkulatory taktyczne
-- [ ] `/tbezpieczne` — kalkulator bezpiecznego wysyłania surowców
-- [ ] `/tileobrony` — ile obrony potrzeba na daną armię
-- [ ] `/tprzechwyc` — kalkulator przechwytywania ataków (timing)
-
-### Poprawki i ulepszenia
-- [ ] Bugfixy parsera raportów (edge cases, mobilne wsparcie)
-- [ ] Enhanced parser — lepsza obsługa formatów raportów
-- [ ] Bilans zbożowy wioski pod obroną (produkcja vs zużycie)
+### Sprint 2 — Kalkulatory Taktyczne + Bugfixy
+- [x] `/tbezpieczne` — kalkulator bezpiecznego wysyłania (min. odległość na czas nieobecności)
+- [x] `/tileobrony` — ile obrony potrzeba na daną armię atakującą
+- [x] `/tprzechwyc` — kalkulator przechwytywania ataków (kiedy wysłać def)
+- [x] `calc_safe_distance()` — odwrotna formuła podróży
+- [x] `calc_needed_defense()` — estymacja potrzebnej obrony (z murem)
+- [x] `calc_interception_times()` — czas wysłania dla każdej jednostki
+- [x] Parser raportów — wyświetlanie kosztu zabicia (kill-cost)
+- [x] Fix: duplikacja wątków obrony (race condition z per-coord lock)
+- [x] Fix: puste nawiasy sojuszu w embedach ataków/obrony
+- [x] Fix: komendy wewnątrz klasy Economy (nie CombatSimModal)
+- [x] Fix: limit 1024 znaków w polu embed (sugerowane cele)
+- [x] 385 testów pytest ✅
 
 ## 📋 Planowane
 
@@ -105,7 +107,7 @@ run.py                  # Flask + bot + scheduler
 │   ├── utils.py        # Stałe, prędkości, zboże
 │   └── cogs/           # 10 modułów komend
 ├── config/             # YAML config
-├── tests/              # 357 testów pytest
+├── tests/              # 385 testów pytest
 └── docker-compose.yml  # Produkcja (PostgreSQL)
 ```
 

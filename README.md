@@ -50,15 +50,40 @@ Dashboard: http://localhost:5000
 
 | Komenda | Opis |
 |---------|------|
+| **ℹ️ Informacyjne** | |
 | `/thelp` | Lista komend |
 | `/tinfo` | Informacje o bocie + uptime |
 | `/tstats` | Statystyki serwera (gracze, sojusze, top 5) |
+| **🔐 Tożsamość** | |
 | `/tlink <gracz>` | Połącz konto Discord z graczem Travian |
 | `/tunlink` | Usuń połączenie |
 | `/twhoami` | Pokaż połączony profil Travian |
-| `/tatak` | Zgłoś atak na wioskę sojuszu |
-| `/tataki` | Lista ostatnich ataków |
-| `/trozwiaz` | Rozwiąż zgłoszenie ataku |
+| **⚔️ Ataki i Obrona** | |
+| `/tatak` | Zgłoś atak na wioskę sojuszu (tworzy wątek obrony) |
+| `/tdodaj` | Dodaj kolejny atak do istniejącego wątku |
+| `/tataki` | Lista aktywnych ataków |
+| `/trozwiaz` | Rozwiąż zgłoszenie ataku + archiwizacja wątku |
+| `/twojska` | Zarejestruj garnizon wojsk w wiosce |
+| `/twsparcie` | Zarejestruj wysłane wsparcie |
+| `/tstan` | Stan obrony wioski (garnizon + wsparcie + zboże) |
+| `/tdef` | Kto z sojuszu może wysłać def? (sortowane po ETA) |
+| **📜 Raporty** | |
+| `/traport` | Wklej raport bitewny (modal) |
+| `/traporty` | Lista ostatnich raportów bitewnych |
+| **🗺️ Rozpoznanie** | |
+| `/tnieaktywni` | Znajdź nieaktywnych graczy w okolicy |
+| `/tcropper` | Szukaj cropperów (9c/15c) w zasięgu |
+| `/tszukaj` | Wyszukaj wioski po nazwie, graczu, sojuszu |
+| `/tporownaj` | Porównaj dwa sojusze (populacja, wioski, top gracze) |
+| **🧮 Kalkulatory taktyczne** | |
+| `/tbezpieczne` | Bezpieczne wysyłanie — minimalna odległość na czas nieobecności |
+| `/tileobrony` | Ile obrony potrzeba na daną armię atakującą |
+| `/tprzechwyc` | Kalkulator przechwycenia — kto zdąży wysłać def |
+| `/tsymulacja` | Symulator bitwy (modal) |
+| **📊 Monitoring** | |
+| `/tdigest` | Tygodniowe podsumowanie zmian sojuszu |
+| `/tmonitor` | Włącz/wyłącz monitoring wiosek (alerty DM) |
+| `/tmonitor_ustawienia` | Ustaw progi monitoringu |
 
 ## Funkcje dashboardu
 
@@ -82,7 +107,7 @@ run.py                  # Punkt wejścia: Flask + bot + scheduler
 │   ├── bot.py          # Fabryka bota + db_query()
 │   └── cogs/           # 10 kogów z komendami slash
 ├── config/             # Konfiguracja YAML
-└── tests/              # 339 testów pytest
+└── tests/              # 385 testów pytest
 ```
 
 ## Uruchomienie lokalne (bez Dockera)
