@@ -115,6 +115,7 @@ class AttackReport(db.Model):
     status = db.Column(db.Text, default="reported")  # reported / defending / resolved
     forum_thread_id = db.Column(db.BigInteger)  # Discord forum thread ID
     resolved_at = db.Column(db.DateTime)
+    auto_resolved = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=_utcnow)
     updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
 
