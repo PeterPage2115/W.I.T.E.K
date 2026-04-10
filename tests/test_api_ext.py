@@ -55,6 +55,12 @@ class TestAuth:
                           headers={"X-Witek-Token": "test-token-123"})
         assert resp.status_code == 415
 
+    def test_options_preflight_no_auth_required(self, client):
+        """CORS preflight must pass without token."""
+        resp = client.options("/api/ext/report")
+        assert resp.status_code == 204
+        assert "X-Witek-Token" in resp.headers.get("Access-Control-Allow-Headers", "")
+
 
 class TestReportEndpoint:
     def test_submit_report(self, client):

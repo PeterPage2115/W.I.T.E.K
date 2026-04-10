@@ -15,9 +15,11 @@ bp = Blueprint("api_ext", __name__, url_prefix="/api/ext")
 
 
 def require_ext_token(f):
-    """Decorator: require valid X-Witek-Token header."""
+    """Decorator: require valid X-Witek-Token header. Skips OPTIONS (CORS preflight)."""
     @wraps(f)
     def decorated(*args, **kwargs):
+        if request.method == "OPTIONS":
+            return jsonify({}), 204
         token = request.headers.get("X-Witek-Token", "")
         expected = current_app.config.get("EXT_API_TOKEN", "")
         if not expected:
@@ -30,6 +32,8 @@ def require_ext_token(f):
 
 @bp.before_request
 def check_json():
+    if request.method == "OPTIONS":
+        return None
     if request.method == "POST" and not request.is_json:
         return jsonify({"error": "Content-Type must be application/json"}), 415
 
