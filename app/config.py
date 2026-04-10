@@ -56,8 +56,7 @@ class Config:
 
     # Scheduler
     scheduler = _yaml.get("scheduler", {})
-    FETCH_HOUR = scheduler.get("fetch_hour", 2)
-    FETCH_MINUTE = scheduler.get("fetch_minute", 0)
+    FETCH_INTERVAL_MINUTES = scheduler.get("fetch_interval_minutes", 60)
 
     # Alerts
     alerts = _yaml.get("alerts", {})

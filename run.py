@@ -1,9 +1,9 @@
-"""WITEK — Entrypoint.
+"""W.I.T.E.K — Entrypoint.
 
 Usage:
     python run.py                 # Start Flask web server
     python run.py --collect       # Fetch map.sql and store snapshot
-    python run.py --scheduled     # Start Flask + scheduled daily collection
+    python run.py --scheduled     # Start Flask + interval collection (every N min)
     python run.py --bot-only      # Run only the Discord bot (no Flask)
 """
 
@@ -74,7 +74,7 @@ def _start_bot(flask_app):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="WITEK — Travian Alliance Tool")
+    parser = argparse.ArgumentParser(description="W.I.T.E.K — Travian Alliance Tool")
     parser.add_argument(
         "--collect", action="store_true", help="Fetch map.sql and store snapshot now"
     )
@@ -84,7 +84,7 @@ def main():
     parser.add_argument(
         "--scheduled",
         action="store_true",
-        help="Start Flask with scheduled daily collection",
+        help="Start Flask with scheduled map.sql collection (interval)",
     )
     parser.add_argument(
         "--bot-only",
@@ -126,7 +126,7 @@ def main():
             print("❌ DISCORD_TOKEN nie ustawiony w .env")
             return
 
-        print("🤖 WITEK — tryb bot-only (Ctrl+C aby zatrzymać)")
+        print("🤖 W.I.T.E.K — tryb bot-only (Ctrl+C aby zatrzymać)")
 
         from bot.bot import create_bot
 
@@ -154,20 +154,38 @@ def main():
 
     if args.scheduled:
         from apscheduler.schedulers.background import BackgroundScheduler
+        from datetime import datetime, timezone
+
+        interval_min = app.config["FETCH_INTERVAL_MINUTES"]
 
         scheduler = BackgroundScheduler()
         scheduler.add_job(
             collect_and_store,
-            "cron",
+            "interval",
             args=[app],
-            hour=app.config["FETCH_HOUR"],
-            minute=app.config["FETCH_MINUTE"],
-            id="daily_map_sql",
+            minutes=interval_min,
+            id="map_sql_interval",
         )
         scheduler.start()
         print(
-            f"⏰ Scheduler: map.sql co dzień o {app.config['FETCH_HOUR']:02d}:{app.config['FETCH_MINUTE']:02d} UTC"
+            f"Scheduler: map.sql co {interval_min} min"
         )
+
+        # Fetch on startup if no recent snapshot exists
+        with app.app_context():
+            from app.models import Snapshot
+
+            latest = Snapshot.query.order_by(Snapshot.fetched_at.desc()).first()
+            if latest is None:
+                print("Brak snapshotow - pobieram map.sql na starcie...")
+                collect_and_store(app)
+            else:
+                age_min = (datetime.now(timezone.utc) - latest.fetched_at).total_seconds() / 60
+                if age_min > interval_min:
+                    print(
+                        f"Ostatni snapshot sprzed {int(age_min)} min - pobieram aktualne dane..."
+                    )
+                    collect_and_store(app)
 
     # -- Start Discord bot in background thread --------------------------- #
 
@@ -175,7 +193,7 @@ def main():
 
     # -- Start Flask ------------------------------------------------------ #
 
-    print(f"WITEK startuje na http://localhost:{args.port}")
+    print(f"W.I.T.E.K startuje na http://localhost:{args.port}")
     app.run(host="0.0.0.0", port=args.port, debug=app.config["DEBUG"])
 
 

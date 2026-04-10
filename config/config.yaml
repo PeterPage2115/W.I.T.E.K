@@ -1,4 +1,4 @@
-# WITEK — Wirtualny Informator Taktyczno-Ekonomiczny Koalicji
+# W.I.T.E.K — Wirtualny Informator Taktyczno-Ekonomiczny Koalicji
 # Konfiguracja
 
 travian:
@@ -13,9 +13,8 @@ travian:
   # our_alliances: [123, 456, 789]
 
 scheduler:
-  # Godzina pobierania map.sql (UTC)
-  fetch_hour: 16
-  fetch_minute: 31
+  # Interwał pobierania map.sql w minutach (map.sql aktualizuje się co ~15 min)
+  fetch_interval_minutes: 60
 
 alerts:
   # Próg spadku populacji dla alertu
