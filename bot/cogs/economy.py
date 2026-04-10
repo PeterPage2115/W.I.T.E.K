@@ -1121,9 +1121,16 @@ class Economy(commands.Cog):
                                 f"[{t['alliance']}] pop {t['pop']} "
                                 f"({t['dist']} pól)"
                             )
+                    # Discord embed field limit is 1024 chars
+                    field_text = ""
+                    for line in target_lines:
+                        if len(field_text) + len(line) + 1 > 1000:
+                            field_text += "\n_…i więcej_"
+                            break
+                        field_text += ("\n" + line) if field_text else line
                     embed.add_field(
                         name="🎯 Sugerowane cele",
-                        value="\n".join(target_lines),
+                        value=field_text or "Brak danych",
                         inline=False,
                     )
                 else:
