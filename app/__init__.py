@@ -22,6 +22,9 @@ def create_app(config_class=Config):
     app.register_blueprint(reports.bp)
     app.register_blueprint(auth.bp)
 
+    from .routes import api_ext
+    app.register_blueprint(api_ext.bp)
+
     @app.context_processor
     def inject_user():
         from .auth_utils import get_current_user

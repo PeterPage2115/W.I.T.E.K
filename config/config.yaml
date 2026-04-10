@@ -25,3 +25,6 @@ alerts:
 
 attacks:
   auto_resolve_after_minutes: 120
+
+extension:
+  enabled: true

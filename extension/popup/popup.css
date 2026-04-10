@@ -1,0 +1,160 @@
+/* WITEK Extension Popup — Travian-inspired dark theme */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  width: 360px;
+  min-height: 420px;
+  font-family: 'Georgia', 'Times New Roman', serif;
+  background: linear-gradient(180deg, #2a1f14 0%, #1a1208 100%);
+  color: #f0e6d0;
+}
+
+.container {
+  padding: 20px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #5a3a1a;
+}
+
+.header h1 {
+  font-size: 24px;
+  color: #d4a017;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}
+
+.subtitle {
+  font-size: 12px;
+  color: #a08060;
+  margin-top: 4px;
+  font-style: italic;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 13px;
+  color: #c0a878;
+  margin-bottom: 6px;
+  font-weight: bold;
+}
+
+.form-group input[type="url"],
+.form-group input[type="password"] {
+  width: 100%;
+  padding: 10px 12px;
+  background: #1a1208;
+  border: 1px solid #5a3a1a;
+  border-radius: 4px;
+  color: #f0e6d0;
+  font-family: 'Consolas', monospace;
+  font-size: 13px;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #d4a017;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.toggle input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: #5a9a0a;
+  cursor: pointer;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.btn {
+  flex: 1;
+  padding: 10px;
+  border: 2px solid #5a3a1a;
+  border-radius: 6px;
+  font-family: 'Georgia', serif;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn.primary {
+  background: linear-gradient(135deg, #5a3a1a 0%, #8b6914 100%);
+  color: #f0e6d0;
+  border-color: #d4a017;
+}
+
+.btn.primary:hover {
+  background: linear-gradient(135deg, #8b6914 0%, #c9a227 100%);
+}
+
+.btn.secondary {
+  background: linear-gradient(135deg, #1a3a1a 0%, #2a5a2a 100%);
+  color: #a0d8a0;
+  border-color: #5a9a0a;
+}
+
+.btn.secondary:hover {
+  background: linear-gradient(135deg, #2a5a2a 0%, #3a7a3a 100%);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.status {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  text-align: center;
+  min-height: 24px;
+  transition: all 0.3s;
+}
+
+.status.success {
+  background: rgba(90, 154, 10, 0.2);
+  border: 1px solid #5a9a0a;
+  color: #a0d8a0;
+}
+
+.status.error {
+  background: rgba(231, 76, 60, 0.2);
+  border: 1px solid #e74c3c;
+  color: #f0a0a0;
+}
+
+.footer {
+  margin-top: 20px;
+  padding-top: 12px;
+  border-top: 1px solid #3a2a1a;
+  text-align: center;
+}
+
+.footer p {
+  font-size: 11px;
+  color: #6a5a4a;
+  font-style: italic;
+}

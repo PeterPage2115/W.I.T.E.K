@@ -64,6 +64,9 @@ class Config:
     POP_DROP_THRESHOLD = alerts.get("pop_drop_threshold", 15)
     NEW_VILLAGE_RADIUS = alerts.get("new_village_radius", 30)
 
+    # Extension API
+    EXT_API_TOKEN = os.getenv("EXT_API_TOKEN", "")
+
     # Discord OAuth2
     DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID", "")
     DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET", "")

@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "WITEK — Travian Assistant",
+  "version": "1.0.0",
+  "description": "Wysyła dane z Travian Legends do bota WITEK (raporty, wojska, nadchodzące ataki)",
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": [
+    "*://*.travian.com/*",
+    "*://*.travian.de/*",
+    "*://*.travian.co.uk/*",
+    "*://*.travian.us/*",
+    "*://*.travian.net/*"
+  ],
+  "background": {
+    "service_worker": "background/service-worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.travian.com/*",
+        "*://*.travian.de/*",
+        "*://*.travian.co.uk/*",
+        "*://*.travian.us/*",
+        "*://*.travian.net/*"
+      ],
+      "js": ["content/detector.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "WITEK — Travian Assistant"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
