@@ -119,7 +119,8 @@ class AttackReport(db.Model):
     updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
 
 
-TRIBE_NAMES = {1: "Rzymianie", 2: "Germanie", 3: "Galowie"}
+from bot.tribes import TRIBES
+TRIBE_NAMES = {t.tid: t.name_pl for t in TRIBES.values()}
 
 
 class VillageTroops(db.Model):
