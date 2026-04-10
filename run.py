@@ -180,7 +180,12 @@ def main():
                 print("Brak snapshotow - pobieram map.sql na starcie...")
                 collect_and_store(app)
             else:
-                age_min = (datetime.now(timezone.utc) - latest.fetched_at).total_seconds() / 60
+                now = datetime.now(timezone.utc)
+                fetched = latest.fetched_at
+                # SQLite stores naive datetimes — treat as UTC
+                if fetched.tzinfo is None:
+                    fetched = fetched.replace(tzinfo=timezone.utc)
+                age_min = (now - fetched).total_seconds() / 60
                 if age_min > interval_min:
                     print(
                         f"Ostatni snapshot sprzed {int(age_min)} min - pobieram aktualne dane..."
