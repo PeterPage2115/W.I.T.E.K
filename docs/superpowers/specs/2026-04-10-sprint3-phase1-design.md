@@ -18,25 +18,34 @@ Nowy moduł `bot/tribes.py` z ujednoliconą definicją jednostek per nacja. Każ
 ```python
 @dataclass(frozen=True)
 class UnitDef:
-    name: str           # Kanoniczna nazwa (po polsku dla tid 1-3, angielska dla 6-9)
+    name: str           # Kanoniczna nazwa (używana w UNIT_CROP, UNIT_COMBAT, _ALIASES)
     att: int            # Atak bazowy
     def_inf: int        # Obrona przed piechotą
     def_cav: int        # Obrona przed kawalerią
     speed: int          # Prędkość bazowa (pola/h bez mnożnika serwera)
     crop: int           # Zużycie zboża/h
     unit_type: str      # inf / cav / siege / special
-    aliases: tuple[str, ...] = ()  # Alternatywne formy nazwy
+    speed_name: str = ""    # Legacy nazwa w UNIT_SPEEDS (jeśli inna niż name, np. "Falanga" vs "Falangita")
+    aliases: tuple[str, ...] = ()  # Wszystkie alternatywne formy (polskie odmiany, skróty)
 
 @dataclass(frozen=True)
 class TribeDef:
     tid: int
     name_pl: str        # Nazwa nacji po polsku
     name_en: str        # Nazwa nacji po angielsku
+    emoji: str          # Emoji nacji (🏛️, ⚔️, etc.)
     wall_type: str      # Typ muru (City Wall, Earth Wall, etc.)
     units: tuple[UnitDef, ...]
     settler_name: str = "Osadnik"
     chief_idx: int = 8  # Indeks wodza w liście jednostek (domyślnie 8 = slot 9)
 ```
+
+**Zasada nazewnictwa:**
+- `UnitDef.name` = kanoniczna nazwa (jak w UNIT_CROP/UNIT_COMBAT): `"Falangita"`, `"Grom Teutatesa"`
+- `UnitDef.speed_name` = legacy nazwa z UNIT_SPEEDS (jeśli inna): `"Falanga"`, `"Piorun Teutatesa"`, `"Druid"`
+- Jeśli `speed_name` puste → używa `name` (większość jednostek)
+- `UnitDef.aliases` = wszystkie formy z obecnego `_ALIASES` dict + skróty z `_COMBAT_ABBREV`
+- Dla tid 6-9: nazwy angielskie (gra nie ma polskich tłumaczeń nowych nacji)
 
 ### Registry
 
@@ -51,20 +60,40 @@ Dostęp: `TRIBES[3].units[0].speed` → bazowa prędkość Falangity.
 `bot/utils.py` zachowuje istniejące interfejsy (UNIT_SPEEDS, UNIT_CROP, UNIT_COMBAT, CROP_BY_NAME, COMBAT_BY_NAME, _ALIASES, SPEED_BY_NAME). Generowane dynamicznie z `TRIBES` na starcie:
 
 ```python
-from bot.tribes import TRIBES, get_speed_multiplier
+from bot.tribes import TRIBES, get_speed_multiplier, get_available_tribes
 
 TROOP_SPEED_MULTIPLIER = get_speed_multiplier()  # z config.yaml
+AVAILABLE_TRIBES = get_available_tribes()          # z config.yaml, domyślnie [1,2,3]
 
+# UNIT_SPEEDS — używa speed_name (legacy) jeśli podana, inaczej name
 UNIT_SPEEDS = {}
 for tid, tribe in TRIBES.items():
     UNIT_SPEEDS[tid] = [
-        {"name": u.name, "speed": u.speed * TROOP_SPEED_MULTIPLIER, "type": u.unit_type}
-        for u in tribe.units if u.unit_type != "special" or True
+        {"name": u.speed_name or u.name, "speed": u.speed * TROOP_SPEED_MULTIPLIER, "type": u.unit_type}
+        for u in tribe.units
     ]
-# analogicznie UNIT_CROP, UNIT_COMBAT, _ALIASES
+
+# UNIT_CROP — używa name (kanoniczna)
+UNIT_CROP = {tid: [{"name": u.name, "crop": u.crop, "type": u.unit_type} for u in t.units] for tid, t in TRIBES.items()}
+
+# UNIT_COMBAT — używa name (kanoniczna)
+UNIT_COMBAT = {tid: [{"name": u.name, "att": u.att, "def_inf": u.def_inf, "def_cav": u.def_cav, "type": u.unit_type} for u in t.units] for tid, t in TRIBES.items()}
+
+# _ALIASES — generowane z UnitDef.aliases + speed_name
+# TRIBE_NAMES, TRIBE_EMOJI, TRIBE_ICONS — generowane z TribeDef
 ```
 
-Żaden cog nie wymaga zmian w importach — dalej importuje z `bot.utils`.
+**Kluczowe:** `detect_possible_units()` (linia 384) i inne parsery używają `AVAILABLE_TRIBES` zamiast hardcoded `[1, 2, 3]`. Żaden cog nie wymaga zmian w importach — dalej importuje z `bot.utils`.
+
+### Metadata nacji (generowane z TribeDef)
+
+```python
+TRIBE_NAMES = {t.tid: t.name_pl for t in TRIBES.values()}
+TRIBE_EMOJI = {t.tid: t.emoji for t in TRIBES.values()}
+TRIBE_ICONS = {t.tid: f"{CDN_BASE}/global/tribes/{t.name_en.lower()}_medium.png" for t in TRIBES.values()}
+```
+
+Nowe emoji: `6: "🏺"` (Egipcjanie), `7: "🐎"` (Hunowie), `8: "⛵"` (Wikingowie), `9: "🛡️"` (Spartanie).
 
 ---
 
@@ -168,6 +197,8 @@ for tid, tribe in TRIBES.items():
 | 8 | Wikingowie | Barricade | Średni |
 | 9 | Spartanie | Defensive Wall | Słaby |
 
+**Uwaga o bonusach murów:** Obecny `WALL_BONUS` w `utils.py` to pojedyncza tabela (Earth Wall). Różne typy murów mają różne krzywe bonusów. W Sprint 3 Phase 1 zapisujemy `wall_type` w TribeDef, ale **nie** implementujemy per-wall bonus tables — to wymaga osobnego researchu i kalibracji. Kalkulator `/tsymulacja` dalej używa obecnej pojedynczej tabeli. Per-wall bonusy → przyszły sprint.
+
 ---
 
 ## 3. Konfiguracja per-serwer
@@ -188,8 +219,17 @@ travian:
 
 1. **`bot/utils.py`**: `TROOP_SPEED_MULTIPLIER` ładowany z configu zamiast hardcoded `= 2`
 2. **Autocomplete w komendach**: `/tsymulacja`, `/tdef`, `/tszukaj` filtrują nacje po `available_tribes`
-3. **`app/models.py`**: `TRIBE_NAMES` rozszerzony o tid 6-9
-4. **Walidacja**: Jeśli `available_tribes` nie podano, domyślnie `[1, 2, 3]` (kompatybilność wsteczna)
+3. **Parsery i detektory**: `detect_possible_units()`, `parse_army_input()` używają `AVAILABLE_TRIBES` zamiast hardcoded `[1, 2, 3]`
+4. **`app/models.py`**: `TRIBE_NAMES` generowany z tribes.py (tid 1-9)
+5. **Walidacja**: Jeśli `available_tribes` nie podano, domyślnie `[1, 2, 3]` (kompatybilność wsteczna)
+
+### Walidacja konfiguracji
+
+Na starcie bota/aplikacji:
+- `speed_multiplier` ∈ {1, 2, 3, 5} — nieprawidłowa wartość → warning + fallback do 3
+- `troop_speed_multiplier` ∈ {1, 2} — nieprawidłowa → warning + fallback do 2
+- `available_tribes` — każdy element ∈ {1, 2, 3, 6, 7, 8, 9} — nieznany tid → warning + pomiń
+- Oba multiplier-y ładowane z tego samego `config.yaml`, zarówno przez Flask jak i bot
 
 ---
 
@@ -205,15 +245,18 @@ Background task w `Attacks` cog, uruchamiany co 5 minut.
 
 ```
 co 5 minut:
-  1. Znajdź AttackReport z:
-     - status IN ('reported', 'defending')
-     - attack_unix < now() - auto_resolve_minutes * 60
-  2. Dla każdego:
-     a. Ustaw status = "resolved", resolved_at = now, auto_resolved = True
-     b. Zamknij powiązany DefenseThread (status = "resolved")
-     c. Wyślij wiadomość do wątku Discord:
-        "🕐 Atak #X automatycznie rozwiązany (czas ataku minął 2h temu)"
-     d. Archiwizuj wątek (thread.edit(archived=True))
+  1. Znajdź DefenseThread z status = "active"
+  2. Dla każdego wątku:
+     a. Pobierz WSZYSTKIE AttackReport-y z tym forum_thread_id i status != "resolved"
+     b. Sprawdź czy KAŻDY atak ma attack_unix < now() - auto_resolve_minutes * 60
+        - Jeśli którykolwiek atak jest jeszcze w przyszłości → pomiń wątek
+     c. Jeśli wszystkie ataki przeterminowane:
+        - Ustaw status = "resolved", resolved_at = now, auto_resolved = True na KAŻDYM raporcie
+        - Zamknij DefenseThread (status = "resolved")
+        - Wyślij wiadomość do wątku Discord:
+          "🕐 Wszystkie ataki w wątku automatycznie rozwiązane (czas ataku minął)"
+        - Archiwizuj wątek (thread.edit(archived=True))
+  3. Osobno: znajdź AttackReport BEZ forum_thread_id z attack_unix < threshold → resolve indywidualnie
 ```
 
 ### Zmiany w modelu
@@ -232,8 +275,30 @@ attacks:
 
 ### Edge cases
 - Atak bez `attack_unix` (nie podano czasu) → nie podlega auto-resolve
-- Wątek z wieloma atakami → resolve dopiero gdy WSZYSTKIE ataki miną threshold
+- Wątek z wieloma atakami → resolve dopiero gdy WSZYSTKIE ataki w wątku miną threshold
 - Bot restart → loop wznawia się automatycznie, przetwarza zaległe ataki
+- Partial failure: jeśli DB update OK ale Discord archive/send fail → loguj błąd, oznacz jako resolved (Discord thread cleanup jest best-effort)
+
+### Migracja bazy danych
+
+Projekt nie używa Flask-Migrate. Migracja jako ręczny SQL skrypt w `migrations/`:
+
+```sql
+-- migrations/003_auto_resolved.sql
+ALTER TABLE attack_reports ADD COLUMN auto_resolved BOOLEAN DEFAULT FALSE;
+-- Backfill: istniejące resolved raporty = ręcznie rozwiązane
+UPDATE attack_reports SET auto_resolved = FALSE WHERE status = 'resolved';
+```
+
+W `app/database.py` dodamy prostą logikę auto-migracji (sprawdza czy kolumna istnieje, jeśli nie → ALTER TABLE). Działa zarówno na SQLite jak i PostgreSQL.
+
+### Indeks DB
+
+```sql
+CREATE INDEX ix_attack_reports_status_unix ON attack_reports (status, attack_unix);
+```
+
+Optymalizuje query co 5 minut.
 
 ---
 
@@ -253,9 +318,13 @@ attacks:
 | Dane | Źródło | Model |
 |------|--------|-------|
 | Garnizon | `/twojska` | VillageTroops |
-| Wsparcie przysłane | `/twsparcie` | TroopSupport (status=arrived) |
-| Produkcja zboża | `/tatak` (pole produkcja) | AttackReport.crop_production |
-| Bohater | Założenie: 6 crop/h jeśli jest | stała HERO_CROP |
+| Wsparcie przysłane | `/twsparcie` | TroopSupport (WSZYSTKIE statusy — brak mechanizmu przejścia do "arrived") |
+| Produkcja zboża | `/tatak` (pole produkcja) LUB ręcznie | AttackReport.crop_production |
+| Bohater | Opcjonalny parametr komendy | stała HERO_CROP |
+
+**Uwaga:** Obecny system nie zmienia statusu TroopSupport z `in_transit` na `arrived`. Dlatego `/tzboza` uwzględnia WSZYSTKIE supports powiązane z daną wioską/wątkiem, niezależnie od statusu. Gracz manualnie zarządza supportami (dodaje/usuwa).
+
+**Precedencja produkcji:** Jeśli wioska jest w DefenseThread z wieloma atakami, użyj najnowszej niezerowej wartości `crop_production` z dowolnego AttackReport w wątku. Gracz może nadpisać parametrem komendy.
 
 ### Kalkulacja
 
@@ -283,9 +352,13 @@ balance = production - total_consumption
 📉 Zużycie:       -431 🌾/h
 📈 Produkcja:     +620 🌾/h
 💰 Bilans:        +189 🌾/h
+```
 
+Jeśli bilans jest **ujemny**, dodatkowa linia:
+```
 ⚠️ Przy obecnym zużyciu spichlerz (800k) starczy na ~34h
 ```
+(czas do wyczerpania = pojemność_spichlerza / |bilans|)
 
 ### Opcjonalne flagi
 - `/tzboza 76|43 bohater:tak` — uwzględnij bohatera
@@ -342,20 +415,44 @@ async def bot(flask_app):
 ### CI/CD
 Testy integracyjne w osobnym pytest marker: `pytest -m integration`. Uruchamiane osobno od unit testów, bo wymagają asyncio event loop.
 
+### Wymagania
+
+```
+# requirements.txt (dev dependencies)
+testcord>=0.1.0
+pytest-asyncio>=0.23.0
+```
+
+### Konfiguracja pytest
+
+```ini
+# pytest.ini lub pyproject.toml
+[tool.pytest.ini_options]
+markers = [
+    "integration: Discord bot integration tests (require testcord)",
+]
+asyncio_mode = "auto"
+```
+
+### Kontrola background tasks w testach
+
+Auto-resolve loop wyłączony w testach integracyjnych (nie startuje `@tasks.loop`). Testy, które potrzebują auto-resolve, wywołują metodę bezpośrednio z zamrożonym czasem (`freezegun` lub `unittest.mock.patch`).
+
 ---
 
 ## Podsumowanie zmian
 
 | Komponent | Typ zmiany |
 |-----------|-----------|
-| `bot/tribes.py` | **NOWY** — ujednolicone definicje nacji |
-| `bot/utils.py` | MODYFIKACJA — generuje słowniki z tribes.py, bugfixy |
-| `config/config.yaml` | MODYFIKACJA — speed_multiplier, available_tribes |
-| `app/config.py` | MODYFIKACJA — ładowanie nowych pól configu |
-| `app/models.py` | MODYFIKACJA — auto_resolved kolumna, TRIBE_NAMES rozszerzenie |
-| `bot/cogs/attacks.py` | MODYFIKACJA — auto-resolve background task |
+| `bot/tribes.py` | **NOWY** — ujednolicone definicje nacji (dataclass-based) |
+| `bot/utils.py` | MODYFIKACJA — generuje słowniki z tribes.py, bugfixy, AVAILABLE_TRIBES |
+| `config/config.yaml` | MODYFIKACJA — speed_multiplier, troop_speed_multiplier, available_tribes |
+| `app/config.py` | MODYFIKACJA — ładowanie nowych pól configu + walidacja |
+| `app/models.py` | MODYFIKACJA — auto_resolved kolumna, TRIBE_NAMES z tribes.py |
+| `app/database.py` | MODYFIKACJA — auto-migracja (ALTER TABLE jeśli kolumna nie istnieje) |
+| `bot/cogs/attacks.py` | MODYFIKACJA — auto-resolve background task (thread-level) |
 | `bot/cogs/defense.py` | MODYFIKACJA — `/tzboza` komenda |
-| `bot/cogs/economy.py` | MODYFIKACJA — tribe filtering w autocomplete |
-| `tests/integration/` | **NOWY** — testy integracyjne z testcord |
-| `migrations/` | **NOWY** — migracja auto_resolved kolumny |
-| `requirements.txt` | MODYFIKACJA — dodanie testcord |
+| `bot/cogs/economy.py` | MODYFIKACJA — tribe filtering w autocomplete/parsers |
+| `tests/integration/` | **NOWY** — testy integracyjne z testcord (~31 testów) |
+| `migrations/003_auto_resolved.sql` | **NOWY** — migracja auto_resolved kolumny + indeks |
+| `requirements.txt` | MODYFIKACJA — testcord, pytest-asyncio |
