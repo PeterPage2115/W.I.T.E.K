@@ -952,198 +952,6 @@ class Economy(commands.Cog):
         modal = CombatSimModal()
         await ctx.send_modal(modal)
 
-
-# ------------------------------------------------------------------ #
-# Combat Simulation Modal
-# ------------------------------------------------------------------ #
-
-def _fmt_num(n: float) -> str:
-    """Format number with space as thousands separator."""
-    if isinstance(n, float):
-        n = int(n)
-    return f"{n:,}".replace(",", " ")
-
-
-def _build_combat_embed(result: dict, attackers: dict, defenders: dict, wall_level: int) -> discord.Embed:
-    """Build Discord embed with combat simulation results."""
-    if result["result"] == "att_wins":
-        title = "⚔️ Zwycięstwo atakujących"
-        color = COLOR_ATTACK
-    elif result["result"] == "def_wins":
-        title = "🛡️ Zwycięstwo obrońców"
-        color = COLOR_SUCCESS
-    else:
-        title = "💀 Remis — obie strony zniszczone"
-        color = COLOR_WARNING
-
-    embed = discord.Embed(title="⚔️ Symulacja walki", color=color)
-
-    # Attack power
-    att_lines = [f"**Łącznie:** {_fmt_num(result['total_att'])}"]
-    att_lines.append(
-        f"🚶 Piechota: {_fmt_num(result['inf_att'])} | "
-        f"🐴 Kawaleria: {_fmt_num(result['cav_att'])}"
-    )
-    embed.add_field(name="🗡️ Siła ataku", value="\n".join(att_lines), inline=False)
-
-    # Defense power
-    def_lines = []
-    wall_note = f" (mur poz. {wall_level}: +{result['wall_bonus_pct']}%)" if wall_level > 0 else ""
-    if wall_level > 0:
-        def_lines.append(
-            f"vs 🚶: {_fmt_num(result['def_power_inf'])} → "
-            f"{_fmt_num(result['def_power_inf_wall'])} | "
-            f"vs 🐴: {_fmt_num(result['def_power_cav'])} → "
-            f"{_fmt_num(result['def_power_cav_wall'])}"
-        )
-    else:
-        def_lines.append(
-            f"vs 🚶: {_fmt_num(result['def_power_inf'])} | "
-            f"vs 🐴: {_fmt_num(result['def_power_cav'])}"
-        )
-    att_type_label = "🐴 kawalerii" if result["att_type"] == "cav" else "🚶 piechoty"
-    def_lines.append(f"Typ ataku: {att_type_label} → obrona: {_fmt_num(result['effective_def'])}")
-    embed.add_field(
-        name=f"🛡️ Siła obrony{wall_note}",
-        value="\n".join(def_lines),
-        inline=False,
-    )
-
-    # Result
-    embed.add_field(
-        name="📊 Wynik",
-        value=(
-            f"{title}\n"
-            f"Straty ataku: **~{result['att_losses_pct']}%** | "
-            f"Straty obrony: **~{result['def_losses_pct']}%**"
-        ),
-        inline=False,
-    )
-
-    # Surviving attackers
-    att_surv = result["att_remaining"]
-    if any(v > 0 for v in att_surv.values()):
-        surv_parts = []
-        for name, orig in attackers.items():
-            left = att_surv.get(name, 0)
-            surv_parts.append(f"{name}: **{_fmt_num(left)}**/{_fmt_num(orig)}")
-        embed.add_field(
-            name="🗡️ Ocalałe jednostki ataku",
-            value=" | ".join(surv_parts),
-            inline=False,
-        )
-    else:
-        embed.add_field(
-            name="🗡️ Ocalałe jednostki ataku",
-            value="_(żadne)_",
-            inline=False,
-        )
-
-    # Surviving defenders
-    def_surv = result["def_remaining"]
-    if any(v > 0 for v in def_surv.values()):
-        surv_parts = []
-        for name, orig in defenders.items():
-            left = def_surv.get(name, 0)
-            surv_parts.append(f"{name}: **{_fmt_num(left)}**/{_fmt_num(orig)}")
-        embed.add_field(
-            name="🛡️ Ocalałe jednostki obrony",
-            value=" | ".join(surv_parts),
-            inline=False,
-        )
-    else:
-        embed.add_field(
-            name="🛡️ Ocalałe jednostki obrony",
-            value="_(żadne)_",
-            inline=False,
-        )
-
-    embed.add_field(
-        name="",
-        value="💡 _Symulacja przybliżona. Nie uwzględnia premii morale i bonusów populacyjnych._",
-        inline=False,
-    )
-    embed.set_footer(text=FOOTER)
-    return embed
-
-
-class CombatSimModal(discord.ui.Modal):
-    """Modal for combat simulation input."""
-
-    def __init__(self):
-        super().__init__(title="⚔️ Symulacja walki")
-        self.attackers_input = discord.ui.InputText(
-            label="Atakujący (nazwa:ilość, ...)",
-            placeholder="Imperians:500, EC:200, Taran:50",
-            style=discord.InputTextStyle.paragraph,
-            required=True,
-        )
-        self.defenders_input = discord.ui.InputText(
-            label="Obrońcy (nazwa:ilość, ...)",
-            placeholder="Falangita:800, Druid:300",
-            style=discord.InputTextStyle.paragraph,
-            required=True,
-        )
-        self.wall_input = discord.ui.InputText(
-            label="Poziom muru (0-20)",
-            placeholder="10",
-            required=False,
-            max_length=2,
-        )
-        self.add_item(self.attackers_input)
-        self.add_item(self.defenders_input)
-        self.add_item(self.wall_input)
-
-    async def callback(self, interaction: discord.Interaction):
-        # Parse wall level
-        wall_level = 0
-        wall_raw = self.wall_input.value.strip() if self.wall_input.value else ""
-        if wall_raw:
-            if not wall_raw.isdigit() or not (0 <= int(wall_raw) <= 20):
-                await interaction.response.send_message(
-                    "❌ Poziom muru musi być liczbą 0-20.",
-                    ephemeral=True,
-                )
-                return
-            wall_level = int(wall_raw)
-
-        # Parse armies
-        attackers, att_errors = parse_army_input(self.attackers_input.value)
-        defenders, def_errors = parse_army_input(self.defenders_input.value)
-        all_errors = att_errors + def_errors
-
-        if not attackers and not defenders:
-            msg = "❌ Nie podano żadnych jednostek.\n"
-            if all_errors:
-                msg += "\n".join(all_errors)
-            await interaction.response.send_message(msg, ephemeral=True)
-            return
-
-        if not attackers:
-            msg = "❌ Brak jednostek atakujących.\n"
-            if att_errors:
-                msg += "\n".join(att_errors)
-            await interaction.response.send_message(msg, ephemeral=True)
-            return
-
-        if not defenders:
-            msg = "❌ Brak jednostek obrońców.\n"
-            if def_errors:
-                msg += "\n".join(def_errors)
-            await interaction.response.send_message(msg, ephemeral=True)
-            return
-
-        # Run simulation
-        result = simulate_combat(attackers, defenders, wall_level)
-        embed = _build_combat_embed(result, attackers, defenders, wall_level)
-
-        # If there were some parsing errors, note them
-        content = None
-        if all_errors:
-            content = "⚠️ Część jednostek pominięto:\n" + "\n".join(all_errors)
-
-        await interaction.response.send_message(content=content, embed=embed)
-
     # ------------------------------------------------------------------ #
     # /tbezpieczne — safe-send distance calculator
     # ------------------------------------------------------------------ #
@@ -1561,6 +1369,199 @@ class CombatSimModal(discord.ui.Modal):
 
         embed.set_footer(text=f"{FOOTER} | Czasy podróży bez bohatera (chyba że podano buty)")
         await ctx.followup.send(embed=embed)
+
+
+# ------------------------------------------------------------------ #
+# Combat Simulation Modal
+# ------------------------------------------------------------------ #
+
+def _fmt_num(n: float) -> str:
+    """Format number with space as thousands separator."""
+    if isinstance(n, float):
+        n = int(n)
+    return f"{n:,}".replace(",", " ")
+
+
+def _build_combat_embed(result: dict, attackers: dict, defenders: dict, wall_level: int) -> discord.Embed:
+    """Build Discord embed with combat simulation results."""
+    if result["result"] == "att_wins":
+        title = "⚔️ Zwycięstwo atakujących"
+        color = COLOR_ATTACK
+    elif result["result"] == "def_wins":
+        title = "🛡️ Zwycięstwo obrońców"
+        color = COLOR_SUCCESS
+    else:
+        title = "💀 Remis — obie strony zniszczone"
+        color = COLOR_WARNING
+
+    embed = discord.Embed(title="⚔️ Symulacja walki", color=color)
+
+    # Attack power
+    att_lines = [f"**Łącznie:** {_fmt_num(result['total_att'])}"]
+    att_lines.append(
+        f"🚶 Piechota: {_fmt_num(result['inf_att'])} | "
+        f"🐴 Kawaleria: {_fmt_num(result['cav_att'])}"
+    )
+    embed.add_field(name="🗡️ Siła ataku", value="\n".join(att_lines), inline=False)
+
+    # Defense power
+    def_lines = []
+    wall_note = f" (mur poz. {wall_level}: +{result['wall_bonus_pct']}%)" if wall_level > 0 else ""
+    if wall_level > 0:
+        def_lines.append(
+            f"vs 🚶: {_fmt_num(result['def_power_inf'])} → "
+            f"{_fmt_num(result['def_power_inf_wall'])} | "
+            f"vs 🐴: {_fmt_num(result['def_power_cav'])} → "
+            f"{_fmt_num(result['def_power_cav_wall'])}"
+        )
+    else:
+        def_lines.append(
+            f"vs 🚶: {_fmt_num(result['def_power_inf'])} | "
+            f"vs 🐴: {_fmt_num(result['def_power_cav'])}"
+        )
+    att_type_label = "🐴 kawalerii" if result["att_type"] == "cav" else "🚶 piechoty"
+    def_lines.append(f"Typ ataku: {att_type_label} → obrona: {_fmt_num(result['effective_def'])}")
+    embed.add_field(
+        name=f"🛡️ Siła obrony{wall_note}",
+        value="\n".join(def_lines),
+        inline=False,
+    )
+
+    # Result
+    embed.add_field(
+        name="📊 Wynik",
+        value=(
+            f"{title}\n"
+            f"Straty ataku: **~{result['att_losses_pct']}%** | "
+            f"Straty obrony: **~{result['def_losses_pct']}%**"
+        ),
+        inline=False,
+    )
+
+    # Surviving attackers
+    att_surv = result["att_remaining"]
+    if any(v > 0 for v in att_surv.values()):
+        surv_parts = []
+        for name, orig in attackers.items():
+            left = att_surv.get(name, 0)
+            surv_parts.append(f"{name}: **{_fmt_num(left)}**/{_fmt_num(orig)}")
+        embed.add_field(
+            name="🗡️ Ocalałe jednostki ataku",
+            value=" | ".join(surv_parts),
+            inline=False,
+        )
+    else:
+        embed.add_field(
+            name="🗡️ Ocalałe jednostki ataku",
+            value="_(żadne)_",
+            inline=False,
+        )
+
+    # Surviving defenders
+    def_surv = result["def_remaining"]
+    if any(v > 0 for v in def_surv.values()):
+        surv_parts = []
+        for name, orig in defenders.items():
+            left = def_surv.get(name, 0)
+            surv_parts.append(f"{name}: **{_fmt_num(left)}**/{_fmt_num(orig)}")
+        embed.add_field(
+            name="🛡️ Ocalałe jednostki obrony",
+            value=" | ".join(surv_parts),
+            inline=False,
+        )
+    else:
+        embed.add_field(
+            name="🛡️ Ocalałe jednostki obrony",
+            value="_(żadne)_",
+            inline=False,
+        )
+
+    embed.add_field(
+        name="",
+        value="💡 _Symulacja przybliżona. Nie uwzględnia premii morale i bonusów populacyjnych._",
+        inline=False,
+    )
+    embed.set_footer(text=FOOTER)
+    return embed
+
+
+class CombatSimModal(discord.ui.Modal):
+    """Modal for combat simulation input."""
+
+    def __init__(self):
+        super().__init__(title="⚔️ Symulacja walki")
+        self.attackers_input = discord.ui.InputText(
+            label="Atakujący (nazwa:ilość, ...)",
+            placeholder="Imperians:500, EC:200, Taran:50",
+            style=discord.InputTextStyle.paragraph,
+            required=True,
+        )
+        self.defenders_input = discord.ui.InputText(
+            label="Obrońcy (nazwa:ilość, ...)",
+            placeholder="Falangita:800, Druid:300",
+            style=discord.InputTextStyle.paragraph,
+            required=True,
+        )
+        self.wall_input = discord.ui.InputText(
+            label="Poziom muru (0-20)",
+            placeholder="10",
+            required=False,
+            max_length=2,
+        )
+        self.add_item(self.attackers_input)
+        self.add_item(self.defenders_input)
+        self.add_item(self.wall_input)
+
+    async def callback(self, interaction: discord.Interaction):
+        # Parse wall level
+        wall_level = 0
+        wall_raw = self.wall_input.value.strip() if self.wall_input.value else ""
+        if wall_raw:
+            if not wall_raw.isdigit() or not (0 <= int(wall_raw) <= 20):
+                await interaction.response.send_message(
+                    "❌ Poziom muru musi być liczbą 0-20.",
+                    ephemeral=True,
+                )
+                return
+            wall_level = int(wall_raw)
+
+        # Parse armies
+        attackers, att_errors = parse_army_input(self.attackers_input.value)
+        defenders, def_errors = parse_army_input(self.defenders_input.value)
+        all_errors = att_errors + def_errors
+
+        if not attackers and not defenders:
+            msg = "❌ Nie podano żadnych jednostek.\n"
+            if all_errors:
+                msg += "\n".join(all_errors)
+            await interaction.response.send_message(msg, ephemeral=True)
+            return
+
+        if not attackers:
+            msg = "❌ Brak jednostek atakujących.\n"
+            if att_errors:
+                msg += "\n".join(att_errors)
+            await interaction.response.send_message(msg, ephemeral=True)
+            return
+
+        if not defenders:
+            msg = "❌ Brak jednostek obrońców.\n"
+            if def_errors:
+                msg += "\n".join(def_errors)
+            await interaction.response.send_message(msg, ephemeral=True)
+            return
+
+        # Run simulation
+        result = simulate_combat(attackers, defenders, wall_level)
+        embed = _build_combat_embed(result, attackers, defenders, wall_level)
+
+        # If there were some parsing errors, note them
+        content = None
+        if all_errors:
+            content = "⚠️ Część jednostek pominięto:\n" + "\n".join(all_errors)
+
+        await interaction.response.send_message(content=content, embed=embed)
+
 
 
 def setup(bot):
