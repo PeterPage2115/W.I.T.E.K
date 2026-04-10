@@ -1,4 +1,4 @@
-# WITEK — CI Pipeline
+# W.I.T.E.K — CI Pipeline
 # Uruchamiane przy push na main/develop oraz pull requestach do main
 
 name: CI

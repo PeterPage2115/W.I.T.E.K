@@ -419,7 +419,7 @@ class TestBuildDigestEmbed:
     def test_none_data_returns_error_embed(self):
         embed = build_digest_embed(None, 7)
         assert "brak danych" in embed.title.lower()
-        assert embed.footer.text == "⚔️ WITEK — Na cześć H2P_Gucio"
+        assert embed.footer.text == "⚔️ W.I.T.E.K — Na cześć H2P_Gucio"
 
     def test_single_snapshot_embed(self):
         data = {
@@ -507,7 +507,7 @@ class TestBuildDigestEmbed:
         assert "50|30" in desc
 
         # Footer
-        assert embed.footer.text == "⚔️ WITEK — Na cześć H2P_Gucio"
+        assert embed.footer.text == "⚔️ W.I.T.E.K — Na cześć H2P_Gucio"
 
     def test_no_attacks_section_when_zero(self):
         data = {

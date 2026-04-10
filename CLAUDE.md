@@ -1,8 +1,8 @@
-# WITEK — Wirtualny Informator Taktyczno-Ekonomiczny Koalicji
+# W.I.T.E.K — Wirtualny Informator Taktyczno-Ekonomiczny Koalicji
 
 ## Project Overview
 
-WITEK is a **Travian Legends** alliance analytics tool + Discord bot for the UFOLODZY alliance on server ts31.x3.europe.travian.com. Named after H2P_Gucio (Witold Tacikiewicz).
+W.I.T.E.K is a **Travian Legends** alliance analytics tool + Discord bot for the UFOLODZY alliance on server ts31.x3.europe.travian.com. Named after H2P_Gucio (Witold Tacikiewicz).
 
 - **Flask** web dashboard for village/player/alliance data
 - **Discord bot** (py-cord) with slash commands for attack coordination, identity linking, server stats
@@ -153,7 +153,7 @@ python -m pytest tests/ -v
 - **Language**: Comments and UI text in Polish; code identifiers in English
 - **Style**: No comments on obvious code; comment only what needs clarification
 - **Discord embeds**: Tactical colors — red=attack, green=defense/success, yellow=warning, blue=info, gold=identity
-- **Footer**: `"⚔️ WITEK — Na cześć Gucio"` on all embeds
+- **Footer**: `"⚔️ W.I.T.E.K — Na cześć Gucio"` on all embeds
 - **Error handling**: Polish user-facing messages with emoji indicators (✅ ❌ ⚠️ 💡)
 - **Testing**: pytest; run `python -m pytest tests/ -v` before any commit
 - **User context**: Beginner programmer — explain choices clearly in plan docs

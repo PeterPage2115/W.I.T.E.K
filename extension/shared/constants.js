@@ -1,5 +1,5 @@
 /**
- * WITEK Extension — shared constants
+ * W.I.T.E.K Extension — shared constants
  */
 
 export const PAGE_TYPES = {

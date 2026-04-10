@@ -1,4 +1,4 @@
-"""Ogólne komendy WITEK — /thelp, /tinfo, /tstats."""
+"""Ogólne komendy W.I.T.E.K — /thelp, /tinfo, /tstats."""
 
 import logging
 from datetime import datetime, timezone
@@ -19,10 +19,10 @@ class General(commands.Cog):
         self.bot = bot
         self.started_at = datetime.now(timezone.utc)
 
-    @discord.slash_command(name="thelp", description="Wyświetla listę komend WITEK")
+    @discord.slash_command(name="thelp", description="Wyświetla listę komend W.I.T.E.K")
     async def thelp(self, ctx: discord.ApplicationContext):
         embed = discord.Embed(
-            title="📜 Komendy WITEK",
+            title="📜 Komendy W.I.T.E.K",
             description=(
                 "Wirtualny Informator Taktyczno-Ekonomiczny Koalicji\n"
                 "Poniżej znajdziesz dostępne komendy:"
@@ -108,7 +108,7 @@ class General(commands.Cog):
         embed.set_footer(text=FOOTER)
         await ctx.respond(embed=embed)
 
-    @discord.slash_command(name="tinfo", description="Informacje o bocie WITEK")
+    @discord.slash_command(name="tinfo", description="Informacje o bocie W.I.T.E.K")
     async def tinfo(self, ctx: discord.ApplicationContext):
         uptime = datetime.now(timezone.utc) - self.started_at
         hours, remainder = divmod(int(uptime.total_seconds()), 3600)
@@ -121,7 +121,7 @@ class General(commands.Cog):
 
         last_sync = await db_query(self.bot, _get_last_sync)
 
-        embed = discord.Embed(title="🤖 WITEK — Informacje", color=COLOR_GOLD)
+        embed = discord.Embed(title="🤖 W.I.T.E.K — Informacje", color=COLOR_GOLD)
         embed.add_field(name="Wersja", value="1.0.0", inline=True)
         embed.add_field(name="Uptime", value=f"{hours}h {minutes}m", inline=True)
         embed.add_field(name="Serwery", value=str(len(self.bot.guilds)), inline=True)

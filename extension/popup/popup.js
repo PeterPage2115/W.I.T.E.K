@@ -1,5 +1,5 @@
 /**
- * WITEK Extension Popup — Settings management
+ * W.I.T.E.K Extension Popup — Settings management
  */
 
 const serverUrlEl = document.getElementById('server-url');

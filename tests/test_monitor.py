@@ -747,7 +747,7 @@ class TestDMSending:
         mock_user.send.assert_called_once()
         call_kwargs = mock_user.send.call_args
         embed = call_kwargs.kwargs.get("embed") or call_kwargs.args[0]
-        assert embed.title == "🔔 Osobisty raport — WITEK"
+        assert embed.title == "🔔 Osobisty raport — W.I.T.E.K"
         field_names = [f.name for f in embed.fields]
         assert "📉 Spadki populacji" in field_names
 

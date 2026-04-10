@@ -662,7 +662,7 @@ class Attacks(commands.Cog):
             color=COLOR_ATTACK,
             timestamp=datetime.now(timezone.utc),
         )
-        embed.set_author(name="System Alertów WITEK", icon_url=ICON_ATTACK)
+        embed.set_author(name="System Alertów W.I.T.E.K", icon_url=ICON_ATTACK)
 
         # --- Defender (target) ---
         def_coord = coords_display(server_url, def_x, def_y)
@@ -813,7 +813,7 @@ class Attacks(commands.Cog):
             ),
             color=COLOR_ATTACK if active else COLOR_SUCCESS,
         )
-        embed.set_author(name="System Obrony WITEK", icon_url=ICON_DEFENSE)
+        embed.set_author(name="System Obrony W.I.T.E.K", icon_url=ICON_DEFENSE)
 
         # --- Attack list (bounded to 10, rubber-duck finding #4) ---
         if active:

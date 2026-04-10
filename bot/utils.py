@@ -1,4 +1,4 @@
-"""Shared constants and helpers for WITEK Discord bot."""
+"""Shared constants and helpers for W.I.T.E.K Discord bot."""
 
 import re
 from datetime import datetime, timedelta, timezone
@@ -26,7 +26,7 @@ COLOR_PURPLE = 0x9B59B6     # purple — system
 # ------------------------------------------------------------------ #
 # Footer
 # ------------------------------------------------------------------ #
-FOOTER = "⚔️ WITEK — Na cześć H2P_Gucio"
+FOOTER = "⚔️ W.I.T.E.K — Na cześć H2P_Gucio"
 
 # ------------------------------------------------------------------ #
 # Tribe data — names, emoji, Travian CDN icons

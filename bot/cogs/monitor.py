@@ -631,7 +631,7 @@ class Monitor(commands.Cog):
                 return
 
         embed = discord.Embed(
-            title="🔔 Osobisty raport — WITEK",
+            title="🔔 Osobisty raport — W.I.T.E.K",
             color=COLOR_WARNING,
         )
 

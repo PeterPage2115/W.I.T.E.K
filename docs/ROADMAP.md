@@ -1,4 +1,4 @@
-# 🗺️ WITEK — Roadmap / Plan Rozwoju
+# 🗺️ W.I.T.E.K — Roadmap / Plan Rozwoju
 
 > Wirtualny Informator Taktyczno-Ekonomiczny Koalicji
 > Serwer: ts31.x3.europe.travian.com (x3 speed)

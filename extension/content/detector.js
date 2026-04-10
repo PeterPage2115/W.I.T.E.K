@@ -1,6 +1,6 @@
 /**
- * WITEK Extension — Page Detector
- * Detects which Travian page we're on and adds a "Send to WITEK" button.
+ * W.I.T.E.K Extension — Page Detector
+ * Detects which Travian page we're on and adds a "Send to W.I.T.E.K" button.
  */
 
 (function () {
@@ -28,13 +28,13 @@
   });
 
   /**
-   * Inject "Send to WITEK" button on the page
+   * Inject "Send to W.I.T.E.K" button on the page
    */
   function injectButton(type) {
     const btn = document.createElement('button');
     btn.id = 'witek-send-btn';
-    btn.innerHTML = '⚔️ Wyślij do WITEK';
-    btn.style.cssText = `
+    btn.innerHTML = '⚔️ Wyślij do W.I.T.E.K';
+    btn.style.cssText= `
       position: fixed;
       bottom: 20px;
       right: 20px;
@@ -114,8 +114,8 @@
     btn.innerHTML = text;
     btn.style.borderColor = success ? '#2ecc71' : '#e74c3c';
     setTimeout(() => {
-      btn.innerHTML = '⚔️ Wyślij do WITEK';
-      btn.style.borderColor = '#d4a017';
+      btn.innerHTML = '⚔️ Wyślij do W.I.T.E.K';
+      btn.style.borderColor= '#d4a017';
       btn.disabled = false;
     }, 3000);
   }

@@ -1,4 +1,4 @@
-# WITEK — Docker Compose (deweloperski)
+# W.I.T.E.K — Docker Compose (deweloperski)
 # Uruchomienie: docker compose -f docker-compose.dev.yml up
 #
 # Tryb deweloperski:
@@ -7,7 +7,7 @@
 #   - FLASK_DEBUG włączony
 
 services:
-  # ---------- Aplikacja WITEK (tryb deweloperski) ----------
+  # ---------- Aplikacja W.I.T.E.K (tryb deweloperski) ----------
   # Używa SQLite — nie potrzebuje kontenera bazy danych.
   # Lokalny kod jest montowany jako wolumen, więc zmiany w plikach
   # są od razu widoczne w kontenerze (restart kontenera wystarczy).

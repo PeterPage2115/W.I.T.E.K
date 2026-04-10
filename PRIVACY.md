@@ -1,16 +1,16 @@
-# Polityka Prywatności — WITEK
+# Polityka Prywatności — W.I.T.E.K
 
 **Data wejścia w życie:** 10 kwietnia 2026
 
 ## 1. Wprowadzenie
 
-WITEK to rozszerzenie przeglądarki Chrome przeznaczone dla sojuszów grających w Travian Legends. Rozszerzenie pomaga graczom wymieniać dane taktyczne (raporty bitewne, stan wojsk, nadchodzące ataki) z systemem analitycznym sojuszu.
+W.I.T.E.K to rozszerzenie przeglądarki Chrome przeznaczone dla sojuszów grających w Travian Legends. Rozszerzenie pomaga graczom wymieniać dane taktyczne (raporty bitewne, stan wojsk, nadchodzące ataki) z systemem analitycznym sojuszu.
 
 Ta polityka wyjaśnia, jakie dane zbieramy i jak je przetwarzamy.
 
 ## 2. Dane zbierane przez rozszerzenie
 
-Rozszerzenie zbiera **wyłącznie dane, które gracz aktywnie wysyła** po kliknięciu przycisku "Wyślij do WITEK":
+Rozszerzenie zbiera **wyłącznie dane, które gracz aktywnie wysyła** po kliknięciu przycisku "Wyślij do W.I.T.E.K":
 
 - **Raporty bitewne**: jednostki atakujące/broniące, straty, zdobycz
 - **Stan wojsk**: liczba jednostek w wiosce (bez zasobów, budynków, itp.)
@@ -33,7 +33,7 @@ Wszystkie dane pochodzą z publicznych stron gry Travian Legends, które gracz j
 
 Dane wysłane do serwera sojuszu mogą być widoczne dla:
 - Liderów sojuszu (do celów taktycznych)
-- Administratorów systemu WITEK (do celów technicznych)
+- Administratorów systemu W.I.T.E.K (do celów technicznych)
 
 Dane **NIE** są sprzedawane trzecim stronom ani nie są wykorzystywane do celów reklamowych.
 
@@ -53,5 +53,5 @@ W razie pytań dotyczących prywatności, skontaktuj się z administratorem soju
 
 ---
 
-**WITEK — Wirtualny Informator Taktyczno-Ekonomiczny Koalicji**  
+**W.I.T.E.K — Wirtualny Informator Taktyczno-Ekonomiczny Koalicji**  
 Sojusz UFOLODZY, Travian Legends (ts31.x3.europe.travian.com)

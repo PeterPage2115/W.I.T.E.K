@@ -1,4 +1,4 @@
-"""API endpoints for WITEK Chrome extension data ingestion."""
+"""API endpoints for W.I.T.E.K Chrome extension data ingestion."""
 
 import json
 import logging

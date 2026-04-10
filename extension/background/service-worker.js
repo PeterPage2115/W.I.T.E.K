@@ -1,6 +1,6 @@
 /**
- * WITEK Extension — Service Worker (Manifest V3 background)
- * Relays data from content scripts to WITEK webhook API.
+ * W.I.T.E.K Extension — Service Worker (Manifest V3 background)
+ * Relays data from content scripts to W.I.T.E.K webhook API.
  */
 
 // Default config
@@ -31,7 +31,7 @@ function saveConfig(config) {
 }
 
 /**
- * Send data to WITEK API
+ * Send data to W.I.T.E.K API
  */
 async function sendToApi(endpoint, payload) {
   const config = await getConfig();
@@ -68,7 +68,7 @@ async function sendToApi(endpoint, payload) {
 }
 
 /**
- * Test connection to WITEK server
+ * Test connection to W.I.T.E.K server
  */
 async function testConnection(serverUrl, token) {
   const url = `${serverUrl.replace(/\/$/, '')}/api/ext/troops`;
@@ -122,4 +122,4 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-console.log('[WITEK] Service worker started');
+console.log('[W.I.T.E.K] Service worker started');

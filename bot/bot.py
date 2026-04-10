@@ -1,4 +1,4 @@
-"""WITEK Discord bot — main setup."""
+"""W.I.T.E.K Discord bot — main setup."""
 
 import asyncio
 import logging
@@ -49,12 +49,12 @@ def create_bot(flask_app):
     @bot.event
     async def on_ready():
         log.info(
-            "WITEK zalogowany jako %s (guilds: %d)", bot.user, len(bot.guilds)
+            "W.I.T.E.K zalogowany jako %s (guilds: %d)", bot.user, len(bot.guilds)
         )
         await bot.change_presence(
             activity=discord.Activity(
                 type=discord.ActivityType.watching,
-                name="⚔️ WITEK | /thelp",
+                name="⚔️ W.I.T.E.K | /thelp",
             )
         )
 

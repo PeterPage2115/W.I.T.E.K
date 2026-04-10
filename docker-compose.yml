@@ -1,10 +1,10 @@
-# WITEK — Docker Compose (produkcja)
+# W.I.T.E.K — Docker Compose (produkcja)
 # Uruchomienie: docker compose up -d
 # Konfiguracja: skopiuj .env.example → .env i uzupełnij wartości
 
 services:
   # ---------- Baza danych PostgreSQL ----------
-  # Przechowuje wszystkie dane WITEK-a: snapshoty map.sql, graczy, sojusze.
+  # Przechowuje wszystkie dane W.I.T.E.K-a: snapshoty map.sql, graczy, sojusze.
   # Dane są zachowane w wolumenie "witek-pgdata" nawet po usunięciu kontenera.
   witek-db:
     image: postgres:16-alpine
@@ -25,7 +25,7 @@ services:
       retries: 5
       start_period: 10s
 
-  # ---------- Aplikacja WITEK (Flask + Discord bot + scheduler) ----------
+  # ---------- Aplikacja W.I.T.E.K (Flask + Discord bot + scheduler) ----------
   # Serwer webowy z dashboardem, bot Discord i codzienny scheduler pobierający map.sql.
   # Łączy się z bazą PostgreSQL przez zmienną DATABASE_URL.
   witek-app:

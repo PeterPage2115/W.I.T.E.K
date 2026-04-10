@@ -1,6 +1,6 @@
-# WITEK — Przewodnik wdrożenia
+# W.I.T.E.K — Przewodnik wdrożenia
 
-Kompletna instrukcja uruchomienia WITEK-a w środowisku produkcyjnym i deweloperskim.
+Kompletna instrukcja uruchomienia W.I.T.E.K w środowisku produkcyjnym i deweloperskim.
 
 ---
 
@@ -185,7 +185,7 @@ docker exec -i witek-db psql -U witek witek < backup.sql
 Dodaj do crontab na serwerze:
 
 ```bash
-# Codziennie o 03:00 — backup bazy WITEK
+# Codziennie o 03:00 — backup bazy W.I.T.E.K
 0 3 * * * docker exec witek-db pg_dump -U witek witek > /backups/witek_$(date +\%Y\%m\%d).sql
 ```
 
@@ -287,4 +287,4 @@ witek/
 
 ---
 
-*⚔️ WITEK — Na cześć Gucio*
+*⚔️ W.I.T.E.K — Na cześć Gucio*

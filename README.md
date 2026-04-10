@@ -1,4 +1,4 @@
-# ⚔️ WITEK — Wirtualny Informator Taktyczno-Ekonomiczny Koalicji
+# ⚔️ W.I.T.E.K — Wirtualny Informator Taktyczno-Ekonomiczny Koalicji
 
 Narzędzie analityczne sojuszu **Travian Legends** + bot Discord.
 Nazwane na cześć H2P_Gucio (Witold Tacikiewicz).
@@ -7,7 +7,7 @@ Nazwane na cześć H2P_Gucio (Witold Tacikiewicz).
 
 ## Co to jest?
 
-WITEK to narzędzie dla sojuszu UFOLODZY na serwerze Travian Legends, które:
+W.I.T.E.K to narzędzie dla sojuszu UFOLODZY na serwerze Travian Legends, które:
 
 - 🌐 **Dashboard webowy** — przeglądanie graczy, sojuszy, wiosek z danymi z map.sql
 - 🤖 **Bot Discord** — komendy slash do koordynacji ataków, statystyk, łączenia kont
@@ -138,4 +138,4 @@ python -m pytest tests/ -v
 
 <!-- TODO: Dodaj zrzuty ekranu dashboardu i komend Discord -->
 
-*⚔️ WITEK — Na cześć Gucio*
+*⚔️ W.I.T.E.K — Na cześć Gucio*

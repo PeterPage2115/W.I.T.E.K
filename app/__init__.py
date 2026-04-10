@@ -1,4 +1,4 @@
-"""WITEK — Wirtualny Informator Taktyczno-Ekonomiczny Koalicji"""
+"""W.I.T.E.K — Wirtualny Informator Taktyczno-Ekonomiczny Koalicji"""
 
 from flask import Flask
 from .config import Config
