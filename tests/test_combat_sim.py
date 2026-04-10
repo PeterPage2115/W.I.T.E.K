@@ -2,6 +2,7 @@
 
 import pytest
 
+from bot.tribes import TRIBES
 from bot.utils import (
     COMBAT_BY_NAME,
     UNIT_COMBAT,
@@ -20,7 +21,7 @@ class TestUnitCombatData:
     """Verify UNIT_COMBAT dict is complete and well-formed."""
 
     def test_all_tribes_present(self):
-        assert set(UNIT_COMBAT.keys()) == {1, 2, 3}
+        assert set(UNIT_COMBAT.keys()) == set(TRIBES.keys())
 
     @pytest.mark.parametrize("tribe_id", [1, 2, 3])
     def test_tribe_has_units(self, tribe_id):

@@ -46,6 +46,13 @@ class Config:
     )
     TRAVIAN_MAP_SIZE = travian.get("map_size", 401)
     TRAVIAN_OUR_ALLIANCES = travian.get("our_alliances", [])
+    TRAVIAN_SPEED_MULTIPLIER = travian.get("speed_multiplier", 3)
+    TRAVIAN_TROOP_SPEED_MULTIPLIER = travian.get("troop_speed_multiplier", 2)
+    TRAVIAN_AVAILABLE_TRIBES = travian.get("available_tribes", [1, 2, 3])
+
+    # Attacks
+    _attacks = _yaml.get("attacks", {})
+    AUTO_RESOLVE_AFTER_MINUTES = _attacks.get("auto_resolve_after_minutes", 120)
 
     # Scheduler
     scheduler = _yaml.get("scheduler", {})

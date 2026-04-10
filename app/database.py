@@ -12,6 +12,7 @@ def _ensure_columns(app):
             "wall_level": "INTEGER",
             "crop_amount": "INTEGER",
             "crop_production": "INTEGER",
+            "auto_resolved": "BOOLEAN DEFAULT 0",
         },
         "battle_reports": {
             "result": "TEXT",

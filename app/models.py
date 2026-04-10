@@ -115,11 +115,13 @@ class AttackReport(db.Model):
     status = db.Column(db.Text, default="reported")  # reported / defending / resolved
     forum_thread_id = db.Column(db.BigInteger)  # Discord forum thread ID
     resolved_at = db.Column(db.DateTime)
+    auto_resolved = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=_utcnow)
     updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
 
 
-TRIBE_NAMES = {1: "Rzymianie", 2: "Germanie", 3: "Galowie"}
+from bot.tribes import TRIBES
+TRIBE_NAMES = {t.tid: t.name_pl for t in TRIBES.values()}
 
 
 class VillageTroops(db.Model):

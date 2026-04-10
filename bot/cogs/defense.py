@@ -16,7 +16,7 @@ from discord.ext import commands
 from bot.bot import db_query
 from bot.utils import (
     CROP_BY_NAME,
-    COLOR_ATTACK, COLOR_INFO, COLOR_SUCCESS, FOOTER,
+    COLOR_ATTACK, COLOR_DEFENSE, COLOR_INFO, COLOR_SUCCESS, FOOTER,
     HERO_CROP, TRIBE_EMOJI, TRIBE_NAMES,
     calc_crop_consumption, coords_display, normalize_unit_name,
     parse_coords, torus_distance, travel_time_str,
@@ -44,13 +44,33 @@ REPORT_UNIT_ORDER: dict[int, list[str]] = {
         "Grom Teutatesa", "Jeździec druidzki", "Haeduan",
         "Taran", "Trebusz", "Wódz", "Osadnik",
     ],
+    6: [  # Egyptians
+        "Slave Militia", "Ash Warden", "Khopesh Warrior",
+        "Sopdu Explorer", "Anhur Guard", "Resheph Chariot",
+        "Ram", "Catapult", "Nomarch", "Settler",
+    ],
+    7: [  # Huns
+        "Mercenary", "Bowman", "Spotter",
+        "Steppe Rider", "Marksman", "Marauder",
+        "Ram", "Catapult", "Logades", "Settler",
+    ],
+    8: [  # Vikings
+        "Thrall", "Shield Maiden", "Berserker",
+        "Heimdall's Eye", "Huskarl Rider", "Valkyrie's Blessing",
+        "Ram", "Catapult", "Jarl", "Settler",
+    ],
+    9: [  # Spartans
+        "Hoplite", "Sentinel", "Shieldsman",
+        "Twinsteel Therion", "Elpida Rider", "Corinthian Crusher",
+        "Ram", "Catapult", "Ephor", "Settler",
+    ],
 }
 
 # Map any recognized unit name to a tribe_id for auto-detection
 _UNIT_TO_TRIBE: dict[str, int] = {}
 for _tid, _names in REPORT_UNIT_ORDER.items():
     for _n in _names:
-        if _n not in ("Taran", "Osadnik"):  # shared across tribes
+        if _n not in ("Taran", "Osadnik", "Ram", "Catapult", "Settler"):  # shared across tribes
             _UNIT_TO_TRIBE[_n] = _tid
 
 
@@ -1495,6 +1515,126 @@ class Defense(commands.Cog):
                 )
             except Exception:
                 log.exception("Błąd wysyłania raportu do wątku")
+
+
+    # ------------------------------------------------------------------ #
+    # /tzboza — crop balance
+    # ------------------------------------------------------------------ #
+
+    @discord.slash_command(name="tzboza", description="Bilans zbożowy wioski (zużycie vs produkcja)")
+    @discord.option("kordy", str, description="Koordynaty wioski np. 76|43 (auto w wątku)", required=False, default="")
+    @discord.option("produkcja", int, description="Produkcja zboża/h (nadpisuje dane z raportu)", required=False, default=0)
+    @discord.option("bohater", bool, description="Czy bohater jest w wiosce? (+6 🌾/h)", required=False, default=False)
+    async def tzboza(self, ctx: discord.ApplicationContext, kordy: str, produkcja: int, bohater: bool):
+        await ctx.defer()
+
+        # Parse coordinates (auto-detect from defense thread if in thread)
+        x, y = None, None
+        if kordy:
+            parsed = parse_coords(kordy)
+            if parsed:
+                x, y = parsed
+        if x is None and isinstance(ctx.channel, discord.Thread):
+            thread_coords = await db_query(self.bot, lambda: self._get_thread_coords(ctx.channel.id))
+            if thread_coords:
+                x, y = thread_coords
+
+        if x is None:
+            await ctx.followup.send("❌ Podaj koordynaty wioski np. `76|43`", ephemeral=True)
+            return
+
+        data = await db_query(self.bot, lambda: self._gather_crop_data(x, y, produkcja))
+
+        garrison_crop = data["garrison_crop"]
+        support_crop = data["support_crop"]
+        support_count = data["support_count"]
+        hero_crop = HERO_CROP if bohater else 0
+        total = garrison_crop + support_crop + hero_crop
+        prod = data["production"] or produkcja
+        balance = prod - total if prod else None
+
+        lines = [f"🏠 Garnizon:      **-{garrison_crop}** 🌾/h"]
+        if support_count:
+            lines.append(f"🤝 Wsparcie ({support_count}):  **-{support_crop}** 🌾/h")
+        if bohater:
+            lines.append(f"🦸 Bohater:        **-{hero_crop}** 🌾/h")
+        lines.append("━" * 28)
+        lines.append(f"📉 Zużycie:       **-{total}** 🌾/h")
+
+        if prod:
+            lines.append(f"📈 Produkcja:     **+{prod}** 🌾/h")
+            sign = "+" if balance >= 0 else ""
+            color = COLOR_DEFENSE if balance >= 0 else COLOR_ATTACK
+            lines.append(f"💰 Bilans:        **{sign}{balance}** 🌾/h")
+            if balance < 0:
+                lines.append(f"\n⚠️ Zboże się skończy przy obecnym zużyciu")
+                if data.get("crop_amount") and data["crop_amount"] > 0:
+                    hours_left = data["crop_amount"] / abs(balance)
+                    if hours_left < 1:
+                        eta_str = f"~{int(hours_left * 60)} min"
+                    elif hours_left < 24:
+                        eta_str = f"~{hours_left:.1f}h"
+                    else:
+                        eta_str = f"~{hours_left / 24:.1f} dni"
+                    lines.append(f"⏰ Czas do wyczerpania: **{eta_str}** (przy {data['crop_amount']} 🌾)")
+        else:
+            color = COLOR_INFO
+            lines.append("📈 Produkcja:     *nie podano*")
+
+        embed = discord.Embed(
+            title=f"🌾 Bilans zbożowy — ({x}|{y})",
+            description="\n".join(lines),
+            color=color,
+        )
+        embed.set_footer(text=FOOTER)
+        await ctx.followup.send(embed=embed)
+
+    def _get_thread_coords(self, thread_id: int):
+        from app.models import DefenseThread
+        dt = DefenseThread.query.filter_by(forum_thread_id=thread_id).first()
+        if dt:
+            return (dt.defender_x, dt.defender_y)
+        return None
+
+    def _gather_crop_data(self, x: int, y: int, override_prod: int) -> dict:
+        import json
+        from app.models import VillageTroops, TroopSupport, AttackReport
+
+        # Garrison
+        vt = VillageTroops.query.filter_by(village_x=x, village_y=y).first()
+        garrison_crop = 0
+        if vt:
+            troops = json.loads(vt.troops)
+            garrison_crop = calc_crop_consumption(troops)
+
+        # Support (all statuses)
+        supports = TroopSupport.query.filter_by(to_x=x, to_y=y).all()
+        support_crop = 0
+        for s in supports:
+            troops = json.loads(s.troops)
+            support_crop += calc_crop_consumption(troops)
+
+        # Production from latest attack report
+        production = override_prod or 0
+        crop_amount = 0
+        if not production:
+            report = AttackReport.query.filter(
+                AttackReport.defender_x == x,
+                AttackReport.defender_y == y,
+                AttackReport.crop_production.isnot(None),
+                AttackReport.crop_production > 0,
+            ).order_by(AttackReport.created_at.desc()).first()
+            if report:
+                production = report.crop_production
+                crop_amount = getattr(report, 'crop_amount', 0) or 0
+
+        return {
+            "garrison_crop": garrison_crop,
+            "support_crop": support_crop,
+            "support_count": len(supports),
+            "production": production,
+            "crop_amount": crop_amount,
+        }
 
 
 def setup(bot):

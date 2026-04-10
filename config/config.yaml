@@ -4,6 +4,9 @@
 travian:
   server_url: "https://ts31.x3.europe.travian.com"
   map_size: 401  # 401x401 torus
+  speed_multiplier: 3
+  troop_speed_multiplier: 2
+  available_tribes: [1, 2, 3, 6, 7, 8, 9]
 
   # Nasze sojusze (alliance IDs z map.sql)
   our_alliances: [14, 32, 46, 120]
@@ -19,3 +22,6 @@ alerts:
   pop_drop_threshold: 15
   # Radius dla alertu "nowa wioska wroga"
   new_village_radius: 30
+
+attacks:
+  auto_resolve_after_minutes: 120
