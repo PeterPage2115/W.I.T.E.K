@@ -2,13 +2,14 @@
 
 import json
 import logging
+import time
 import requests
 from datetime import datetime, timezone
 
 from ..database import db
 from ..models import Snapshot, Village, Player, Alliance, Alert
 from .parser import parse_map_sql
-from .alerts import detect_alerts
+from .alerts import detect_alerts, is_stale_pair
 
 logger = logging.getLogger(__name__)
 
@@ -127,9 +128,20 @@ def collect_and_store(app):
     """Full pipeline: fetch map.sql → parse → store → detect alerts."""
     with app.app_context():
         try:
+            t_start = time.monotonic()
             raw = fetch_map_sql(app.config["TRAVIAN_SERVER_URL"])
+            t_fetch = time.monotonic()
+
             snapshot = store_snapshot(raw)
-            logger.info("Collection complete: snapshot #%d", snapshot.id)
+            t_store = time.monotonic()
+
+            logger.info(
+                "Kolekcja zakończona: snapshot #%d, %d wiosek "
+                "(fetch: %.1fs, store: %.1fs, razem: %.1fs)",
+                snapshot.id, snapshot.village_count,
+                t_fetch - t_start, t_store - t_fetch, t_store - t_start,
+            )
+
             _run_alert_detection(app, snapshot)
             return snapshot
         except Exception:
@@ -149,6 +161,15 @@ def _run_alert_detection(app, new_snapshot):
         )
         if prev_snapshot is None:
             logger.info("Brak poprzedniego snapshotu — pomijam detekcję alertów")
+            return
+
+        # Staleness guard: skip alerts if gap is too large (e.g. after downtime)
+        max_gap = app.config.get("FETCH_INTERVAL_MINUTES", 60) * 2
+        if is_stale_pair(new_snapshot.id, prev_snapshot.id, max_gap):
+            logger.warning(
+                "Pomijam detekcję alertów — snapshoty #%d → #%d zbyt oddalone",
+                prev_snapshot.id, new_snapshot.id,
+            )
             return
 
         config = {

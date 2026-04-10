@@ -167,9 +167,23 @@ def main():
             id="map_sql_interval",
         )
         scheduler.start()
-        print(
-            f"Scheduler: map.sql co {interval_min} min"
+        log.info(
+            "Scheduler uruchomiony: map.sql co %d min",
+            interval_min,
         )
+
+        # Log startup configuration summary
+        log.info("--- Konfiguracja startu ---")
+        log.info("  Travian URL: %s", app.config.get("TRAVIAN_SERVER_URL"))
+        log.info("  Nasze sojusze: %s", app.config.get("TRAVIAN_OUR_ALLIANCES"))
+        log.info("  Interwał zbierania: %d min", interval_min)
+        log.info("  Próg spadku pop: %d%%", app.config.get("POP_DROP_THRESHOLD", 15))
+        log.info("  Promień nowych wiosek: %d pól", app.config.get("NEW_VILLAGE_RADIUS", 30))
+        log.info("  Kanał alertów: %s", app.config.get("DISCORD_ALERTS_CHANNEL_ID"))
+        log.info("  Discord Guild: %s", app.config.get("DISCORD_GUILD_ID"))
+        log.info("  OAuth redirect: %s", app.config.get("DISCORD_REDIRECT_URI"))
+        log.info("  Extension API: %s", "TAK" if app.config.get("EXT_API_TOKEN") else "NIE")
+        log.info("---------------------------")
 
         # Fetch on startup if no recent snapshot exists
         with app.app_context():

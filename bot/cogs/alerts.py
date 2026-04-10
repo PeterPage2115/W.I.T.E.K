@@ -30,16 +30,21 @@ class AlertsCog(commands.Cog):
         """Sprawdza nowe alerty i wysyła je na kanał Discord."""
         channel_id = self.bot.flask_app.config.get("DISCORD_ALERTS_CHANNEL_ID")
         if not channel_id:
+            logger.debug("DISCORD_ALERTS_CHANNEL_ID nie ustawiony — pomijam alerty")
             return
 
         channel = self.bot.get_channel(channel_id)
         if channel is None:
+            logger.warning("Kanał alertów (ID: %d) nie znaleziony — bot nie ma dostępu?", channel_id)
             return
 
         try:
             alerts_data = await db_query(self.bot, self._fetch_pending_alerts)
             if not alerts_data:
                 return
+
+            pending_count = len(alerts_data)
+            logger.info("Znaleziono %d oczekujących alertów do wysłania", pending_count)
 
             grouped = _group_alerts(alerts_data)
             for alert_type, items in grouped.items():

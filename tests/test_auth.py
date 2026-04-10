@@ -86,6 +86,15 @@ class TestCallback:
         resp = client.get("/auth/callback")
         assert resp.status_code == 302
 
+    def test_callback_invalid_state_rejected(self, client):
+        """CSRF protection: mismatched state is rejected."""
+        with client.session_transaction() as sess:
+            sess["oauth_state"] = "expected-state"
+        resp = client.get("/auth/callback?code=test-code&state=wrong-state",
+                          follow_redirects=True)
+        assert resp.status_code == 200
+        assert "token bezpieczeństwa" in resp.data.decode()
+
     @patch("app.routes.auth.requests.get")
     @patch("app.routes.auth.requests.post")
     def test_callback_creates_user(self, mock_post, mock_get, client, app):
@@ -98,7 +107,10 @@ class TestCallback:
             json=MagicMock(return_value={"id": "123456789", "username": "testuser"}),
         )
 
-        resp = client.get("/auth/callback?code=test-code")
+        with client.session_transaction() as sess:
+            sess["oauth_state"] = "test-state"
+
+        resp = client.get("/auth/callback?code=test-code&state=test-state")
         assert resp.status_code == 302
 
         with app.app_context():
@@ -121,8 +133,9 @@ class TestCallback:
 
         with client.session_transaction() as sess:
             assert "user_id" not in sess
+            sess["oauth_state"] = "test-state"
 
-        client.get("/auth/callback?code=test-code")
+        client.get("/auth/callback?code=test-code&state=test-state")
 
         with client.session_transaction() as sess:
             assert sess["discord_id"] == 123456789
@@ -146,7 +159,10 @@ class TestCallback:
             json=MagicMock(return_value={"id": "123456789", "username": "newname"}),
         )
 
-        client.get("/auth/callback?code=test-code")
+        with client.session_transaction() as sess:
+            sess["oauth_state"] = "test-state"
+
+        client.get("/auth/callback?code=test-code&state=test-state")
 
         with app.app_context():
             user = User.query.filter_by(discord_id=123456789).first()
@@ -155,9 +171,13 @@ class TestCallback:
 
     @patch("app.routes.auth.requests.post")
     def test_callback_token_exchange_failure(self, mock_post, client):
-        mock_post.return_value = MagicMock(status_code=400)
+        mock_post.return_value = MagicMock(status_code=400, text="Bad Request")
 
-        resp = client.get("/auth/callback?code=bad-code", follow_redirects=True)
+        with client.session_transaction() as sess:
+            sess["oauth_state"] = "test-state"
+
+        resp = client.get("/auth/callback?code=bad-code&state=test-state",
+                          follow_redirects=True)
         assert resp.status_code == 200
         assert "autoryzacji Discord" in resp.data.decode()
 
@@ -170,9 +190,22 @@ class TestCallback:
         )
         mock_get.return_value = MagicMock(status_code=401)
 
-        resp = client.get("/auth/callback?code=test-code", follow_redirects=True)
+        with client.session_transaction() as sess:
+            sess["oauth_state"] = "test-state"
+
+        resp = client.get("/auth/callback?code=test-code&state=test-state",
+                          follow_redirects=True)
         assert resp.status_code == 200
         assert "pobrać danych" in resp.data.decode()
+
+    def test_callback_discord_error_handled(self, client):
+        """Discord returns error parameter (e.g. access_denied)."""
+        resp = client.get(
+            "/auth/callback?error=access_denied&error_description=User+denied+access",
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+        assert "User denied access" in resp.data.decode()
 
 
 # --- /auth/logout ---

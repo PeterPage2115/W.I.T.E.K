@@ -1,6 +1,7 @@
 """Alert detection — porównanie snapshotów map.sql."""
 
 import logging
+from datetime import timezone
 from ..database import db
 from ..models import Snapshot, Village
 
@@ -18,6 +19,47 @@ def torus_distance(x1: int, y1: int, x2: int, y2: int, map_size: int = 401) -> f
     dx = min(dx, map_size - dx)
     dy = min(dy, map_size - dy)
     return (dx ** 2 + dy ** 2) ** 0.5
+
+
+def _ensure_utc(dt):
+    """SQLite stores naive datetimes — treat as UTC."""
+    if dt is not None and dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def is_stale_pair(new_snapshot_id: int, prev_snapshot_id: int,
+                  max_gap_minutes: float) -> bool:
+    """Czy luka czasowa między snapshotami jest zbyt duża?
+
+    Zwraca True gdy różnica fetched_at > max_gap_minutes.
+    Używane aby pominąć generowanie alertów po dłuższym przestoju
+    (np. 2-dniowa przerwa generowałaby tysiące fałszywych alertów).
+    """
+    prev = db.session.get(Snapshot, prev_snapshot_id)
+    new = db.session.get(Snapshot, new_snapshot_id)
+
+    if prev is None or new is None:
+        return True
+
+    prev_time = _ensure_utc(prev.fetched_at)
+    new_time = _ensure_utc(new.fetched_at)
+
+    gap_minutes = (new_time - prev_time).total_seconds() / 60
+    if gap_minutes > max_gap_minutes:
+        logger.warning(
+            "Snapshoty #%d → #%d: luka %.0f min (limit: %.0f min) — "
+            "za duża różnica, pomijam alerty aby uniknąć fałszywego spamu",
+            prev_snapshot_id, new_snapshot_id,
+            gap_minutes, max_gap_minutes,
+        )
+        return True
+
+    logger.debug(
+        "Snapshoty #%d → #%d: luka %.0f min (limit: %.0f min) — OK",
+        prev_snapshot_id, new_snapshot_id, gap_minutes, max_gap_minutes,
+    )
+    return False
 
 
 def validate_snapshot_pair(new_snapshot_id: int, prev_snapshot_id: int) -> bool:

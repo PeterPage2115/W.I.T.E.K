@@ -279,21 +279,28 @@ class Monitor(commands.Cog):
         try:
             users = await db_query(self.bot, self._get_monitored_users)
             if not users:
+                logger.debug("Monitor: brak użytkowników z włączonym monitoringiem")
                 return
+
+            logger.info("Monitor: sprawdzam %d użytkowników", len(users))
 
             snapshots = await db_query(self.bot, self._get_two_latest_snapshots)
             if not snapshots:
+                logger.debug("Monitor: brak pary snapshotów do porównania")
                 return
             latest_id, previous_id = snapshots
 
-            # Validate snapshot pair (skip if truncated/corrupted)
+            # Validate snapshot pair (skip if truncated/corrupted/stale)
             valid = await db_query(
                 self.bot,
                 lambda: self._validate_snapshots(latest_id, previous_id),
             )
             if not valid:
+                logger.info("Monitor: snapshoty #%d → #%d nieprawidłowe — pomijam",
+                            previous_id, latest_id)
                 return
 
+            alerts_sent = 0
             for user_info in users:
                 # Skip if already checked this snapshot
                 if user_info["last_checked_snapshot_id"] == latest_id:
@@ -310,6 +317,7 @@ class Monitor(commands.Cog):
 
                     if alerts:
                         await self._send_dm(user_info["discord_id"], alerts)
+                        alerts_sent += len(alerts)
                         did = user_info["discord_id"]
                         await db_query(
                             self.bot,
@@ -341,6 +349,9 @@ class Monitor(commands.Cog):
                         "Błąd monitoringu dla użytkownika %s",
                         user_info["discord_id"],
                     )
+
+            if alerts_sent:
+                logger.info("Monitor: wysłano %d alertów DM", alerts_sent)
 
         except Exception:
             logger.exception("Błąd pętli monitoringu")
@@ -392,9 +403,23 @@ class Monitor(commands.Cog):
 
     @staticmethod
     def _validate_snapshots(latest_id, previous_id):
-        """Check snapshot pair is valid (not truncated)."""
-        from app.map_sql.alerts import validate_snapshot_pair
-        return validate_snapshot_pair(latest_id, previous_id)
+        """Check snapshot pair is valid (not truncated) and not stale."""
+        from app.map_sql.alerts import validate_snapshot_pair, is_stale_pair
+        from flask import current_app
+
+        if not validate_snapshot_pair(latest_id, previous_id):
+            return False
+
+        # Staleness guard — skip DM alerts if gap is too large
+        max_gap = current_app.config.get("FETCH_INTERVAL_MINUTES", 60) * 2
+        if is_stale_pair(latest_id, previous_id, max_gap):
+            logger.warning(
+                "Monitor: pomijam alerty DM — snapshoty #%d → #%d zbyt oddalone",
+                previous_id, latest_id,
+            )
+            return False
+
+        return True
 
     @staticmethod
     def _get_user_villages(snapshot_id, user_uid):
