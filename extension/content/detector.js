@@ -9,9 +9,9 @@
   const url = window.location.href;
   const origin = window.location.origin;
 
-  // Detect page type
+  // Detect page type from URL patterns
   let pageType = 'unknown';
-  if (/berichte\.php/.test(url) && /id=\d+/.test(url)) {
+  if (/\/report\b/.test(url) && /id=/.test(url)) {
     pageType = 'report';
   } else if (/build\.php/.test(url) && /gid=16/.test(url)) {
     pageType = 'rally_point';
@@ -120,196 +120,244 @@
     }, 3000);
   }
 
+  // ─── Helpers ──────────────────────────────────────────
+
+  /**
+   * Extract coords from an element containing .coordinateX / .coordinateY spans.
+   * Travian embeds parens in the text: "(76" and "43)"
+   */
+  function extractCoordsFrom(el) {
+    const xEl = el.querySelector('.coordinateX');
+    const yEl = el.querySelector('.coordinateY');
+    if (xEl && yEl) {
+      const x = parseInt(xEl.textContent.replace(/[()]/g, '').trim());
+      const y = parseInt(yEl.textContent.replace(/[()]/g, '').trim());
+      if (!isNaN(x) && !isNaN(y)) return { x, y };
+    }
+    return null;
+  }
+
+  /**
+   * Get current village coords from sidebar (works on dorf1.php, build.php, etc.)
+   */
+  function getVillageCoords() {
+    // Sidebar: active village entry contains "(x|y)" as text
+    const active = document.querySelector('.listEntry.village.active');
+    if (active) {
+      const match = active.textContent.match(/\(\s*(-?\d+)\s*\|\s*(-?\d+)\s*\)/);
+      if (match) return { x: parseInt(match[1]), y: parseInt(match[2]) };
+    }
+    // Fallback: page title
+    const titleMatch = document.title.match(/\((-?\d+)\|(-?\d+)\)/);
+    if (titleMatch) return { x: parseInt(titleMatch[1]), y: parseInt(titleMatch[2]) };
+    return { x: null, y: null };
+  }
+
+  /**
+   * Extract unit ID string from an img.unit element.
+   * Returns "hero" for uhero, or numeric string like "21" for u21.
+   */
+  function getUnitId(img) {
+    if (img.classList.contains('uhero')) return 'hero';
+    const match = img.className.match(/\bu(\d+)\b/);
+    return match ? match[1] : null;
+  }
+
+  /**
+   * Parse a role section (.role.attacker or .role.defender) from a report.
+   * Returns { player, village, alliance, troops, losses, bounty? }
+   */
+  function parseRoleSection(roleEl) {
+    const data = { troops: {}, losses: {} };
+
+    // Player / village / alliance from headline
+    const headline = roleEl.querySelector('.troopHeadline');
+    if (headline) {
+      data.player = headline.querySelector('a.player')?.textContent?.trim() || '';
+      data.village = headline.querySelector('a.village')?.textContent?.trim() || '';
+      const allyEl = headline.querySelector('span.inline-block');
+      data.alliance = allyEl ? allyEl.textContent.trim().replace(/[\[\]]/g, '') : '';
+    }
+
+    // Unit table has multiple tbody.units:
+    //   1st = icon row (unit IDs), 2nd = counts, 3rd = losses
+    const tbodies = roleEl.querySelectorAll('tbody.units');
+    if (tbodies.length < 2) return data;
+
+    // 1st tbody: extract unit IDs from icon images
+    const unitIds = [];
+    tbodies[0].querySelectorAll('td.uniticon img.unit').forEach((img) => {
+      unitIds.push(getUnitId(img));
+    });
+
+    // 2nd tbody: troop counts
+    tbodies[1].querySelectorAll('td.unit').forEach((cell, i) => {
+      if (i < unitIds.length && unitIds[i]) {
+        const count = parseInt(cell.textContent.trim()) || 0;
+        if (count > 0) data.troops[unitIds[i]] = count;
+      }
+    });
+
+    // 3rd tbody: losses
+    if (tbodies.length >= 3) {
+      tbodies[2].querySelectorAll('td.unit').forEach((cell, i) => {
+        if (i < unitIds.length && unitIds[i]) {
+          const loss = parseInt(cell.textContent.trim()) || 0;
+          if (loss > 0) data.losses[unitIds[i]] = loss;
+        }
+      });
+    }
+
+    // Bounty (attacker only — tbody.infos)
+    const infosTbody = roleEl.querySelector('tbody.infos');
+    if (infosTbody) {
+      const bounty = {};
+      const resDiv = infosTbody.querySelector('.res');
+      if (resDiv) {
+        ['lumber', 'clay', 'iron', 'crop'].forEach((res) => {
+          const icon = resDiv.querySelector(`i.${res}`);
+          if (icon) {
+            const valEl = icon.closest('.inlineIcon')?.querySelector('.value');
+            if (valEl) bounty[res] = parseInt(valEl.textContent.trim()) || 0;
+          }
+        });
+      }
+      const carryMatch = infosTbody.textContent.match(/(\d+)\s*\/\s*(\d+)/);
+      if (carryMatch) {
+        bounty.carry_used = parseInt(carryMatch[1]);
+        bounty.carry_max = parseInt(carryMatch[2]);
+      }
+      if (Object.keys(bounty).length > 0) data.bounty = bounty;
+    }
+
+    return data;
+  }
+
   // ─── Parsers ───────────────────────────────────────────
 
   /**
-   * Parse battle report page
+   * Parse battle report page (#reportWrapper)
    */
   function parseReport() {
-    // Find report container
-    const reportEl = document.getElementById('report') ||
-                     document.querySelector('.reportWrapper') ||
-                     document.querySelector('#reportWrapper');
+    const reportEl = document.getElementById('reportWrapper');
     if (!reportEl) return null;
 
-    // Extract report ID from URL
-    const idMatch = url.match(/id=(\d+)/);
-    const reportId = idMatch ? parseInt(idMatch[1]) : null;
+    // Report ID from URL (may contain non-numeric chars like "8230762|311aedc1")
+    const idMatch = url.match(/id=([^&\s]+)/);
+    const reportId = idMatch ? idMatch[1] : null;
 
-    // Find troop tables (attacker and defender sections)
-    const tables = reportEl.querySelectorAll('table');
-    
+    // Report header: subject and time
+    const subject = reportEl.querySelector('.header .headline .subject')?.textContent?.trim() || '';
+    const time = reportEl.querySelector('.header .time .text')?.textContent?.trim() || '';
+
+    // Attacker and defender sections
+    const attackerEl = reportEl.querySelector('.role.attacker');
+    const defenderEl = reportEl.querySelector('.role.defender');
+
     const result = {
       report_id: reportId,
-      attacker: { troops: {}, losses: {} },
-      defender: { troops: {}, losses: {} },
+      subject,
+      time,
+      attacker: attackerEl ? parseRoleSection(attackerEl) : { troops: {}, losses: {} },
+      defender: defenderEl ? parseRoleSection(defenderEl) : { troops: {}, losses: {} },
     };
-
-    // Look for player names in report header
-    const headers = reportEl.querySelectorAll('.troopHeadline, .role_att, .role_def');
-    headers.forEach((h) => {
-      const link = h.querySelector('a');
-      if (link) {
-        const name = link.textContent.trim();
-        if (h.classList.contains('role_att') || h.closest('.att')) {
-          result.attacker.name = name;
-        } else if (h.classList.contains('role_def') || h.closest('.def')) {
-          result.defender.name = name;
-        }
-      }
-    });
-
-    // Parse troop tables
-    // Travian reports have unit images with class like "unit u1", "unit u2" etc
-    const unitSections = reportEl.querySelectorAll('.troops');
-    unitSections.forEach((section) => {
-      const isAttacker = section.closest('.att') !== null || 
-                         section.previousElementSibling?.classList?.contains('role_att');
-      const side = isAttacker ? result.attacker : result.defender;
-      
-      const unitCells = section.querySelectorAll('td.unit');
-      const countCells = section.querySelectorAll('td.num, td.count');
-      
-      unitCells.forEach((cell, i) => {
-        const img = cell.querySelector('img');
-        if (img) {
-          // Extract unit ID from class like "unit u1" or image src
-          const unitMatch = img.className.match(/u(\d+)/) || 
-                           img.src.match(/u(\d+)/);
-          if (unitMatch && countCells[i]) {
-            const unitId = unitMatch[1];
-            const count = parseInt(countCells[i].textContent.replace(/\D/g, '')) || 0;
-            side.troops[unitId] = count;
-          }
-        }
-      });
-    });
-
-    // Wall level
-    const wallEl = reportEl.querySelector('.wall, .building');
-    if (wallEl) {
-      const levelMatch = wallEl.textContent.match(/(\d+)/);
-      if (levelMatch) {
-        result.wall_level_after = parseInt(levelMatch[1]);
-      }
-    }
 
     return result;
   }
 
   /**
-   * Parse village troop overview
+   * Parse village troop overview (dorf1.php — #troops table)
    */
   function parseTroops() {
-    // Get village coordinates from page
-    const coordsEl = document.querySelector('.coordinateX, .coords, #side_navi .villageList .active');
-    let x = null, y = null;
-
-    // Try getting coords from the village coordinates display
-    const xEl = document.querySelector('.coordinateX');
-    const yEl = document.querySelector('.coordinateY');
-    if (xEl && yEl) {
-      x = parseInt(xEl.textContent.replace(/[()]/g, '').trim());
-      y = parseInt(yEl.textContent.replace(/[()]/g, '').trim());
-    }
-
-    // Alternative: parse from URL or page title
-    if (x === null) {
-      const coordMatch = document.title.match(/\((-?\d+)\|(-?\d+)\)/);
-      if (coordMatch) {
-        x = parseInt(coordMatch[1]);
-        y = parseInt(coordMatch[2]);
-      }
-    }
-
+    const coords = getVillageCoords();
     const troops = {};
 
-    // Find troop display area
-    const troopEl = document.querySelector('#troops, .troop_details, .villTroops');
-    if (troopEl) {
-      const unitEls = troopEl.querySelectorAll('.unit, [class*="unitSmall"]');
-      unitEls.forEach((el) => {
-        const unitMatch = el.className.match(/u(\d+)/);
-        const countEl = el.nextElementSibling || el.parentElement?.querySelector('.num');
-        if (unitMatch && countEl) {
-          const count = parseInt(countEl.textContent.replace(/\D/g, '')) || 0;
-          if (count > 0) {
-            troops[unitMatch[1]] = count;
-          }
-        }
+    const troopTable = document.getElementById('troops');
+    if (troopTable) {
+      troopTable.querySelectorAll('tbody tr').forEach((row) => {
+        const img = row.querySelector('td.ico img.unit');
+        const numCell = row.querySelector('td.num');
+        if (!img || !numCell) return;
+
+        const unitId = getUnitId(img);
+        if (!unitId) return;
+
+        // Filter out Nature units (u31-u40) — they appear on oases
+        const numericId = parseInt(unitId);
+        if (!isNaN(numericId) && numericId >= 31 && numericId <= 40) return;
+
+        const count = parseInt(numCell.textContent.trim()) || 0;
+        if (count > 0) troops[unitId] = count;
       });
     }
 
-    const villageName = document.querySelector('.villageNameInput, #villageNameField')?.value ||
-                        document.querySelector('.village_name, .villageName')?.textContent?.trim() || 
-                        '';
+    const villageName = document.querySelector('input.villageNameInput')?.value || '';
 
-    return { x, y, village_name: villageName, troops };
+    return { x: coords.x, y: coords.y, village_name: villageName, troops };
   }
 
   /**
-   * Parse rally point incoming attacks
+   * Parse rally point incoming attacks (build.php?gid=16)
    */
   function parseIncoming() {
-    // Get village coordinates
-    const xEl = document.querySelector('.coordinateX');
-    const yEl = document.querySelector('.coordinateY');
-    let x = null, y = null;
-    if (xEl && yEl) {
-      x = parseInt(xEl.textContent.replace(/[()]/g, '').trim());
-      y = parseInt(yEl.textContent.replace(/[()]/g, '').trim());
-    }
-
+    const coords = getVillageCoords();
     const incoming = [];
 
-    // Find incoming attack rows
-    const rows = document.querySelectorAll('#overview tr, .troop_details tr, .movements tr');
-    rows.forEach((row) => {
-      // Check if it's an incoming attack (not outgoing)
-      const typeEl = row.querySelector('.att1, .att2, .att3, img[class*="att"]');
-      if (!typeEl) return;
+    // Each movement is a separate table.troop_details; inAttack = incoming attack
+    document.querySelectorAll('table.troop_details.inAttack').forEach((table) => {
+      const entry = {};
 
-      // Determine attack type from icon
-      let type = 'attack';
-      if (typeEl.classList.contains('att1') || typeEl.src?.includes('att1')) type = 'raid';
-      if (typeEl.classList.contains('att3') || typeEl.src?.includes('att3')) type = 'spy';
-
-      // Source coordinates
-      let fromX = null, fromY = null;
-      const coordLink = row.querySelector('a[href*="position"]');
-      if (coordLink) {
-        const coordMatch = coordLink.textContent.match(/\((-?\d+)\|(-?\d+)\)/);
-        if (coordMatch) {
-          fromX = parseInt(coordMatch[1]);
-          fromY = parseInt(coordMatch[2]);
+      // Source coords from th.coords inside the units tbody
+      const coordsTh = table.querySelector('th.coords');
+      if (coordsTh) {
+        const src = extractCoordsFrom(coordsTh);
+        if (src) {
+          entry.from_x = src.x;
+          entry.from_y = src.y;
         }
       }
 
-      // Arrival time
-      let arrivalUnix = null;
-      const timerEl = row.querySelector('.timer, [id*="timer"]');
+      // Movement headline (player/village info)
+      const headlineCell = table.querySelector('td.troopHeadline');
+      if (headlineCell) {
+        entry.description = headlineCell.textContent.trim();
+        const link = headlineCell.querySelector('a');
+        if (link) entry.player_name = link.textContent.trim();
+      }
+
+      // Timer — seconds remaining
+      const timerEl = table.querySelector('.timer[counting="down"]');
       if (timerEl) {
-        const val = timerEl.getAttribute('value') || timerEl.dataset?.endat;
-        if (val) {
-          arrivalUnix = parseInt(val);
+        const seconds = parseInt(timerEl.getAttribute('value'));
+        if (!isNaN(seconds)) {
+          // Convert remaining seconds to arrival unix timestamp
+          entry.arrival_unix = Math.floor(Date.now() / 1000) + seconds;
+          entry.seconds_remaining = seconds;
         }
       }
 
-      // Player name
-      const playerEl = row.querySelector('.player a, .playerName');
-      const playerName = playerEl?.textContent?.trim() || '';
-
-      if (fromX !== null || arrivalUnix) {
-        incoming.push({
-          type,
-          from_x: fromX,
-          from_y: fromY,
-          arrival_unix: arrivalUnix,
-          player_name: playerName,
+      // Troop details: extract unit IDs and counts (if visible)
+      const tbodies = table.querySelectorAll('tbody.units');
+      if (tbodies.length >= 2) {
+        const unitIds = [];
+        tbodies[0].querySelectorAll('td.uniticon img.unit').forEach((img) => {
+          unitIds.push(getUnitId(img));
         });
+        const troops = {};
+        tbodies[1].querySelectorAll('td.unit').forEach((cell, i) => {
+          if (i < unitIds.length && unitIds[i]) {
+            const count = parseInt(cell.textContent.trim()) || 0;
+            if (count > 0) troops[unitIds[i]] = count;
+          }
+        });
+        if (Object.keys(troops).length > 0) entry.troops = troops;
+      }
+
+      if (entry.from_x != null || entry.arrival_unix) {
+        incoming.push(entry);
       }
     });
 
-    return { x, y, incoming };
+    return { x: coords.x, y: coords.y, incoming };
   }
 })();
