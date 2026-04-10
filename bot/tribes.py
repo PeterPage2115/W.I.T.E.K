@@ -68,6 +68,7 @@ def _build_tribes() -> dict[int, TribeDef]:
             UnitDef("Taran", 60, 30, 75, 4, 3, "siege",
                     aliases=("Tarany", "Taranów")),
             UnitDef("Katapulta ognista", 75, 60, 10, 3, 6, "siege",
+                    speed_name="Katapulta",
                     aliases=("Katapulty ogniste",)),
             UnitDef("Senator", 50, 40, 30, 4, 5, "special",
                     aliases=("Senatorzy", "Senatorów")),

@@ -4,6 +4,8 @@ import re
 from datetime import datetime, timedelta, timezone
 from math import ceil
 
+from bot.tribes import TRIBES, get_speed_multiplier, get_available_tribes
+
 # ------------------------------------------------------------------ #
 # Travian Server Timezone (CEST = UTC+2 for European servers in summer)
 # ------------------------------------------------------------------ #
@@ -31,12 +33,12 @@ FOOTER = "⚔️ WITEK — Na cześć H2P_Gucio"
 # ------------------------------------------------------------------ #
 CDN_BASE = "https://cdn.legends.travian.com/gpack/417.3/img_ltr"
 
-TRIBE_NAMES = {1: "Rzymianie", 2: "Germanie", 3: "Galowie"}
-TRIBE_EMOJI = {1: "🏛️", 2: "⚔️", 3: "🏹"}
+TRIBE_NAMES = {t.tid: t.name_pl for t in TRIBES.values()}
+TRIBE_EMOJI = {t.tid: t.emoji for t in TRIBES.values()}
 TRIBE_ICONS = {
-    1: f"{CDN_BASE}/global/tribes/roman_medium.png",
-    2: f"{CDN_BASE}/global/tribes/teuton_medium.png",
-    3: f"{CDN_BASE}/global/tribes/gaul_medium.png",
+    t.tid: f"{CDN_BASE}/global/tribes/{t.icon_slug}_medium.png"
+    for t in TRIBES.values()
+    if t.icon_slug
 }
 
 # Resource icons (verified working)
@@ -64,99 +66,40 @@ STATUS_EMOJI = {
 # Travian unit speeds (fields per hour) — Legends standard
 # On x3 speed servers, troop movement speed is 2x base.
 # ------------------------------------------------------------------ #
-TROOP_SPEED_MULTIPLIER = 2  # ts31.x3 = 2x troop speed
+TROOP_SPEED_MULTIPLIER = get_speed_multiplier()
+AVAILABLE_TRIBES = get_available_tribes()
 
-UNIT_SPEEDS: dict[int, list[dict]] = {
-    1: [  # Romans
-        {"name": "Legionista", "speed": 6 * TROOP_SPEED_MULTIPLIER, "type": "inf"},
-        {"name": "Pretorianin", "speed": 5 * TROOP_SPEED_MULTIPLIER, "type": "inf"},
-        {"name": "Imperians", "speed": 7 * TROOP_SPEED_MULTIPLIER, "type": "inf"},
-        {"name": "Equites Legati", "speed": 16 * TROOP_SPEED_MULTIPLIER, "type": "cav"},
-        {"name": "Equites Imperatoris", "speed": 14 * TROOP_SPEED_MULTIPLIER, "type": "cav"},
-        {"name": "Equites Caesaris", "speed": 10 * TROOP_SPEED_MULTIPLIER, "type": "cav"},
-        {"name": "Taran", "speed": 4 * TROOP_SPEED_MULTIPLIER, "type": "siege"},
-        {"name": "Katapulta", "speed": 3 * TROOP_SPEED_MULTIPLIER, "type": "siege"},
-        {"name": "Senator", "speed": 4 * TROOP_SPEED_MULTIPLIER, "type": "special"},
-    ],
-    2: [  # Teutons
-        {"name": "Pałkarz", "speed": 7 * TROOP_SPEED_MULTIPLIER, "type": "inf"},
-        {"name": "Włócznik", "speed": 7 * TROOP_SPEED_MULTIPLIER, "type": "inf"},
-        {"name": "Topornik", "speed": 6 * TROOP_SPEED_MULTIPLIER, "type": "inf"},
-        {"name": "Zwiadowca", "speed": 9 * TROOP_SPEED_MULTIPLIER, "type": "cav"},
-        {"name": "Paladyn", "speed": 10 * TROOP_SPEED_MULTIPLIER, "type": "cav"},
-        {"name": "Rycerz Teutoński", "speed": 9 * TROOP_SPEED_MULTIPLIER, "type": "cav"},
-        {"name": "Taran", "speed": 4 * TROOP_SPEED_MULTIPLIER, "type": "siege"},
-        {"name": "Katapulta", "speed": 3 * TROOP_SPEED_MULTIPLIER, "type": "siege"},
-        {"name": "Wódz", "speed": 4 * TROOP_SPEED_MULTIPLIER, "type": "special"},
-    ],
-    3: [  # Gauls
-        {"name": "Falanga", "speed": 7 * TROOP_SPEED_MULTIPLIER, "type": "inf"},
-        {"name": "Miecznik", "speed": 6 * TROOP_SPEED_MULTIPLIER, "type": "inf"},
-        {"name": "Tropiciel", "speed": 17 * TROOP_SPEED_MULTIPLIER, "type": "cav"},
-        {"name": "Piorun Teutatesa", "speed": 19 * TROOP_SPEED_MULTIPLIER, "type": "cav"},
-        {"name": "Druid", "speed": 16 * TROOP_SPEED_MULTIPLIER, "type": "cav"},
-        {"name": "Haeduan", "speed": 13 * TROOP_SPEED_MULTIPLIER, "type": "cav"},
-        {"name": "Taran", "speed": 4 * TROOP_SPEED_MULTIPLIER, "type": "siege"},
-        {"name": "Trebusz", "speed": 3 * TROOP_SPEED_MULTIPLIER, "type": "siege"},
-        {"name": "Wódz", "speed": 5 * TROOP_SPEED_MULTIPLIER, "type": "special"},
-    ],
-}
+UNIT_SPEEDS: dict[int, list[dict]] = {}
+for _tid, _tribe in TRIBES.items():
+    UNIT_SPEEDS[_tid] = [
+        {"name": u.speed_name or u.name, "speed": u.speed * TROOP_SPEED_MULTIPLIER, "type": u.unit_type}
+        for u in _tribe.units
+        if u.name != _tribe.settler_name
+    ]
 
 TYPE_EMOJI = {"inf": "🚶", "cav": "🐴", "siege": "🏗️", "special": "👑", "hero": "🦸", "nature": "🐾"}
 
 # ------------------------------------------------------------------ #
 # Crop consumption per unit (crop/hour) — official Travian data
 # ------------------------------------------------------------------ #
-UNIT_CROP: dict[int, list[dict]] = {
-    1: [  # Romans
-        {"name": "Legionista", "crop": 1, "type": "inf"},
-        {"name": "Pretorianin", "crop": 1, "type": "inf"},
-        {"name": "Imperians", "crop": 1, "type": "inf"},
-        {"name": "Equites Legati", "crop": 3, "type": "cav"},
-        {"name": "Equites Imperatoris", "crop": 3, "type": "cav"},
-        {"name": "Equites Caesaris", "crop": 4, "type": "cav"},
-        {"name": "Taran", "crop": 3, "type": "siege"},
-        {"name": "Katapulta ognista", "crop": 6, "type": "siege"},
-        {"name": "Senator", "crop": 5, "type": "special"},
-        {"name": "Osadnik", "crop": 1, "type": "special"},
-    ],
-    2: [  # Teutons
-        {"name": "Pałkarz", "crop": 1, "type": "inf"},
-        {"name": "Włócznik", "crop": 1, "type": "inf"},
-        {"name": "Topornik", "crop": 1, "type": "inf"},
-        {"name": "Zwiadowca", "crop": 1, "type": "cav"},
-        {"name": "Paladyn", "crop": 2, "type": "cav"},
-        {"name": "Germański rycerz", "crop": 3, "type": "cav"},
-        {"name": "Taran", "crop": 3, "type": "siege"},
-        {"name": "Katapulta", "crop": 6, "type": "siege"},
-        {"name": "Wódz", "crop": 5, "type": "special"},
-        {"name": "Osadnik", "crop": 1, "type": "special"},
-    ],
-    3: [  # Gauls
-        {"name": "Falangita", "crop": 1, "type": "inf"},
-        {"name": "Miecznik", "crop": 1, "type": "inf"},
-        {"name": "Tropiciel", "crop": 2, "type": "cav"},
-        {"name": "Grom Teutatesa", "crop": 2, "type": "cav"},
-        {"name": "Jeździec druidzki", "crop": 2, "type": "cav"},
-        {"name": "Haeduan", "crop": 3, "type": "cav"},
-        {"name": "Taran", "crop": 3, "type": "siege"},
-        {"name": "Trebusz", "crop": 6, "type": "siege"},
-        {"name": "Wódz", "crop": 5, "type": "special"},
-        {"name": "Osadnik", "crop": 1, "type": "special"},
-    ],
-    0: [  # Nature / captured animals
-        {"name": "Szczur", "crop": 1, "type": "nature"},
-        {"name": "Pająk", "crop": 1, "type": "nature"},
-        {"name": "Wąż", "crop": 1, "type": "nature"},
-        {"name": "Nietoperz", "crop": 1, "type": "nature"},
-        {"name": "Dzik", "crop": 2, "type": "nature"},
-        {"name": "Wilk", "crop": 2, "type": "nature"},
-        {"name": "Niedźwiedź", "crop": 3, "type": "nature"},
-        {"name": "Krokodyl", "crop": 3, "type": "nature"},
-        {"name": "Tygrys", "crop": 4, "type": "nature"},
-        {"name": "Słoń", "crop": 5, "type": "nature"},
-    ],
-}
+UNIT_CROP: dict[int, list[dict]] = {}
+for _tid, _tribe in TRIBES.items():
+    UNIT_CROP[_tid] = [
+        {"name": u.name, "crop": u.crop, "type": u.unit_type}
+        for u in _tribe.units
+    ]
+UNIT_CROP[0] = [  # Nature / captured animals
+    {"name": "Szczur", "crop": 1, "type": "nature"},
+    {"name": "Pająk", "crop": 1, "type": "nature"},
+    {"name": "Wąż", "crop": 1, "type": "nature"},
+    {"name": "Nietoperz", "crop": 1, "type": "nature"},
+    {"name": "Dzik", "crop": 2, "type": "nature"},
+    {"name": "Wilk", "crop": 2, "type": "nature"},
+    {"name": "Niedźwiedź", "crop": 3, "type": "nature"},
+    {"name": "Krokodyl", "crop": 3, "type": "nature"},
+    {"name": "Tygrys", "crop": 4, "type": "nature"},
+    {"name": "Słoń", "crop": 5, "type": "nature"},
+]
 HERO_CROP = 6  # hero always consumes 6 crop/h
 
 # ------------------------------------------------------------------ #
@@ -166,49 +109,30 @@ HERO_CROP = 6  # hero always consumes 6 crop/h
 _UNIT_NAME_MAP: dict[str, str] = {}
 
 # Build map from all known forms
-_ALIASES: dict[str, list[str]] = {
-    # Romans
-    "Legionista": ["Legioniści", "Legionistów", "Legionista"],
-    "Pretorianin": ["Pretorianie", "Pretorianów", "Pretorianin"],
-    "Imperians": ["Imperiansy", "Imperiansów", "Imperians"],
-    "Equites Legati": ["Equites Legati"],
-    "Equites Imperatoris": ["Equites Imperatoris"],
-    "Equites Caesaris": ["Equites Caesaris"],
-    "Katapulta ognista": ["Katapulty ogniste", "Katapulta ognista"],
-    "Senator": ["Senatorzy", "Senatorów", "Senator"],
-    # Teutons
-    "Pałkarz": ["Pałkarze", "Pałkarzy", "Pałkarz"],
-    "Włócznik": ["Włócznicy", "Włóczników", "Włócznik"],
-    "Topornik": ["Topornicy", "Toporników", "Topornik"],
-    "Zwiadowca": ["Zwiadowcy", "Zwiadowców", "Zwiadowca"],
-    "Paladyn": ["Paladyni", "Paladynów", "Paladyn"],
-    "Germański rycerz": ["Germańscy rycerze", "Germańskich rycerzy", "Germański rycerz", "Rycerz Teutoński"],
-    # Gauls
-    "Falangita": ["Falangi", "Falangitów", "Falangita", "Falanga"],
-    "Miecznik": ["Miecznicy", "Mieczników", "Miecznik"],
-    "Tropiciel": ["Tropiciele", "Tropicieli", "Tropiciel"],
-    "Grom Teutatesa": ["Gromy Teutatesa", "Gromów Teutatesa", "Grom Teutatesa", "Piorun Teutatesa"],
-    "Jeździec druidzki": ["Jeźdźcy druidzcy", "Jeźdźców druidzkich", "Jeździec druidzki", "Druid"],
-    "Haeduan": ["Haeduanowie", "Haeduanów", "Haeduan"],
-    "Trebusz": ["Trebusze", "Trebuszów", "Trebusz"],
-    # Shared
-    "Taran": ["Tarany", "Taranów", "Taran"],
-    "Katapulta": ["Katapulty", "Katapult", "Katapulta"],
-    "Wódz": ["Wodzowie", "Wodzów", "Wódz"],
-    "Osadnik": ["Osadnicy", "Osadników", "Osadnik"],
-    "Bohater": ["Bohater", "Bohatera"],
-    # Nature
-    "Szczur": ["Szczury", "Szczurów", "Szczur"],
-    "Pająk": ["Pająki", "Pająków", "Pająk"],
-    "Wąż": ["Węże", "Węży", "Wąż"],
-    "Nietoperz": ["Nietoperze", "Nietoperzy", "Nietoperz"],
-    "Dzik": ["Dziki", "Dzików", "Dzik"],
-    "Wilk": ["Wilki", "Wilków", "Wilk"],
-    "Niedźwiedź": ["Niedźwiedzie", "Niedźwiedzi", "Niedźwiedź"],
-    "Krokodyl": ["Krokodyle", "Krokodyli", "Krokodyl"],
-    "Tygrys": ["Tygrysy", "Tygrysów", "Tygrys"],
-    "Słoń": ["Słonie", "Słoni", "Słoń"],
-}
+_ALIASES: dict[str, list[str]] = {}
+for _tribe in TRIBES.values():
+    for _u in _tribe.units:
+        if _u.name not in _ALIASES:
+            _ALIASES[_u.name] = [_u.name]
+        if _u.aliases:
+            _ALIASES[_u.name].extend(
+                a for a in _u.aliases if a not in _ALIASES[_u.name]
+            )
+        if _u.speed_name and _u.speed_name not in _ALIASES[_u.name]:
+            _ALIASES[_u.name].append(_u.speed_name)
+# Hero — not in any tribe
+_ALIASES["Bohater"] = ["Bohater", "Bohatera"]
+# Nature units (tid=0) — not in TRIBES registry
+_ALIASES["Szczur"] = ["Szczury", "Szczurów", "Szczur"]
+_ALIASES["Pająk"] = ["Pająki", "Pająków", "Pająk"]
+_ALIASES["Wąż"] = ["Węże", "Węży", "Wąż"]
+_ALIASES["Nietoperz"] = ["Nietoperze", "Nietoperzy", "Nietoperz"]
+_ALIASES["Dzik"] = ["Dziki", "Dzików", "Dzik"]
+_ALIASES["Wilk"] = ["Wilki", "Wilków", "Wilk"]
+_ALIASES["Niedźwiedź"] = ["Niedźwiedzie", "Niedźwiedzi", "Niedźwiedź"]
+_ALIASES["Krokodyl"] = ["Krokodyle", "Krokodyli", "Krokodyl"]
+_ALIASES["Tygrys"] = ["Tygrysy", "Tygrysów", "Tygrys"]
+_ALIASES["Słoń"] = ["Słonie", "Słoni", "Słoń"]
 
 for canonical, aliases in _ALIASES.items():
     for alias in aliases:
@@ -384,7 +308,7 @@ def detect_possible_units(
     tribes_to_check = (
         [attacker_tribe]
         if attacker_tribe and attacker_tribe in UNIT_SPEEDS
-        else [1, 2, 3]
+        else AVAILABLE_TRIBES
     )
 
     # Collect matches keyed by (name, speed, type) for cross-tribe dedup
@@ -609,41 +533,13 @@ def discord_timestamp(unix: int, style: str = "R") -> str:
 # Combat stats — official Travian Legends attack/defense values
 # ------------------------------------------------------------------ #
 
-UNIT_COMBAT: dict[int, list[dict]] = {
-    1: [  # Romans
-        {"name": "Legionista", "att": 40, "def_inf": 35, "def_cav": 50, "type": "inf"},
-        {"name": "Pretorianin", "att": 30, "def_inf": 65, "def_cav": 35, "type": "inf"},
-        {"name": "Imperians", "att": 70, "def_inf": 40, "def_cav": 25, "type": "inf"},
-        {"name": "Equites Legati", "att": 0, "def_inf": 20, "def_cav": 10, "type": "cav"},
-        {"name": "Equites Imperatoris", "att": 120, "def_inf": 65, "def_cav": 50, "type": "cav"},
-        {"name": "Equites Caesaris", "att": 180, "def_inf": 80, "def_cav": 105, "type": "cav"},
-        {"name": "Taran", "att": 60, "def_inf": 30, "def_cav": 75, "type": "siege"},
-        {"name": "Katapulta ognista", "att": 75, "def_inf": 60, "def_cav": 10, "type": "siege"},
-        {"name": "Senator", "att": 50, "def_inf": 40, "def_cav": 30, "type": "special"},
-    ],
-    2: [  # Teutons
-        {"name": "Pałkarz", "att": 40, "def_inf": 20, "def_cav": 5, "type": "inf"},
-        {"name": "Włócznik", "att": 10, "def_inf": 35, "def_cav": 60, "type": "inf"},
-        {"name": "Topornik", "att": 60, "def_inf": 30, "def_cav": 30, "type": "inf"},
-        {"name": "Zwiadowca", "att": 0, "def_inf": 10, "def_cav": 5, "type": "cav"},
-        {"name": "Paladyn", "att": 55, "def_inf": 100, "def_cav": 40, "type": "cav"},
-        {"name": "Germański rycerz", "att": 150, "def_inf": 50, "def_cav": 75, "type": "cav"},
-        {"name": "Taran", "att": 65, "def_inf": 30, "def_cav": 80, "type": "siege"},
-        {"name": "Katapulta", "att": 50, "def_inf": 60, "def_cav": 10, "type": "siege"},
-        {"name": "Wódz", "att": 40, "def_inf": 60, "def_cav": 40, "type": "special"},
-    ],
-    3: [  # Gauls
-        {"name": "Falangita", "att": 15, "def_inf": 40, "def_cav": 50, "type": "inf"},
-        {"name": "Miecznik", "att": 65, "def_inf": 35, "def_cav": 20, "type": "inf"},
-        {"name": "Tropiciel", "att": 0, "def_inf": 20, "def_cav": 10, "type": "cav"},
-        {"name": "Grom Teutatesa", "att": 90, "def_inf": 25, "def_cav": 40, "type": "cav"},
-        {"name": "Jeździec druidzki", "att": 45, "def_inf": 115, "def_cav": 55, "type": "cav"},
-        {"name": "Haeduan", "att": 140, "def_inf": 60, "def_cav": 165, "type": "cav"},
-        {"name": "Taran", "att": 50, "def_inf": 30, "def_cav": 70, "type": "siege"},
-        {"name": "Trebusz", "att": 70, "def_inf": 45, "def_cav": 10, "type": "siege"},
-        {"name": "Wódz", "att": 40, "def_inf": 50, "def_cav": 50, "type": "special"},
-    ],
-}
+UNIT_COMBAT: dict[int, list[dict]] = {}
+for _tid, _tribe in TRIBES.items():
+    UNIT_COMBAT[_tid] = [
+        {"name": u.name, "att": u.att, "def_inf": u.def_inf, "def_cav": u.def_cav, "type": u.unit_type}
+        for u in _tribe.units
+        if u.name != _tribe.settler_name
+    ]
 
 # Flat lookup: canonical_name → combat stats
 COMBAT_BY_NAME: dict[str, dict] = {}
