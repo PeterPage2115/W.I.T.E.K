@@ -25,11 +25,11 @@
     </div>
     <div class="trav-panel p-4">
         <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-1">🏰 Sojusze</div>
-        <div class="text-2xl font-bold text-trav-brown-dark">{{ top_alliances | length }}+</div>
+        <div class="text-2xl font-bold text-trav-brown-dark">{{ "{:,}".format(total_alliances) }}</div>
     </div>
     <div class="trav-panel p-4">
         <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-1">👥 Gracze</div>
-        <div class="text-2xl font-bold text-trav-brown-dark">{{ top_players | length }}+</div>
+        <div class="text-2xl font-bold text-trav-brown-dark">{{ "{:,}".format(total_players) }}</div>
     </div>
     <div class="trav-panel p-4">
         <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-1">📡 Snapshot</div>

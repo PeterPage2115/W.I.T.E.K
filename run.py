@@ -175,7 +175,7 @@ def main():
 
     # -- Start Flask ------------------------------------------------------ #
 
-    print(f"⚔️  WITEK startuje na http://localhost:{args.port}")
+    print(f"WITEK startuje na http://localhost:{args.port}")
     app.run(host="0.0.0.0", port=args.port, debug=app.config["DEBUG"])
 
 

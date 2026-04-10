@@ -1,6 +1,7 @@
 """Dashboard route — main page."""
 
 from flask import Blueprint, render_template
+from sqlalchemy import func
 from ..database import db
 from ..models import Snapshot, Alliance, Player
 
@@ -27,9 +28,14 @@ def index():
         .all()
     )
 
+    total_alliances = db.session.query(func.count(Alliance.aid)).scalar() or 0
+    total_players = db.session.query(func.count(Player.uid)).scalar() or 0
+
     return render_template(
         "dashboard.html",
         snapshot=latest_snapshot,
         top_alliances=top_alliances,
         top_players=top_players,
+        total_alliances=total_alliances,
+        total_players=total_players,
     )
