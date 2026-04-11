@@ -1,5 +1,7 @@
 # ⚔️ W.I.T.E.K — Wirtualny Informator Taktyczno-Ekonomiczny Koalicji
 
+[![CI](https://github.com/PeterPage2115/witek/actions/workflows/ci.yml/badge.svg)](https://github.com/PeterPage2115/witek/actions/workflows/ci.yml)
+
 Narzędzie analityczne sojuszu **Travian Legends** + bot Discord.
 Nazwane na cześć H2P_Gucio (Witold Tacikiewicz).
 
