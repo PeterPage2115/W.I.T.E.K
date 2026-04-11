@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}Raporty Szpiegowskie{% endblock %}
+
+{% block nav_extra %}
+<a href="/reports" class="text-trav-gold/70 hover:text-trav-gold">📜 Raporty</a>
+<a href="/reports/spy" class="text-trav-gold font-semibold">🔍 Szpiegostwo</a>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="mb-6">
+    <h1 class="font-medieval text-trav-parchment text-3xl font-bold mb-1 drop-shadow-lg">
+        🔍 Raporty Szpiegowskie
+    </h1>
+    <p class="text-trav-parchment/60 text-sm">Dane z rozpoznania — zasoby, wojska, budynki obronne</p>
+</div>
+
+<!-- Stats -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+    <div class="trav-panel p-4">
+        <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-1">🔍 Wszystkie raporty</div>
+        <div class="text-2xl font-bold text-trav-brown-dark">{{ total }}</div>
+    </div>
+    <div class="trav-panel p-4">
+        <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-1">📄 Strona</div>
+        <div class="text-2xl font-bold text-trav-brown-dark">{{ page }} / {{ total_pages }}</div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="trav-panel p-4 mb-6">
+    <form method="get" action="/reports/spy" class="flex flex-wrap gap-3 items-end">
+        <div>
+            <label class="block text-xs text-trav-text-muted mb-1">Gracz</label>
+            <input type="text" name="player" value="{{ player_filter or '' }}"
+                   placeholder="Szukaj gracza..."
+                   class="px-3 py-1.5 rounded border border-trav-brown/30 bg-trav-parchment-light text-sm text-trav-text focus:outline-none focus:ring-1 focus:ring-trav-gold">
+        </div>
+        <div>
+            <label class="block text-xs text-trav-text-muted mb-1">Typ</label>
+            <select name="spy_type"
+                    class="px-3 py-1.5 rounded border border-trav-brown/30 bg-trav-parchment-light text-sm text-trav-text focus:outline-none focus:ring-1 focus:ring-trav-gold">
+                <option value="">Wszystkie</option>
+                <option value="resources" {% if spy_type_filter == 'resources' %}selected{% endif %}>Zasoby</option>
+                <option value="troops" {% if spy_type_filter == 'troops' %}selected{% endif %}>Wojska</option>
+                <option value="both" {% if spy_type_filter == 'both' %}selected{% endif %}>Oba</option>
+            </select>
+        </div>
+        <button type="submit"
+                class="px-4 py-1.5 bg-trav-brown text-trav-parchment text-sm rounded hover:bg-trav-brown-dark transition font-medium">
+            🔍 Szukaj
+        </button>
+        {% if player_filter or spy_type_filter %}
+        <a href="/reports/spy" class="px-4 py-1.5 bg-trav-parchment/80 text-trav-brown text-sm rounded hover:bg-trav-parchment transition font-medium">
+            ✖ Wyczyść
+        </a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Reports Table -->
+<div class="trav-panel overflow-hidden">
+    <div class="trav-panel-header">
+        <h2 class="font-medieval text-base font-semibold">
+            🔍 Raporty szpiegowskie ({{ reports | length }}{% if total > reports | length %} z {{ total }}{% endif %})
+        </h2>
+    </div>
+
+    {% if reports %}
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-trav-text-muted text-xs uppercase border-b-2 border-trav-brown/20 bg-trav-parchment-dark/50">
+                    <th class="px-3 py-2.5 text-center">Typ</th>
+                    <th class="px-3 py-2.5 text-left">Cel</th>
+                    <th class="px-3 py-2.5 text-center">Koordynaty</th>
+                    <th class="px-3 py-2.5 text-center">🪵 Drewno</th>
+                    <th class="px-3 py-2.5 text-center">🧱 Glina</th>
+                    <th class="px-3 py-2.5 text-center">⛏️ Żelazo</th>
+                    <th class="px-3 py-2.5 text-center">🌾 Zboże</th>
+                    <th class="px-3 py-2.5 text-center">Σ Zasoby</th>
+                    <th class="px-3 py-2.5 text-center">Wojska</th>
+                    <th class="px-3 py-2.5 text-center">Mur</th>
+                    <th class="px-3 py-2.5 text-center">Data</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in reports %}
+                <tr class="hover-row border-b border-trav-brown/10">
+                    <!-- Type -->
+                    <td class="px-3 py-2 text-center">
+                        {% if r.obj.spy_type == 'resources' %}
+                        <span title="Zasoby">💰</span>
+                        {% elif r.obj.spy_type == 'troops' %}
+                        <span title="Wojska">⚔️</span>
+                        {% else %}
+                        <span title="Zasoby + Wojska">🔍</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Target -->
+                    <td class="px-3 py-2">
+                        <div class="font-medium text-trav-brown-dark">{{ r.obj.target_player or "Nieznany" }}</div>
+                        {% if r.obj.target_village %}
+                        <div class="text-xs text-trav-text-muted">{{ r.obj.target_village }}</div>
+                        {% endif %}
+                    </td>
+
+                    <!-- Coordinates -->
+                    <td class="px-3 py-2 text-center font-mono text-xs">
+                        ({{ r.obj.target_x }}|{{ r.obj.target_y }})
+                    </td>
+
+                    <!-- Resources -->
+                    <td class="px-3 py-2 text-center text-xs">{{ "{:,}".format(r.obj.resources_lumber or 0) if r.obj.resources_lumber else "—" }}</td>
+                    <td class="px-3 py-2 text-center text-xs">{{ "{:,}".format(r.obj.resources_clay or 0) if r.obj.resources_clay else "—" }}</td>
+                    <td class="px-3 py-2 text-center text-xs">{{ "{:,}".format(r.obj.resources_iron or 0) if r.obj.resources_iron else "—" }}</td>
+                    <td class="px-3 py-2 text-center text-xs">{{ "{:,}".format(r.obj.resources_crop or 0) if r.obj.resources_crop else "—" }}</td>
+
+                    <!-- Total resources -->
+                    <td class="px-3 py-2 text-center text-xs font-medium text-trav-green-dark">
+                        {% if r.total_res %}{{ "{:,}".format(r.total_res) }}{% else %}—{% endif %}
+                    </td>
+
+                    <!-- Troops -->
+                    <td class="px-3 py-2 text-center text-xs">
+                        {% if r.troop_count %}
+                        <span class="text-trav-red font-medium">{{ "{:,}".format(r.troop_count) }}</span>
+                        {% else %}
+                        <span class="text-trav-text-muted">—</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Wall -->
+                    <td class="px-3 py-2 text-center text-xs">
+                        {% if r.wall_level is not none %}
+                        <span class="font-medium">🏰 {{ r.wall_level }}</span>
+                        {% else %}
+                        <span class="text-trav-text-muted">—</span>
+                        {% endif %}
+                    </td>
+
+                    <!-- Date -->
+                    <td class="px-3 py-2 text-center text-xs text-trav-text-muted">
+                        {% if r.obj.submitted_at %}
+                        {{ r.obj.submitted_at.strftime('%d.%m %H:%M') }}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="p-4 flex justify-center gap-2 border-t border-trav-brown/20">
+        {% if page > 1 %}
+        <a href="/reports/spy?page={{ page - 1 }}{% if player_filter %}&player={{ player_filter }}{% endif %}{% if spy_type_filter %}&spy_type={{ spy_type_filter }}{% endif %}"
+           class="px-3 py-1 bg-trav-parchment/80 text-trav-brown text-sm rounded hover:bg-trav-parchment transition">
+            ← Poprzednia
+        </a>
+        {% endif %}
+        <span class="px-3 py-1 text-trav-text-muted text-sm">{{ page }} / {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="/reports/spy?page={{ page + 1 }}{% if player_filter %}&player={{ player_filter }}{% endif %}{% if spy_type_filter %}&spy_type={{ spy_type_filter }}{% endif %}"
+           class="px-3 py-1 bg-trav-parchment/80 text-trav-brown text-sm rounded hover:bg-trav-parchment transition">
+            Następna →
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <!-- Empty state -->
+    <div class="p-8 text-center">
+        <div class="text-4xl mb-3">🔍</div>
+        <h3 class="font-medieval text-trav-brown-dark text-lg font-bold mb-2">Brak raportów szpiegowskich</h3>
+        <p class="text-trav-text-muted text-sm">
+            {% if player_filter or spy_type_filter %}
+            Brak raportów pasujących do filtrów. <a href="/reports/spy" class="text-trav-blue hover:text-blue-700">Pokaż wszystkie</a>
+            {% else %}
+            Nie dodano jeszcze żadnych raportów szpiegowskich. Użyj rozszerzenia Chrome aby wysłać dane z gry.
+            {% endif %}
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

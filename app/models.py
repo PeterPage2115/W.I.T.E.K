@@ -258,6 +258,32 @@ class DefenseThread(db.Model):
     updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
 
 
+class SpyReport(db.Model):
+    """Spy report parsed from Travian via Chrome extension."""
+
+    __tablename__ = "spy_reports"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    snapshot_id = db.Column(db.Integer, db.ForeignKey("snapshots.id"), nullable=True)
+    spy_type = db.Column(db.Text, nullable=False)  # resources / troops / both
+    target_player = db.Column(db.Text)
+    target_village = db.Column(db.Text)
+    target_x = db.Column(db.Integer, nullable=False)
+    target_y = db.Column(db.Integer, nullable=False)
+    resources_lumber = db.Column(db.Integer, nullable=True)
+    resources_clay = db.Column(db.Integer, nullable=True)
+    resources_iron = db.Column(db.Integer, nullable=True)
+    resources_crop = db.Column(db.Integer, nullable=True)
+    troops = db.Column(db.Text, nullable=True)  # JSON {"unit_name": count}
+    defense_buildings = db.Column(db.Text, nullable=True)  # JSON {"wall": 10, ...}
+    submitted_by = db.Column(db.Text)
+    submitted_at = db.Column(db.DateTime, default=_utcnow)
+
+    __table_args__ = (
+        db.Index("ix_spy_reports_target", "target_x", "target_y"),
+    )
+
+
 class DiplomaticRelation(db.Model):
     """Diplomatic relation with another alliance (ally, pact, nap, war)."""
 
@@ -271,3 +297,22 @@ class DiplomaticRelation(db.Model):
     created_by = db.Column(db.String(100))
     notes = db.Column(db.Text, nullable=True)
     active = db.Column(db.Boolean, default=True)
+
+
+class NightWatchSetting(db.Model):
+    """Per-user night watch (czuwanie nocne) preferences."""
+
+    __tablename__ = "night_watch_settings"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    discord_id = db.Column(db.BigInteger, unique=True, nullable=False)
+    enabled = db.Column(db.Boolean, default=True)
+    start_hour = db.Column(db.Integer, nullable=False, default=22)
+    start_minute = db.Column(db.Integer, nullable=False, default=0)
+    end_hour = db.Column(db.Integer, nullable=False, default=6)
+    end_minute = db.Column(db.Integer, nullable=False, default=0)
+    dm_count = db.Column(db.Integer, default=0)  # DMs sent in current session
+    session_date = db.Column(db.Text, nullable=True)  # ISO date of current session
+    last_checked_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)

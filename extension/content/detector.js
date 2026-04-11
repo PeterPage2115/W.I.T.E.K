@@ -12,7 +12,14 @@
   // Detect page type from URL patterns
   let pageType = 'unknown';
   if (/\/report\b/.test(url) && /id=/.test(url)) {
-    pageType = 'report';
+    // Check if it's a spy report (subject/header contains spy indicators)
+    const subject = document.querySelector('#reportWrapper .header .headline .subject');
+    const subjectText = subject ? subject.textContent.toLowerCase() : '';
+    if (subjectText.includes('szpieg') || subjectText.includes('spy') || subjectText.includes('zwiad')) {
+      pageType = 'spy_report';
+    } else {
+      pageType = 'report';
+    }
   } else if (/build\.php/.test(url) && /gid=16/.test(url)) {
     pageType = 'rally_point';
   } else if (/dorf1\.php/.test(url)) {
@@ -77,6 +84,10 @@
         case 'report':
           payload = parseReport();
           action = 'send_report';
+          break;
+        case 'spy_report':
+          payload = parseSpyReport();
+          action = 'send_spy_report';
           break;
         case 'village':
           payload = parseTroops();
@@ -395,5 +406,134 @@
     });
 
     return { x: coords.x, y: coords.y, incoming };
+  }
+
+  /**
+   * Parse spy report page.
+   * Extracts target info, resources, troops, and defense buildings.
+   */
+  function parseSpyReport() {
+    const reportEl = document.getElementById('reportWrapper');
+    if (!reportEl) return null;
+
+    const result = {
+      spy_type: 'resources',
+      resources: {},
+      troops: {},
+      defense_buildings: {},
+    };
+
+    // Target info from defender section headline
+    const defenderEl = reportEl.querySelector('.role.defender');
+    if (defenderEl) {
+      const headline = defenderEl.querySelector('.troopHeadline');
+      if (headline) {
+        result.target_player = headline.querySelector('a.player')?.textContent?.trim() || '';
+        result.target_village = headline.querySelector('a.village')?.textContent?.trim() || '';
+      }
+      // Coordinates from defender section
+      const coordEl = defenderEl.querySelector('.coordinateX');
+      if (coordEl) {
+        const coords = extractCoordsFrom(coordEl.closest('.coordinateContainer') || defenderEl);
+        if (coords) {
+          result.x = coords.x;
+          result.y = coords.y;
+        }
+      }
+    }
+
+    // Fallback: coordinates from any coordinate container in the report
+    if (result.x == null) {
+      const containers = reportEl.querySelectorAll('.coordinateContainer, [class*="coordinate"]');
+      for (const container of containers) {
+        const coords = extractCoordsFrom(container);
+        if (coords) {
+          result.x = coords.x;
+          result.y = coords.y;
+          break;
+        }
+      }
+    }
+
+    // Resources — look for resource icons (lumber/clay/iron/crop) with values
+    const resSection = reportEl.querySelector('.res, .resources, .resourceReport');
+    const resContainer = resSection || reportEl;
+    ['lumber', 'clay', 'iron', 'crop'].forEach((res) => {
+      // Try icon-based: <i class="lumber"> near <span class="value">
+      const icon = resContainer.querySelector(`i.${res}, .${res} i, img[class*="${res}"]`);
+      if (icon) {
+        const parent = icon.closest('.inlineIcon, .resourceWrapper, td, div');
+        if (parent) {
+          const valEl = parent.querySelector('.value, span, .num');
+          if (valEl) {
+            const val = parseInt(valEl.textContent.replace(/\D/g, ''));
+            if (!isNaN(val)) result.resources[res] = val;
+          }
+        }
+      }
+    });
+
+    // Fallback: look for resource cells in table rows
+    if (Object.keys(result.resources).length === 0) {
+      const resCells = reportEl.querySelectorAll('td .res, td.res');
+      const resNames = ['lumber', 'clay', 'iron', 'crop'];
+      resCells.forEach((cell, i) => {
+        if (i < 4) {
+          const val = parseInt(cell.textContent.replace(/\D/g, ''));
+          if (!isNaN(val)) result.resources[resNames[i]] = val;
+        }
+      });
+    }
+
+    // Troops — reuse the same pattern as battle reports
+    let hasTroops = false;
+    const troopSections = reportEl.querySelectorAll('.role.defender tbody.units, table.troop_details tbody.units');
+    if (troopSections.length >= 2) {
+      const unitIds = [];
+      troopSections[0].querySelectorAll('td.uniticon img.unit').forEach((img) => {
+        unitIds.push(getUnitId(img));
+      });
+      troopSections[1].querySelectorAll('td.unit').forEach((cell, i) => {
+        if (i < unitIds.length && unitIds[i]) {
+          const count = parseInt(cell.textContent.trim()) || 0;
+          if (count > 0) {
+            result.troops[unitIds[i]] = count;
+            hasTroops = true;
+          }
+        }
+      });
+    }
+
+    // Defense buildings — look for building info (wall, palace, etc.)
+    const buildingKeywords = {
+      'mur': 'wall', 'wall': 'wall', 'palisada': 'wall', 'palisade': 'wall',
+      'mury': 'wall', 'earth wall': 'wall',
+      'pałac': 'palace', 'palace': 'palace',
+      'rezydencja': 'residence', 'residence': 'residence',
+    };
+    const infoRows = reportEl.querySelectorAll('.buildingInfo tr, .defenseInfo tr, tbody.infos tr');
+    infoRows.forEach((row) => {
+      const label = row.querySelector('td:first-child, th')?.textContent?.trim().toLowerCase() || '';
+      const value = row.querySelector('td:last-child, td .value')?.textContent?.trim() || '';
+      for (const [keyword, key] of Object.entries(buildingKeywords)) {
+        if (label.includes(keyword)) {
+          const level = parseInt(value.replace(/\D/g, ''));
+          if (!isNaN(level) && level > 0) result.defense_buildings[key] = level;
+          break;
+        }
+      }
+    });
+
+    // Determine spy_type
+    const hasResources = Object.keys(result.resources).length > 0;
+    if (hasResources && hasTroops) {
+      result.spy_type = 'both';
+    } else if (hasTroops) {
+      result.spy_type = 'troops';
+    } else {
+      result.spy_type = 'resources';
+    }
+
+    return result;
   }
 })();

@@ -91,6 +91,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
+  if (request.action === 'send_spy_report') {
+    sendToApi('/api/ext/spy-report', request.payload)
+      .then(sendResponse);
+    return true;
+  }
+
   if (request.action === 'send_troops') {
     sendToApi('/api/ext/troops', request.payload)
       .then(sendResponse);

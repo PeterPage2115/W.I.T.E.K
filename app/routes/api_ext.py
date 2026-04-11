@@ -255,6 +255,81 @@ def receive_troops():
     return jsonify({"ok": True, "village": f"({x}|{y})"}), 200
 
 
+@bp.route("/spy-report", methods=["POST", "OPTIONS"])
+@require_ext_token
+def receive_spy_report():
+    """Receive spy report data from extension.
+
+    Expected JSON:
+    {
+        "server_url": "https://ts31...",
+        "target_player": "PlayerName",
+        "target_village": "VillageName",
+        "x": 76, "y": 43,
+        "spy_type": "resources" | "troops" | "both",
+        "resources": {"lumber": 1000, "clay": 500, "iron": 300, "crop": 2000},
+        "troops": {"1": 100, "2": 50},
+        "defense_buildings": {"wall": 10, "palace": 5}
+    }
+    """
+    data = request.get_json()
+
+    for field in ["x", "y", "spy_type"]:
+        if field not in data:
+            return jsonify({"error": f"Missing field: {field}"}), 400
+
+    spy_type = data["spy_type"]
+    if spy_type not in ("resources", "troops", "both"):
+        return jsonify({"error": "spy_type must be one of: resources, troops, both"}), 400
+
+    try:
+        x, y = _validate_coords(data["x"], data["y"])
+    except (ValueError, TypeError) as e:
+        return jsonify({"error": str(e)}), 400
+
+    troops = None
+    if data.get("troops"):
+        try:
+            troops = _validate_troops(data["troops"])
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+
+    defense_buildings = None
+    if data.get("defense_buildings"):
+        if not isinstance(data["defense_buildings"], dict):
+            return jsonify({"error": "defense_buildings must be a dict"}), 400
+        defense_buildings = data["defense_buildings"]
+
+    resources = data.get("resources", {})
+    if not isinstance(resources, dict):
+        return jsonify({"error": "resources must be a dict"}), 400
+
+    from app.models import SpyReport
+
+    report = SpyReport(
+        spy_type=spy_type,
+        target_player=data.get("target_player"),
+        target_village=data.get("target_village"),
+        target_x=x,
+        target_y=y,
+        resources_lumber=resources.get("lumber"),
+        resources_clay=resources.get("clay"),
+        resources_iron=resources.get("iron"),
+        resources_crop=resources.get("crop"),
+        troops=json.dumps(troops) if troops else None,
+        defense_buildings=json.dumps(defense_buildings) if defense_buildings else None,
+        submitted_by="extension",
+    )
+
+    db.session.add(report)
+    db.session.commit()
+
+    log.info("Extension spy report saved: id=%s, target=(%s|%s) %s",
+             report.id, x, y, data.get("target_player", "?"))
+
+    return jsonify({"ok": True, "report_id": report.id}), 201
+
+
 @bp.route("/incoming", methods=["POST", "OPTIONS"])
 @require_ext_token
 def receive_incoming():
