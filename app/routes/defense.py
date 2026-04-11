@@ -1,10 +1,11 @@
 """Defense panel — view defense coordination threads."""
 
 import json
+from collections import defaultdict
 from math import sqrt
 
 from flask import Blueprint, render_template, request, current_app, abort
-from sqlalchemy import func
+from sqlalchemy import func, or_, and_
 
 from ..database import db
 from ..models import (
@@ -56,26 +57,62 @@ def index():
     total_garrison_troops = 0
     total_support_troops = 0
 
-    # Enrich threads with counts
+    # Batch-load related data to avoid N+1 queries
+    thread_ids = [t.forum_thread_id for t in threads]
+    coord_pairs = set((t.defender_x, t.defender_y) for t in threads)
+
+    # Attack counts per thread
+    attack_counts = dict(
+        db.session.query(
+            AttackReport.forum_thread_id, func.count(AttackReport.id)
+        )
+        .filter(AttackReport.forum_thread_id.in_(thread_ids))
+        .group_by(AttackReport.forum_thread_id)
+        .all()
+    ) if thread_ids else {}
+
+    # Support counts per thread
+    support_counts = dict(
+        db.session.query(
+            TroopSupport.forum_thread_id, func.count(TroopSupport.id)
+        )
+        .filter(TroopSupport.forum_thread_id.in_(thread_ids))
+        .group_by(TroopSupport.forum_thread_id)
+        .all()
+    ) if thread_ids else {}
+
+    # All support objects grouped by thread
+    supports_by_thread = defaultdict(list)
+    if thread_ids:
+        all_supports = (
+            db.session.query(TroopSupport)
+            .filter(TroopSupport.forum_thread_id.in_(thread_ids))
+            .all()
+        )
+        for s in all_supports:
+            supports_by_thread[s.forum_thread_id].append(s)
+
+    # Garrison objects grouped by (x, y) — OR-based filter for SQLite compat
+    garrisons_by_coord = defaultdict(list)
+    if coord_pairs:
+        coord_filters = [
+            and_(VillageTroops.village_x == x, VillageTroops.village_y == y)
+            for x, y in coord_pairs
+        ]
+        all_garrisons = (
+            db.session.query(VillageTroops)
+            .filter(or_(*coord_filters))
+            .all()
+        )
+        for g in all_garrisons:
+            garrisons_by_coord[(g.village_x, g.village_y)].append(g)
+
+    # Enrich threads using pre-fetched lookups (no per-thread queries)
     enriched = []
     for t in threads:
-        attack_count = db.session.query(AttackReport).filter(
-            AttackReport.forum_thread_id == t.forum_thread_id
-        ).count()
-
-        support_count = db.session.query(TroopSupport).filter(
-            TroopSupport.forum_thread_id == t.forum_thread_id
-        ).count()
-
-        # Garrison troops matching defender coords
-        garrisons = db.session.query(VillageTroops).filter(
-            VillageTroops.village_x == t.defender_x,
-            VillageTroops.village_y == t.defender_y,
-        ).all()
-
-        supports = db.session.query(TroopSupport).filter(
-            TroopSupport.forum_thread_id == t.forum_thread_id
-        ).all()
+        tid = t.forum_thread_id
+        garrisons = garrisons_by_coord.get((t.defender_x, t.defender_y), [])
+        supports = supports_by_thread.get(tid, [])
 
         garrison_crop = sum(g.crop_consumption or 0 for g in garrisons)
         support_crop = sum(s.crop_consumption or 0 for s in supports)
@@ -91,13 +128,12 @@ def index():
         total_garrison_troops += garrison_troop_count
         total_support_troops += support_troop_count
 
-        # Latest activity: max of thread updated_at, latest attack, latest support
         last_activity = t.updated_at or t.created_at
 
         enriched.append({
             "obj": t,
-            "attack_count": attack_count,
-            "support_count": support_count,
+            "attack_count": attack_counts.get(tid, 0),
+            "support_count": support_counts.get(tid, 0),
             "total_crop": total_crop,
             "last_activity": last_activity,
         })
