@@ -76,10 +76,22 @@ TRIBE_UNITS = {
         "Falangita", "Miecznik",
         "Zwiadowca galijski", "Druid", "Haeduanin",
     ],
-    "Egipcjanie": [],
-    "Hunowie": [],
-    "Wikingowie": [],
-    "Spartanie": [],
+    "Egipcjanie": [
+        "Slave Militia", "Ash Warden", "Khopesh Warrior",
+        "Sopdu Explorer", "Anhur Guard", "Resheph Chariot",
+    ],
+    "Hunowie": [
+        "Mercenary", "Bowman",
+        "Spotter", "Steppe Rider", "Marksman", "Marauder",
+    ],
+    "Wikingowie": [
+        "Thrall", "Shield Maiden", "Berserker",
+        "Huskarl Rider", "Valkyrie's Blessing",
+    ],
+    "Spartanie": [
+        "Hoplite", "Sentinel", "Shieldsman", "Twinsteel Therion",
+        "Elpida Rider", "Corinthian Crusher",
+    ],
 }
 
 TRAINING_COSTS: dict[str, dict] = {
@@ -103,6 +115,33 @@ TRAINING_COSTS: dict[str, dict] = {
     "Zwiadowca galijski": {"lumber": 170, "clay": 150, "iron": 20, "crop": 40, "time": 1280, "building": "Stajnia"},
     "Druid": {"lumber": 360, "clay": 330, "iron": 280, "crop": 120, "time": 2560, "building": "Stajnia"},
     "Haeduanin": {"lumber": 500, "clay": 620, "iron": 675, "crop": 170, "time": 3200, "building": "Stajnia"},
+    # Egyptians
+    "Slave Militia": {"lumber": 45, "clay": 60, "iron": 30, "crop": 15, "time": 720, "building": "Koszary"},
+    "Ash Warden": {"lumber": 115, "clay": 75, "iron": 90, "crop": 50, "time": 1440, "building": "Koszary"},
+    "Khopesh Warrior": {"lumber": 170, "clay": 90, "iron": 130, "crop": 70, "time": 1720, "building": "Koszary"},
+    "Sopdu Explorer": {"lumber": 170, "clay": 150, "iron": 20, "crop": 40, "time": 1440, "building": "Stajnia"},
+    "Anhur Guard": {"lumber": 360, "clay": 115, "iron": 250, "crop": 110, "time": 2760, "building": "Stajnia"},
+    "Resheph Chariot": {"lumber": 435, "clay": 510, "iron": 385, "crop": 160, "time": 3520, "building": "Stajnia"},
+    # Huns
+    "Mercenary": {"lumber": 100, "clay": 120, "iron": 50, "crop": 30, "time": 920, "building": "Koszary"},
+    "Bowman": {"lumber": 120, "clay": 70, "iron": 70, "crop": 40, "time": 1320, "building": "Koszary"},
+    "Spotter": {"lumber": 160, "clay": 100, "iron": 50, "crop": 50, "time": 1280, "building": "Stajnia"},
+    "Steppe Rider": {"lumber": 140, "clay": 100, "iron": 120, "crop": 60, "time": 2880, "building": "Stajnia"},
+    "Marksman": {"lumber": 170, "clay": 190, "iron": 170, "crop": 90, "time": 3920, "building": "Stajnia"},
+    "Marauder": {"lumber": 450, "clay": 560, "iron": 610, "crop": 180, "time": 4160, "building": "Stajnia"},
+    # Vikings
+    "Thrall": {"lumber": 95, "clay": 120, "iron": 85, "crop": 50, "time": 1080, "building": "Koszary"},
+    "Shield Maiden": {"lumber": 135, "clay": 70, "iron": 120, "crop": 55, "time": 1440, "building": "Koszary"},
+    "Berserker": {"lumber": 140, "clay": 200, "iron": 100, "crop": 80, "time": 1720, "building": "Koszary"},
+    "Huskarl Rider": {"lumber": 245, "clay": 140, "iron": 165, "crop": 80, "time": 2760, "building": "Stajnia"},
+    "Valkyrie's Blessing": {"lumber": 355, "clay": 355, "iron": 305, "crop": 100, "time": 3520, "building": "Stajnia"},
+    # Spartans
+    "Hoplite": {"lumber": 140, "clay": 120, "iron": 100, "crop": 40, "time": 1200, "building": "Koszary"},
+    "Sentinel": {"lumber": 110, "clay": 100, "iron": 130, "crop": 35, "time": 1200, "building": "Koszary"},
+    "Shieldsman": {"lumber": 120, "clay": 95, "iron": 200, "crop": 60, "time": 1520, "building": "Koszary"},
+    "Twinsteel Therion": {"lumber": 170, "clay": 145, "iron": 120, "crop": 55, "time": 1720, "building": "Koszary"},
+    "Elpida Rider": {"lumber": 350, "clay": 300, "iron": 280, "crop": 120, "time": 2880, "building": "Stajnia"},
+    "Corinthian Crusher": {"lumber": 450, "clay": 515, "iron": 480, "crop": 160, "time": 3840, "building": "Stajnia"},
 }
 
 
