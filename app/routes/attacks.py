@@ -1,9 +1,12 @@
 """Attack panel — view and manage attack reports."""
 
+import csv
+import io
 import json
 from math import sqrt
 
-from flask import Blueprint, render_template, request, current_app, abort
+from flask import Blueprint, render_template, request, current_app, abort, Response
+from ..auth_utils import login_required
 from ..database import db
 from ..models import AttackReport, DefenseThread, TroopSupport, BattleReport, Snapshot
 from . import paginate_query
@@ -150,4 +153,46 @@ def detail(attack_id):
         distance=distance,
         snapshot=latest_snapshot,
         server_url=server_url,
+    )
+
+
+@bp.route("/attacks/export")
+@login_required
+def export_csv():
+    """Export all attack reports as CSV."""
+    attacks = (
+        db.session.query(AttackReport)
+        .order_by(AttackReport.created_at.desc())
+        .all()
+    )
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "ID", "Zgłaszający", "Atakujący", "Sojusz atakującego",
+        "Obrońca", "Wioska obrońcy", "X obrońcy", "Y obrońcy",
+        "Czas ataku", "Notatki", "Status", "Data zgłoszenia",
+    ])
+    for a in attacks:
+        writer.writerow([
+            a.id,
+            a.reported_by_name or "",
+            a.attacker_name or "",
+            a.attacker_alliance or "",
+            a.defender_name or "",
+            a.defender_village or "",
+            a.defender_x if a.defender_x is not None else "",
+            a.defender_y if a.defender_y is not None else "",
+            a.attack_time or "",
+            a.notes or "",
+            a.status or "",
+            a.created_at.strftime("%Y-%m-%d %H:%M") if a.created_at else "",
+        ])
+
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": "attachment; filename=ataki_eksport.csv",
+        },
     )

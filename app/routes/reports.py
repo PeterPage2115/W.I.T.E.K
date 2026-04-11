@@ -1,10 +1,15 @@
 """Reports panel — view and analyze parsed battle reports."""
 
+import csv
+import io
 import json
 
-from flask import Blueprint, render_template, request, current_app, abort
+from flask import Blueprint, render_template, request, current_app, abort, Response
+from ..auth_utils import login_required
 from ..database import db
-from ..models import BattleReport, AttackReport, Snapshot
+from ..models import BattleReport, AttackReport, Snapshot, SpyReport
+
+from ..auth_utils import login_required
 
 bp = Blueprint("reports", __name__)
 
@@ -222,4 +227,101 @@ def report_detail(report_id):
         linked_attack=linked_attack,
         snapshot=latest_snapshot,
         server_url=server_url,
+    )
+
+
+@bp.route("/reports/spy")
+@login_required
+def spy_report_list():
+    """List spy reports."""
+    page = request.args.get("page", 1, type=int)
+    per_page = 25
+
+    query = db.session.query(SpyReport).order_by(SpyReport.submitted_at.desc())
+
+    player = request.args.get("player", "").strip()
+    if player:
+        query = query.filter(SpyReport.target_player.ilike(f"%{player}%"))
+
+    spy_type = request.args.get("spy_type", "").strip()
+    if spy_type in ("resources", "troops", "both"):
+        query = query.filter(SpyReport.spy_type == spy_type)
+
+    total = query.count()
+    reports = query.offset((page - 1) * per_page).limit(per_page).all()
+    total_pages = max(1, (total + per_page - 1) // per_page)
+
+    enriched = []
+    for r in reports:
+        troops = _safe_json(r.troops)
+        buildings = _safe_json(r.defense_buildings)
+        total_res = sum(v or 0 for v in [
+            r.resources_lumber, r.resources_clay, r.resources_iron, r.resources_crop
+        ])
+        enriched.append({
+            "obj": r,
+            "total_res": total_res,
+            "troop_count": _sum_troops(troops),
+            "wall_level": buildings.get("wall"),
+        })
+
+    latest_snapshot = (
+        db.session.query(Snapshot).order_by(Snapshot.fetched_at.desc()).first()
+    )
+    server_url = current_app.config.get("TRAVIAN_SERVER_URL", "")
+
+    return render_template(
+        "spy_reports.html",
+        reports=enriched,
+        total=total,
+        page=page,
+        total_pages=total_pages,
+        player_filter=player,
+        spy_type_filter=spy_type,
+        snapshot=latest_snapshot,
+        server_url=server_url,
+    )
+
+@bp.route("/reports/export")
+@login_required
+def export_csv():
+    """Export all battle reports as CSV."""
+    reports = (
+        db.session.query(BattleReport)
+        .order_by(BattleReport.created_at.desc())
+        .all()
+    )
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "ID", "Typ", "Atakujący", "Sojusz atakującego",
+        "Obrońca", "Sojusz obrońcy", "Wioska atakującego",
+        "Wioska obrońcy", "Straty atakującego", "Straty obrońcy",
+        "Łupy", "Wynik", "Zgłaszający", "Data",
+    ])
+    for r in reports:
+        writer.writerow([
+            r.id,
+            r.result or "",
+            r.attacker_name or "",
+            r.attacker_alliance or "",
+            r.defender_name or "",
+            r.defender_alliance or "",
+            r.attacker_village or "",
+            r.defender_village or "",
+            r.attacker_losses or "",
+            r.defender_losses or "",
+            r.bounty or "",
+            r.result or "",
+            r.reported_by_name or "",
+            r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "",
+        ])
+
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": "attachment; filename=raporty_eksport.csv",
+        },
     )
