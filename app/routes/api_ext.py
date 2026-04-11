@@ -16,6 +16,45 @@ log = logging.getLogger(__name__)
 
 bp = Blueprint("api_ext", __name__, url_prefix="/api/ext")
 
+
+# --------------- Input validation helpers --------------- #
+
+def _validate_coords(x, y):
+    """Validate Travian map coordinates. Returns (x, y) as ints or raises ValueError."""
+    if not isinstance(x, (int, float)) or not isinstance(y, (int, float)):
+        raise ValueError(f"Coordinates must be numbers, got x={type(x).__name__}, y={type(y).__name__}")
+    x, y = int(x), int(y)
+    if not (-200 <= x <= 200) or not (-200 <= y <= 200):
+        raise ValueError(f"Coordinates out of bounds: ({x}|{y}), must be -200..200")
+    return x, y
+
+
+def _validate_troops(troops, field_name="troops"):
+    """Validate troops dict. Returns cleaned dict or raises ValueError."""
+    if not isinstance(troops, dict):
+        raise ValueError(f"{field_name} must be a dict, got {type(troops).__name__}")
+    cleaned = {}
+    for k, v in troops.items():
+        if not isinstance(k, str):
+            raise ValueError(f"Troop key must be string, got {type(k).__name__}")
+        if not isinstance(v, (int, float)):
+            raise ValueError(f"Troop count for '{k}' must be a number, got {type(v).__name__}")
+        cleaned[str(k)] = int(v)
+    return cleaned
+
+
+def _validate_side(data, side_name):
+    """Validate attacker/defender dict. Returns cleaned dict or raises ValueError."""
+    if not isinstance(data, dict):
+        raise ValueError(f"{side_name} must be a dict, got {type(data).__name__}")
+    for key in ("name", "player", "alliance", "village"):
+        if key in data and not isinstance(data[key], (str, type(None))):
+            raise ValueError(f"{side_name}.{key} must be string")
+    for key in ("troops", "losses"):
+        if key in data:
+            data[key] = _validate_troops(data[key], f"{side_name}.{key}")
+    return data
+
 # --------------- Rate limiting (in-memory, per IP) --------------- #
 
 _rate_limits: dict[str, list[float]] = defaultdict(list)
@@ -83,8 +122,16 @@ def check_json():
 
 @bp.after_request
 def add_cors(response):
-    """Allow requests from Chrome extension."""
-    response.headers["Access-Control-Allow-Origin"] = "*"
+    """Allow requests from Chrome extension and Travian domains."""
+    origin = request.headers.get("Origin", "")
+    allowed_patterns = [
+        "chrome-extension://",
+        ".travian.com",
+    ]
+    if any(p in origin for p in allowed_patterns) or not origin:
+        response.headers["Access-Control-Allow-Origin"] = origin or "*"
+    else:
+        response.headers["Access-Control-Allow-Origin"] = "null"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, X-Witek-Token"
     response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
     return response
@@ -111,8 +158,11 @@ def receive_report():
         if field not in data:
             return jsonify({"error": f"Missing field: {field}"}), 400
 
-    attacker = data["attacker"]
-    defender = data["defender"]
+    try:
+        attacker = _validate_side(data["attacker"], "attacker")
+        defender = _validate_side(data["defender"], "defender")
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
 
     from app.models import BattleReport
 
@@ -172,10 +222,15 @@ def receive_troops():
         if field not in data:
             return jsonify({"error": f"Missing field: {field}"}), 400
 
+    try:
+        x, y = _validate_coords(data["x"], data["y"])
+        troops = _validate_troops(data["troops"])
+    except (ValueError, TypeError) as e:
+        return jsonify({"error": str(e)}), 400
+
     from app.models import VillageTroops
 
-    x, y = data["x"], data["y"]
-    troops_json = json.dumps(data["troops"])
+    troops_json = json.dumps(troops)
 
     existing = VillageTroops.query.filter_by(village_x=x, village_y=y).first()
     if existing:
@@ -221,9 +276,24 @@ def receive_incoming():
         if field not in data:
             return jsonify({"error": f"Missing field: {field}"}), 400
 
-    from app.models import AttackReport
+    try:
+        x, y = _validate_coords(data["x"], data["y"])
+    except (ValueError, TypeError) as e:
+        return jsonify({"error": str(e)}), 400
 
-    x, y = data["x"], data["y"]
+    if not isinstance(data.get("incoming"), list):
+        return jsonify({"error": "incoming must be a list"}), 400
+
+    for i, inc in enumerate(data["incoming"]):
+        if not isinstance(inc, dict):
+            return jsonify({"error": f"incoming[{i}] must be a dict"}), 400
+        if "from_x" in inc and "from_y" in inc:
+            try:
+                inc["from_x"], inc["from_y"] = _validate_coords(inc["from_x"], inc["from_y"])
+            except ValueError as e:
+                return jsonify({"error": f"incoming[{i}]: {e}"}), 400
+
+    from app.models import AttackReport
     created = []
 
     for inc in data["incoming"]:
