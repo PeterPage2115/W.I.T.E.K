@@ -6,6 +6,7 @@ from math import sqrt
 from flask import Blueprint, render_template, request, current_app, abort
 from ..database import db
 from ..models import AttackReport, DefenseThread, TroopSupport, BattleReport, Snapshot
+from . import paginate_query
 
 bp = Blueprint("attacks", __name__)
 
@@ -38,7 +39,8 @@ def index():
     if status_filter != "all":
         query = query.filter(AttackReport.status == status_filter)
 
-    attacks = query.limit(50).all()
+    page = request.args.get("page", 1, type=int)
+    attacks, pagination = paginate_query(query, page=page, per_page=25)
 
     total = db.session.query(AttackReport).count()
     active = db.session.query(AttackReport).filter(
@@ -53,15 +55,21 @@ def index():
     )
     server_url = current_app.config.get("TRAVIAN_SERVER_URL", "")
 
+    extra_args = {}
+    if status_filter != "all":
+        extra_args["status"] = status_filter
+
     return render_template(
         "attacks.html",
         attacks=attacks,
+        pagination=pagination,
         status_filter=status_filter,
         total=total,
         active=active,
         resolved=resolved,
         snapshot=latest_snapshot,
         server_url=server_url,
+        extra_args=extra_args,
     )
 
 

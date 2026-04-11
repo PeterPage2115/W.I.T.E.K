@@ -12,6 +12,7 @@ from ..models import (
     DefenseThread, VillageTroops, TroopSupport,
     AttackReport, BattleReport, Snapshot,
 )
+from . import paginate_query
 
 bp = Blueprint("defense", __name__)
 
@@ -43,7 +44,9 @@ def index():
     if status_filter != "all":
         query = query.filter(DefenseThread.status == status_filter)
 
-    threads = query.limit(100).all()
+    page = request.args.get("page", 1, type=int)
+    threads_list, pagination = paginate_query(query, page=page, per_page=25)
+    threads = threads_list
 
     # Stats
     total = db.session.query(DefenseThread).count()
@@ -143,9 +146,14 @@ def index():
     )
     server_url = current_app.config.get("TRAVIAN_SERVER_URL", "")
 
+    extra_args = {}
+    if status_filter != "all":
+        extra_args["status"] = status_filter
+
     return render_template(
         "defense.html",
         threads=enriched,
+        pagination=pagination,
         status_filter=status_filter,
         total=total,
         active=active,
@@ -154,6 +162,7 @@ def index():
         total_support_troops=total_support_troops,
         snapshot=latest_snapshot,
         server_url=server_url,
+        extra_args=extra_args,
     )
 
 

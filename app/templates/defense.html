@@ -164,5 +164,8 @@
         </p>
     </div>
     {% endif %}
+
+    {% from "_pagination.html" import render_pagination %}
+    {{ render_pagination(pagination, 'defense.index', extra_args=extra_args) }}
 </div>
 {% endblock %}
