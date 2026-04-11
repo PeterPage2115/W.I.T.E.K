@@ -109,6 +109,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
+  if (request.action === 'send_game_data') {
+    sendToApi('/api/ext/game-data', request.payload)
+      .then(sendResponse);
+    return true;
+  }
+
   if (request.action === 'get_config') {
     getConfig().then(sendResponse);
     return true;

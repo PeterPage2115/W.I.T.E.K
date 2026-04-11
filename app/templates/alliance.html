@@ -35,10 +35,23 @@
         <h2 class="font-medieval text-base font-semibold">📈 Historia populacji</h2>
     </div>
     <div class="p-4">
-        <div id="chart-placeholder" class="text-center text-trav-text-muted py-8">
+        <div id="pop-chart-placeholder" class="text-center text-trav-text-muted py-8">
             ⏳ Ładowanie wykresu...
         </div>
         <canvas id="popChart" style="display:none;"></canvas>
+    </div>
+</div>
+
+<!-- Member Count History Chart -->
+<div class="trav-panel overflow-hidden mb-6">
+    <div class="trav-panel-header">
+        <h2 class="font-medieval text-base font-semibold">👥 Historia liczby członków</h2>
+    </div>
+    <div class="p-4">
+        <div id="members-chart-placeholder" class="text-center text-trav-text-muted py-8">
+            ⏳ Ładowanie wykresu...
+        </div>
+        <canvas id="membersChart" style="display:none;"></canvas>
     </div>
 </div>
 
@@ -56,6 +69,7 @@
                     <th class="px-4 py-2.5 text-left">Plemię</th>
                     <th class="px-4 py-2.5 text-right">Wioski</th>
                     <th class="px-4 py-2.5 text-right">Populacja</th>
+                    <th class="px-4 py-2.5 text-right">Zmiana</th>
                 </tr>
             </thead>
             <tbody>
@@ -75,6 +89,18 @@
                     </td>
                     <td class="px-4 py-2 text-right text-trav-text-light">{{ m.village_count }}</td>
                     <td class="px-4 py-2 text-right font-semibold text-trav-text">{{ "{:,}".format(m.total_pop) }}</td>
+                    <td class="px-4 py-2 text-right text-sm">
+                        {% set change = pop_changes.get(m.uid) %}
+                        {% if change is not none and change > 0 %}
+                            <span class="text-green-600 font-semibold">▲ +{{ "{:,}".format(change) }}</span>
+                        {% elif change is not none and change < 0 %}
+                            <span class="text-red-600 font-semibold">▼ {{ "{:,}".format(change) }}</span>
+                        {% elif change is not none and change == 0 %}
+                            <span class="text-trav-text-muted">—</span>
+                        {% else %}
+                            <span class="text-trav-text-muted">—</span>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -87,103 +113,95 @@
 <script>
 (function() {
     var aid = {{ alliance.aid }};
-    var placeholder = document.getElementById('chart-placeholder');
-    var canvas = document.getElementById('popChart');
 
-    fetch('/api/alliance/' + aid + '/population')
+    var popPlaceholder = document.getElementById('pop-chart-placeholder');
+    var popCanvas = document.getElementById('popChart');
+    var membersPlaceholder = document.getElementById('members-chart-placeholder');
+    var membersCanvas = document.getElementById('membersChart');
+
+    function formatDate(dateStr) {
+        var parts = dateStr.split(' ');
+        return parts[0].split('-').reverse().join('.') + ' ' + parts[1];
+    }
+
+    var chartDefaults = {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+            legend: {
+                labels: {
+                    color: '#3c2a1a',
+                    font: { family: "'Inter', sans-serif", size: 12 }
+                }
+            },
+            tooltip: {
+                backgroundColor: '#4a3628',
+                titleColor: '#f5e6c8',
+                bodyColor: '#e8d4a8',
+                borderColor: '#c8a415',
+                borderWidth: 1,
+                titleFont: { family: "'Cinzel', serif", size: 13, weight: 'bold' },
+                bodyFont: { family: "'Inter', sans-serif", size: 12 }
+            }
+        },
+        scales: {
+            x: {
+                ticks: {
+                    color: '#6b5440',
+                    font: { family: "'Inter', sans-serif", size: 10 },
+                    maxRotation: 45
+                },
+                grid: { color: 'rgba(139, 111, 94, 0.2)' }
+            }
+        }
+    };
+
+    fetch('/api/alliance/' + aid + '/history')
         .then(function(r) { return r.json(); })
         .then(function(data) {
-            if (data.history.length < 2) {
-                placeholder.innerHTML = '💡 Za mało danych — potrzeba co najmniej 2 snapshotów, aby wyświetlić wykres.';
+            if (data.length < 2) {
+                var msg = '💡 Za mało danych — potrzeba co najmniej 2 snapshotów, aby wyświetlić wykres.';
+                popPlaceholder.innerHTML = msg;
+                membersPlaceholder.innerHTML = msg;
                 return;
             }
 
-            placeholder.style.display = 'none';
-            canvas.style.display = 'block';
+            var labels = data.map(function(h) { return formatDate(h.date); });
 
-            var labels = data.history.map(function(h) {
-                var d = new Date(h.date);
-                return d.toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric' })
-                    + ' ' + d.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' });
-            });
+            // Chart 1: Population (green)
+            popPlaceholder.style.display = 'none';
+            popCanvas.style.display = 'block';
 
-            new Chart(canvas.getContext('2d'), {
+            new Chart(popCanvas.getContext('2d'), {
                 type: 'line',
                 data: {
                     labels: labels,
-                    datasets: [
-                        {
-                            label: 'Populacja',
-                            data: data.history.map(function(h) { return h.total_pop; }),
-                            borderColor: '#5a9a0a',
-                            backgroundColor: 'rgba(90, 154, 10, 0.15)',
-                            pointBackgroundColor: '#7bc618',
-                            pointBorderColor: '#5a9a0a',
-                            pointRadius: 4,
-                            pointHoverRadius: 6,
-                            borderWidth: 2.5,
-                            fill: true,
-                            tension: 0.3,
-                            yAxisID: 'y'
-                        },
-                        {
-                            label: 'Członkowie',
-                            data: data.history.map(function(h) { return h.members; }),
-                            borderColor: '#c8a415',
-                            backgroundColor: 'rgba(200, 164, 21, 0.10)',
-                            pointBackgroundColor: '#e0c850',
-                            pointBorderColor: '#c8a415',
-                            pointRadius: 3,
-                            pointHoverRadius: 5,
-                            borderWidth: 2,
-                            borderDash: [6, 3],
-                            fill: false,
-                            tension: 0.3,
-                            yAxisID: 'y1'
-                        }
-                    ]
+                    datasets: [{
+                        label: 'Populacja',
+                        data: data.map(function(h) { return h.total_pop; }),
+                        borderColor: '#5a9a0a',
+                        backgroundColor: 'rgba(90, 154, 10, 0.15)',
+                        pointBackgroundColor: '#7bc618',
+                        pointBorderColor: '#5a9a0a',
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        borderWidth: 2.5,
+                        fill: true,
+                        tension: 0.3
+                    }]
                 },
-                options: {
-                    responsive: true,
-                    interaction: { mode: 'index', intersect: false },
-                    plugins: {
-                        legend: {
-                            labels: {
-                                color: '#3c2a1a',
-                                font: { family: "'Inter', sans-serif", size: 12 }
-                            }
-                        },
-                        tooltip: {
-                            backgroundColor: '#4a3628',
-                            titleColor: '#f5e6c8',
-                            bodyColor: '#e8d4a8',
-                            borderColor: '#c8a415',
-                            borderWidth: 1,
-                            titleFont: { family: "'Cinzel', serif", size: 13, weight: 'bold' },
-                            bodyFont: { family: "'Inter', sans-serif", size: 12 },
+                options: Object.assign({}, chartDefaults, {
+                    plugins: Object.assign({}, chartDefaults.plugins, {
+                        tooltip: Object.assign({}, chartDefaults.plugins.tooltip, {
                             callbacks: {
                                 label: function(ctx) {
-                                    var val = ctx.parsed.y;
-                                    if (ctx.dataset.label === 'Populacja') {
-                                        return 'Populacja: ' + val.toLocaleString('pl-PL');
-                                    }
-                                    return 'Członkowie: ' + val;
+                                    return 'Populacja: ' + ctx.parsed.y.toLocaleString('pl-PL');
                                 }
                             }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            ticks: {
-                                color: '#6b5440',
-                                font: { family: "'Inter', sans-serif", size: 10 },
-                                maxRotation: 45
-                            },
-                            grid: { color: 'rgba(139, 111, 94, 0.2)' }
-                        },
+                        })
+                    }),
+                    scales: Object.assign({}, chartDefaults.scales, {
                         y: {
-                            type: 'linear',
-                            position: 'left',
                             title: {
                                 display: true,
                                 text: 'Populacja',
@@ -197,10 +215,45 @@
                             },
                             grid: { color: 'rgba(139, 111, 94, 0.15)' },
                             beginAtZero: false
-                        },
-                        y1: {
-                            type: 'linear',
-                            position: 'right',
+                        }
+                    })
+                })
+            });
+
+            // Chart 2: Member count (gold)
+            membersPlaceholder.style.display = 'none';
+            membersCanvas.style.display = 'block';
+
+            new Chart(membersCanvas.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Członkowie',
+                        data: data.map(function(h) { return h.player_count; }),
+                        borderColor: '#c8a415',
+                        backgroundColor: 'rgba(200, 164, 21, 0.15)',
+                        pointBackgroundColor: '#e0c850',
+                        pointBorderColor: '#c8a415',
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        borderWidth: 2.5,
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: Object.assign({}, chartDefaults, {
+                    plugins: Object.assign({}, chartDefaults.plugins, {
+                        tooltip: Object.assign({}, chartDefaults.plugins.tooltip, {
+                            callbacks: {
+                                label: function(ctx) {
+                                    return 'Członkowie: ' + ctx.parsed.y;
+                                }
+                            }
+                        })
+                    }),
+                    scales: Object.assign({}, chartDefaults.scales, {
+                        y: {
                             title: {
                                 display: true,
                                 text: 'Członkowie',
@@ -212,14 +265,16 @@
                                 font: { family: "'Inter', sans-serif", size: 11 },
                                 stepSize: 1
                             },
-                            grid: { drawOnChartArea: false }
+                            grid: { color: 'rgba(139, 111, 94, 0.15)' },
+                            beginAtZero: false
                         }
-                    }
-                }
+                    })
+                })
             });
         })
         .catch(function() {
-            placeholder.innerHTML = '❌ Nie udało się załadować danych wykresu.';
+            popPlaceholder.innerHTML = '❌ Nie udało się załadować danych wykresu.';
+            membersPlaceholder.innerHTML = '❌ Nie udało się załadować danych wykresu.';
         });
 })();
 </script>

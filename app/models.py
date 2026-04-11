@@ -299,6 +299,22 @@ class DiplomaticRelation(db.Model):
     active = db.Column(db.Boolean, default=True)
 
 
+class GameData(db.Model):
+    """Generic game data captured by Chrome extension (hero, marketplace, training, etc.)."""
+
+    __tablename__ = "game_data"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    data_type = db.Column(db.Text, nullable=False)  # hero / marketplace / training
+    data = db.Column(db.Text, nullable=False)  # JSON payload
+    server_url = db.Column(db.Text, nullable=True)
+    submitted_at = db.Column(db.DateTime, default=_utcnow)
+
+    __table_args__ = (
+        db.Index("ix_game_data_type", "data_type"),
+    )
+
+
 class NightWatchSetting(db.Model):
     """Per-user night watch (czuwanie nocne) preferences."""
 

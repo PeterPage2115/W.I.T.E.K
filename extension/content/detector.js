@@ -22,6 +22,12 @@
     }
   } else if (/build\.php/.test(url) && /gid=16/.test(url)) {
     pageType = 'rally_point';
+  } else if (/build\.php/.test(url) && /gid=17/.test(url)) {
+    pageType = 'marketplace';
+  } else if (/build\.php/.test(url) && /gid=(12|19)/.test(url)) {
+    pageType = 'training';
+  } else if (/hero(\.php)?/.test(url)) {
+    pageType = 'hero';
   } else if (/dorf1\.php/.test(url)) {
     pageType = 'village';
   }
@@ -96,6 +102,18 @@
         case 'rally_point':
           payload = parseIncoming();
           action = 'send_incoming';
+          break;
+        case 'hero':
+          payload = parseHero();
+          action = 'send_game_data';
+          break;
+        case 'marketplace':
+          payload = parseMarketplace();
+          action = 'send_game_data';
+          break;
+        case 'training':
+          payload = parseTraining();
+          action = 'send_game_data';
           break;
       }
 

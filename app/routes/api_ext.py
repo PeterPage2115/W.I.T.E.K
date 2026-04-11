@@ -392,3 +392,44 @@ def receive_incoming():
     log.info("Extension incoming: %d attacks on (%s|%s)", len(created), x, y)
 
     return jsonify({"ok": True, "created": created}), 201
+
+
+_VALID_GAME_DATA_TYPES = {"hero", "marketplace", "training"}
+
+
+@bp.route("/game-data", methods=["POST", "OPTIONS"])
+@require_ext_token
+def receive_game_data():
+    """Receive generic game data from extension (hero, marketplace, training).
+
+    Expected JSON:
+    {
+        "type": "hero" | "marketplace" | "training",
+        "data": { ... },
+        "server_url": "https://ts31..."
+    }
+    """
+    data = request.get_json()
+
+    data_type = data.get("type")
+    if not data_type or data_type not in _VALID_GAME_DATA_TYPES:
+        return jsonify({"error": f"type must be one of: {', '.join(sorted(_VALID_GAME_DATA_TYPES))}"}), 400
+
+    payload = data.get("data")
+    if not isinstance(payload, dict):
+        return jsonify({"error": "data must be a dict"}), 400
+
+    from app.models import GameData
+
+    entry = GameData(
+        data_type=data_type,
+        data=json.dumps(payload),
+        server_url=data.get("server_url"),
+    )
+
+    db.session.add(entry)
+    db.session.commit()
+
+    log.info("Extension game-data saved: id=%s, type=%s", entry.id, data_type)
+
+    return jsonify({"ok": True, "id": entry.id}), 201

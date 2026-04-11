@@ -201,3 +201,78 @@ class TestRateLimiting:
                 "attacker": {"name": "A"}, "defender": {"name": "D"},
             })
             assert resp.status_code == 201
+
+
+class TestGameDataEndpoint:
+    def test_submit_hero_data(self, client):
+        resp = client.post("/api/ext/game-data", headers=_headers(), json={
+            "type": "hero",
+            "data": {"health_percent": 85.0, "level": 12, "experience": 4500},
+            "server_url": "https://ts31.x3.europe.travian.com",
+        })
+        assert resp.status_code == 201
+        data = resp.get_json()
+        assert data["ok"] is True
+        assert "id" in data
+
+    def test_submit_marketplace_data(self, client):
+        resp = client.post("/api/ext/game-data", headers=_headers(), json={
+            "type": "marketplace",
+            "data": {
+                "merchants_available": 3,
+                "merchants_total": 5,
+                "offers": [{"offered": {"lumber": 500}, "requested": {"iron": 500}}],
+            },
+        })
+        assert resp.status_code == 201
+        assert resp.get_json()["ok"] is True
+
+    def test_submit_training_data(self, client):
+        resp = client.post("/api/ext/game-data", headers=_headers(), json={
+            "type": "training",
+            "data": {
+                "building_type": "barracks",
+                "queue": [{"unit_id": "1", "unit_name": "Legionnaire", "count": 10}],
+            },
+        })
+        assert resp.status_code == 201
+        assert resp.get_json()["ok"] is True
+
+    def test_invalid_type_returns_400(self, client):
+        resp = client.post("/api/ext/game-data", headers=_headers(), json={
+            "type": "invalid_type",
+            "data": {},
+        })
+        assert resp.status_code == 400
+        assert "type must be one of" in resp.get_json()["error"]
+
+    def test_missing_type_returns_400(self, client):
+        resp = client.post("/api/ext/game-data", headers=_headers(), json={
+            "data": {"foo": "bar"},
+        })
+        assert resp.status_code == 400
+
+    def test_data_must_be_dict(self, client):
+        resp = client.post("/api/ext/game-data", headers=_headers(), json={
+            "type": "hero",
+            "data": "not a dict",
+        })
+        assert resp.status_code == 400
+        assert "data must be a dict" in resp.get_json()["error"]
+
+    def test_data_persisted_to_db(self, client):
+        client.post("/api/ext/game-data", headers=_headers(), json={
+            "type": "hero",
+            "data": {"level": 5},
+            "server_url": "https://test.travian.com",
+        })
+        from app.models import GameData
+        entry = GameData.query.first()
+        assert entry is not None
+        assert entry.data_type == "hero"
+        assert '"level": 5' in entry.data
+        assert entry.server_url == "https://test.travian.com"
+
+    def test_options_preflight(self, client):
+        resp = client.options("/api/ext/game-data")
+        assert resp.status_code == 204
