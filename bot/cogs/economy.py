@@ -59,6 +59,72 @@ API_TILE_TIMEOUT = 5
 _api_cache: dict[str, tuple[bool, float]] = {}
 _API_CACHE_TTL = 300  # 5 minutes
 
+# ------------------------------------------------------------------ #
+# Training costs per unit (resources + base time in seconds)
+# ------------------------------------------------------------------ #
+
+TRIBE_UNITS = {
+    "Rzymianie": [
+        "Legionista", "Pretorianin", "Imperians",
+        "Equites Legati", "Equites Imperatoris", "Equites Caesaris",
+    ],
+    "Germanie": [
+        "Pałkarz", "Włócznik", "Topornik",
+        "Zwiadowca", "Paladyn", "Germański rycerz",
+    ],
+    "Galowie": [
+        "Falangita", "Miecznik",
+        "Zwiadowca galijski", "Druid", "Haeduanin",
+    ],
+    "Egipcjanie": [],
+    "Hunowie": [],
+    "Wikingowie": [],
+    "Spartanie": [],
+}
+
+TRAINING_COSTS: dict[str, dict] = {
+    # Romans
+    "Legionista": {"lumber": 120, "clay": 100, "iron": 150, "crop": 30, "time": 1600, "building": "Koszary"},
+    "Pretorianin": {"lumber": 100, "clay": 130, "iron": 160, "crop": 70, "time": 1760, "building": "Koszary"},
+    "Imperians": {"lumber": 150, "clay": 160, "iron": 210, "crop": 80, "time": 1920, "building": "Koszary"},
+    "Equites Legati": {"lumber": 140, "clay": 160, "iron": 20, "crop": 40, "time": 1360, "building": "Stajnia"},
+    "Equites Imperatoris": {"lumber": 550, "clay": 440, "iron": 320, "crop": 100, "time": 2640, "building": "Stajnia"},
+    "Equites Caesaris": {"lumber": 550, "clay": 640, "iron": 800, "crop": 180, "time": 3520, "building": "Stajnia"},
+    # Teutons
+    "Pałkarz": {"lumber": 95, "clay": 75, "iron": 40, "crop": 40, "time": 1120, "building": "Koszary"},
+    "Włócznik": {"lumber": 145, "clay": 70, "iron": 85, "crop": 40, "time": 1360, "building": "Koszary"},
+    "Topornik": {"lumber": 130, "clay": 120, "iron": 170, "crop": 70, "time": 1600, "building": "Koszary"},
+    "Zwiadowca": {"lumber": 160, "clay": 100, "iron": 50, "crop": 50, "time": 1280, "building": "Stajnia"},
+    "Paladyn": {"lumber": 370, "clay": 270, "iron": 290, "crop": 75, "time": 2240, "building": "Stajnia"},
+    "Germański rycerz": {"lumber": 450, "clay": 515, "iron": 480, "crop": 80, "time": 2880, "building": "Stajnia"},
+    # Gauls
+    "Falangita": {"lumber": 100, "clay": 130, "iron": 55, "crop": 30, "time": 1360, "building": "Koszary"},
+    "Miecznik": {"lumber": 140, "clay": 150, "iron": 185, "crop": 60, "time": 1760, "building": "Koszary"},
+    "Zwiadowca galijski": {"lumber": 170, "clay": 150, "iron": 20, "crop": 40, "time": 1280, "building": "Stajnia"},
+    "Druid": {"lumber": 360, "clay": 330, "iron": 280, "crop": 120, "time": 2560, "building": "Stajnia"},
+    "Haeduanin": {"lumber": 500, "clay": 620, "iron": 675, "crop": 170, "time": 3200, "building": "Stajnia"},
+}
+
+
+def calc_training_time(base_time: float, building_level: int) -> float:
+    """Return training time per unit at a given building level."""
+    return base_time / (1 + building_level * 0.1)
+
+
+def format_duration(total_seconds: float) -> str:
+    """Format seconds as 'Xh Ym Zs'."""
+    total_seconds = int(total_seconds)
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    parts = []
+    if hours:
+        parts.append(f"{hours}h")
+    if minutes:
+        parts.append(f"{minutes}m")
+    if seconds or not parts:
+        parts.append(f"{seconds}s")
+    return " ".join(parts)
+
 
 # ------------------------------------------------------------------ #
 # Shared torus bounding-box filter (same logic as recon.py)
@@ -1570,6 +1636,113 @@ class CombatSimModal(discord.ui.Modal):
 
         await interaction.response.send_message(content=content, embed=embed)
 
+    # ------------------------------------------------------------------ #
+    # /ttraining — training time & resource calculator
+    # ------------------------------------------------------------------ #
+
+    @discord.slash_command(
+        name="ttraining",
+        description="Kalkulator szkolenia — czas i surowce dla jednostek",
+    )
+    @discord.option("tribe", str, description="Plemię", required=True,
+                    choices=["Rzymianie", "Germanie", "Galowie", "Egipcjanie", "Hunowie", "Wikingowie", "Spartanie"])
+    @discord.option("unit_name", str, description="Nazwa jednostki", required=True)
+    @discord.option("count", int, description="Liczba jednostek", required=True)
+    @discord.option("building_level", int, description="Poziom budynku (1-20)", required=False, default=10)
+    async def ttraining(
+        self,
+        interaction: discord.ApplicationContext,
+        tribe: str,
+        unit_name: str,
+        count: int,
+        building_level: int,
+    ):
+        # Validate building level
+        if building_level < 1 or building_level > 20:
+            await interaction.response.send_message(
+                "❌ Poziom budynku musi być w zakresie 1-20.", ephemeral=True,
+            )
+            return
+
+        # Validate count
+        if count < 0:
+            await interaction.response.send_message(
+                "❌ Liczba jednostek nie może być ujemna.", ephemeral=True,
+            )
+            return
+
+        if count == 0:
+            await interaction.response.send_message(
+                "💡 Podano 0 jednostek — nic do szkolenia!", ephemeral=True,
+            )
+            return
+
+        # Validate tribe has units
+        available = TRIBE_UNITS.get(tribe, [])
+        if not available:
+            await interaction.response.send_message(
+                f"⚠️ Plemię **{tribe}** nie ma jeszcze danych o jednostkach.",
+                ephemeral=True,
+            )
+            return
+
+        # Validate unit belongs to the tribe
+        if unit_name not in available:
+            unit_list = ", ".join(f"`{u}`" for u in available)
+            await interaction.response.send_message(
+                f"❌ Nieznana jednostka **{unit_name}** dla plemienia {tribe}.\n"
+                f"Dostępne: {unit_list}",
+                ephemeral=True,
+            )
+            return
+
+        cost = TRAINING_COSTS[unit_name]
+        time_per_unit = calc_training_time(cost["time"], building_level)
+        total_time = time_per_unit * count
+
+        total_lumber = cost["lumber"] * count
+        total_clay = cost["clay"] * count
+        total_iron = cost["iron"] * count
+        total_crop = cost["crop"] * count
+
+        from bot.utils import RESOURCE_ICONS
+
+        embed = discord.Embed(
+            title=f"🏋️ Szkolenie: {count}x {unit_name}",
+            color=COLOR_INFO,
+        )
+        embed.add_field(
+            name="📦 Surowce łącznie",
+            value=(
+                f"🪵 Drewno: **{_fmt_num(total_lumber)}**\n"
+                f"🧱 Glina: **{_fmt_num(total_clay)}**\n"
+                f"⛏️ Żelazo: **{_fmt_num(total_iron)}**\n"
+                f"🌾 Zboże: **{_fmt_num(total_crop)}**"
+            ),
+            inline=False,
+        )
+        embed.add_field(
+            name="⏱️ Czas szkolenia",
+            value=(
+                f"Na jednostkę: **{format_duration(time_per_unit)}**\n"
+                f"Łącznie: **{format_duration(total_time)}**"
+            ),
+            inline=False,
+        )
+        embed.add_field(
+            name="🏛️ Budynek",
+            value=f"{cost['building']} (poziom {building_level})",
+            inline=True,
+        )
+        embed.add_field(
+            name="⚔️ Plemię",
+            value=tribe,
+            inline=True,
+        )
+        embed.set_thumbnail(url=RESOURCE_ICONS.get("iron", ""))
+        embed.set_footer(text=FOOTER)
+
+        await interaction.response.send_message(embed=embed)
 
 
 def setup(bot):

@@ -7,6 +7,8 @@ from app.models import Alliance, Snapshot, Village
 
 from bot.cogs.economy import (
     CROPPER_TYPES,
+    TRAINING_COSTS,
+    TRIBE_UNITS,
     _alliance_growth,
     _alliance_stats,
     _bbox_filter,
@@ -18,6 +20,8 @@ from bot.cogs.economy import (
     _fmt,
     _search_villages,
     _tiles_in_radius,
+    calc_training_time,
+    format_duration,
 )
 from bot.utils import torus_distance
 
@@ -669,3 +673,73 @@ class TestBuildComparisonEmbed:
         stats_field = [f for f in embed.fields if f.name == "⚖️ Statystyki"][0]
         assert "456 789" in stats_field.value
         assert "10 151" in stats_field.value
+
+
+# ------------------------------------------------------------------ #
+# Training calculator tests
+# ------------------------------------------------------------------ #
+
+class TestCalcTrainingTime:
+    def test_level_10_halves_roughly(self):
+        # At level 10: time / (1 + 10*0.1) = time / 2.0
+        result = calc_training_time(1600, 10)
+        assert result == 800.0
+
+    def test_level_1(self):
+        # At level 1: time / (1 + 0.1) = time / 1.1
+        result = calc_training_time(1600, 1)
+        assert abs(result - 1600 / 1.1) < 0.01
+
+    def test_level_20(self):
+        # At level 20: time / (1 + 20*0.1) = time / 3.0
+        result = calc_training_time(1600, 20)
+        assert abs(result - 1600 / 3.0) < 0.01
+
+
+class TestFormatDuration:
+    def test_hours_and_minutes(self):
+        assert format_duration(3661) == "1h 1m 1s"
+
+    def test_only_minutes(self):
+        assert format_duration(300) == "5m"
+
+    def test_zero_seconds(self):
+        assert format_duration(0) == "0s"
+
+    def test_large_value(self):
+        result = format_duration(36000)
+        assert result == "10h"
+
+
+class TestTrainingCosts:
+    def test_known_unit_total_resources(self):
+        cost = TRAINING_COSTS["Legionista"]
+        count = 100
+        assert cost["lumber"] * count == 12000
+        assert cost["clay"] * count == 10000
+        assert cost["iron"] * count == 15000
+        assert cost["crop"] * count == 3000
+
+    def test_building_level_affects_time(self):
+        base = TRAINING_COSTS["Pałkarz"]["time"]
+        t1 = calc_training_time(base, 1)
+        t10 = calc_training_time(base, 10)
+        t20 = calc_training_time(base, 20)
+        assert t1 > t10 > t20
+
+    def test_unknown_unit(self):
+        assert "NieistniejącaJednostka" not in TRAINING_COSTS
+
+    def test_tribe_units_match_costs(self):
+        for tribe, units in TRIBE_UNITS.items():
+            for unit in units:
+                assert unit in TRAINING_COSTS, f"{unit} from {tribe} missing in TRAINING_COSTS"
+
+    def test_total_training_time(self):
+        cost = TRAINING_COSTS["Falangita"]
+        level = 10
+        count = 50
+        time_per = calc_training_time(cost["time"], level)
+        total = time_per * count
+        expected = (1360 / 2.0) * 50  # 34000 seconds
+        assert abs(total - expected) < 0.01
