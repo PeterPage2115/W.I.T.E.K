@@ -8,13 +8,9 @@ from ..models import Player, Village, Snapshot, TRIBE_NAMES
 bp = Blueprint("players", __name__)
 
 
-@bp.route("/api/player/<int:uid>/population")
-def population_api(uid):
-    player = db.session.get(Player, uid)
-    if player is None:
-        abort(404)
-
-    rows = (
+def _player_history_rows(uid):
+    """Fetch population history rows for a player across all snapshots."""
+    return (
         db.session.query(
             Snapshot.fetched_at,
             func.sum(Village.population).label("total_pop"),
@@ -27,6 +23,14 @@ def population_api(uid):
         .all()
     )
 
+
+@bp.route("/api/player/<int:uid>/population")
+def population_api(uid):
+    player = db.session.get(Player, uid)
+    if player is None:
+        abort(404)
+
+    rows = _player_history_rows(uid)
     history = [
         {
             "date": row.fetched_at.isoformat(),
@@ -37,6 +41,26 @@ def population_api(uid):
     ]
 
     return jsonify({"player": player.name, "history": history})
+
+
+@bp.route("/api/player/<int:uid>/history")
+def history_api(uid):
+    """JSON API: population and village count over time for charts."""
+    player = db.session.get(Player, uid)
+    if player is None:
+        abort(404)
+
+    rows = _player_history_rows(uid)
+    history = [
+        {
+            "date": row.fetched_at.strftime("%Y-%m-%d %H:%M"),
+            "population": row.total_pop or 0,
+            "village_count": row.village_count,
+        }
+        for row in rows
+    ]
+
+    return jsonify(history)
 
 
 @bp.route("/player/<int:uid>")

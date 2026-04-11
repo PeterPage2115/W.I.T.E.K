@@ -179,6 +179,90 @@ class TestPlayerPopulationAPI:
         assert "T" in data["history"][0]["date"]
 
 
+class TestPlayerHistoryAPI:
+    """Tests for /api/player/<uid>/history endpoint."""
+
+    def test_nonexistent_player_returns_404(self, client):
+        resp = client.get("/api/player/9999/history")
+        assert resp.status_code == 404
+
+    def test_returns_json_array(self, client, db_session):
+        player = Player(uid=30, name="HistGracz", tid=2, total_pop=1000, village_count=1)
+        db_session.add(player)
+        db_session.commit()
+        resp = client.get("/api/player/30/history")
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert isinstance(data, list)
+        assert data == []
+
+    def test_history_with_snapshots(self, client, db_session):
+        now = datetime.now(timezone.utc)
+        snap1 = Snapshot(fetched_at=now - timedelta(hours=2), village_count=10)
+        snap2 = Snapshot(fetched_at=now, village_count=10)
+        db_session.add_all([snap1, snap2])
+        db_session.flush()
+
+        player = Player(uid=31, name="TrendGracz", tid=1, total_pop=700, village_count=2)
+        db_session.add(player)
+
+        for snap, pop in [(snap1, 300), (snap2, 400)]:
+            db_session.add(Village(
+                map_id=50, snapshot_id=snap.id, x=0, y=0, tid=1, vid=500,
+                name="V1", uid=31, player_name="TrendGracz", aid=1,
+                alliance_name="A", population=pop,
+            ))
+            db_session.add(Village(
+                map_id=51, snapshot_id=snap.id, x=1, y=1, tid=1, vid=501,
+                name="V2", uid=31, player_name="TrendGracz", aid=1,
+                alliance_name="A", population=200 if snap == snap1 else 300,
+            ))
+        db_session.commit()
+
+        resp = client.get("/api/player/31/history")
+        data = resp.get_json()
+        assert len(data) == 2
+        assert data[0]["population"] == 500
+        assert data[0]["village_count"] == 2
+        assert data[1]["population"] == 700
+        assert data[1]["village_count"] == 2
+
+    def test_history_date_format(self, client, db_session):
+        now = datetime(2024, 6, 15, 14, 30, 0, tzinfo=timezone.utc)
+        snap = Snapshot(fetched_at=now, village_count=1)
+        db_session.add(snap)
+        db_session.flush()
+        player = Player(uid=32, name="DateFmt", tid=1, total_pop=100, village_count=1)
+        db_session.add(player)
+        db_session.add(Village(
+            map_id=60, snapshot_id=snap.id, x=5, y=5, tid=1, vid=600,
+            name="V", uid=32, player_name="DateFmt", aid=1,
+            alliance_name="A", population=100,
+        ))
+        db_session.commit()
+        resp = client.get("/api/player/32/history")
+        data = resp.get_json()
+        assert len(data) == 1
+        assert data[0]["date"] == "2024-06-15 14:30"
+
+    def test_history_has_correct_keys(self, client, db_session):
+        now = datetime.now(timezone.utc)
+        snap = Snapshot(fetched_at=now, village_count=1)
+        db_session.add(snap)
+        db_session.flush()
+        player = Player(uid=33, name="Keys", tid=1, total_pop=100, village_count=1)
+        db_session.add(player)
+        db_session.add(Village(
+            map_id=70, snapshot_id=snap.id, x=0, y=0, tid=1, vid=700,
+            name="V", uid=33, player_name="Keys", aid=1,
+            alliance_name="A", population=100,
+        ))
+        db_session.commit()
+        resp = client.get("/api/player/33/history")
+        data = resp.get_json()
+        assert set(data[0].keys()) == {"date", "population", "village_count"}
+
+
 class TestPlayerActivity:
     """Tests for player activity detection on profile page."""
 

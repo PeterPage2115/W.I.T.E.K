@@ -346,6 +346,12 @@ class Recon(commands.Cog):
                 inline=False,
             )
 
+        embed.add_field(
+            name="📈 Wykres populacji",
+            value=f"Zobacz wykres na dashboardzie: `/player/{p['uid']}`",
+            inline=False,
+        )
+
         embed.set_footer(text=FOOTER)
         await ctx.followup.send(embed=embed)
 
