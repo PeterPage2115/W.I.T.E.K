@@ -2,6 +2,9 @@
 
 import json
 import logging
+import threading
+import time
+from collections import defaultdict
 from datetime import datetime, timezone
 from functools import wraps
 
@@ -13,13 +16,53 @@ log = logging.getLogger(__name__)
 
 bp = Blueprint("api_ext", __name__, url_prefix="/api/ext")
 
+# --------------- Rate limiting (in-memory, per IP) --------------- #
+
+_rate_limits: dict[str, list[float]] = defaultdict(list)
+_rate_lock = threading.Lock()
+_RATE_LIMIT = 30  # max requests per minute
+_RATE_WINDOW = 60  # seconds
+_CLEANUP_INTERVAL = 300  # purge stale entries every 5 min
+_last_cleanup: float = 0.0
+
+
+def _cleanup_stale_entries(now: float) -> None:
+    """Remove IPs with no recent requests (called under lock)."""
+    global _last_cleanup
+    if now - _last_cleanup < _CLEANUP_INTERVAL:
+        return
+    _last_cleanup = now
+    cutoff = now - _RATE_WINDOW
+    stale = [ip for ip, ts in _rate_limits.items() if not ts or ts[-1] < cutoff]
+    for ip in stale:
+        del _rate_limits[ip]
+
+
+def check_rate_limit(ip: str) -> bool:
+    """Return True if request is allowed, False if rate limit exceeded."""
+    now = time.time()
+    window = now - _RATE_WINDOW
+    with _rate_lock:
+        _cleanup_stale_entries(now)
+        _rate_limits[ip] = [t for t in _rate_limits[ip] if t > window]
+        if len(_rate_limits[ip]) >= _RATE_LIMIT:
+            return False
+        _rate_limits[ip].append(now)
+        return True
+
 
 def require_ext_token(f):
-    """Decorator: require valid X-Witek-Token header. Skips OPTIONS (CORS preflight)."""
+    """Decorator: require valid X-Witek-Token header + rate limit. Skips OPTIONS."""
     @wraps(f)
     def decorated(*args, **kwargs):
         if request.method == "OPTIONS":
             return jsonify({}), 204
+
+        # Rate limit check (before token validation to protect against brute-force)
+        ip = request.remote_addr or "unknown"
+        if not check_rate_limit(ip):
+            return jsonify({"error": "Rate limit exceeded"}), 429
+
         token = request.headers.get("X-Witek-Token", "")
         expected = current_app.config.get("EXT_API_TOKEN", "")
         if not expected:

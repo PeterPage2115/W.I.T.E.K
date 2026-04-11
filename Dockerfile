@@ -35,4 +35,7 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:5000/ || exit 1
 
+# NOTE: Migracje nie używają Alembic — pliki SQL w migrations/ stosowane ręcznie.
+# Gdyby Alembic był skonfigurowany, dodać:
+#   CMD flask db upgrade && python run.py --scheduled --port 5000
 CMD ["python", "run.py", "--scheduled", "--port", "5000"]

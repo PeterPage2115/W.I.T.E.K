@@ -25,6 +25,28 @@ from app import create_app
 from app.map_sql.collector import collect_and_store
 
 
+def _validate_env():
+    """Sprawdź zmienne środowiskowe przed startem aplikacji."""
+    issues: list[str] = []
+
+    secret = os.environ.get("FLASK_SECRET_KEY") or os.environ.get("SECRET_KEY")
+    if not secret:
+        issues.append("❌ FLASK_SECRET_KEY nie ustawiony — sesje nie będą działać")
+
+    if not os.environ.get("DISCORD_TOKEN"):
+        log.warning("⚠️ DISCORD_TOKEN nie ustawiony — bot nie wystartuje")
+
+    if not os.environ.get("EXT_API_TOKEN"):
+        log.warning("⚠️ EXT_API_TOKEN nie ustawiony — API rozszerzenia wyłączone")
+
+    if not os.environ.get("TRAVIAN_SERVER_URL"):
+        issues.append("❌ TRAVIAN_SERVER_URL nie ustawiony — zbieranie map.sql wyłączone")
+
+    if issues:
+        for issue in issues:
+            log.error(issue)
+
+
 # ------------------------------------------------------------------ #
 # Discord bot runner (executed in a separate thread)
 # ------------------------------------------------------------------ #
@@ -94,6 +116,7 @@ def main():
     parser.add_argument("--port", type=int, default=5000, help="Flask port")
     args = parser.parse_args()
 
+    _validate_env()
     app = create_app()
 
     # -- One-shot commands ------------------------------------------------ #

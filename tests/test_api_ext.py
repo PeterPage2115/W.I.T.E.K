@@ -28,12 +28,15 @@ class TestConfig:
 def client():
     from app import create_app
     from app.database import db
+    from app.routes.api_ext import _rate_limits
     app = create_app(config_class=TestConfig)
     with app.app_context():
         db.create_all()
+        _rate_limits.clear()
         yield app.test_client()
         db.session.remove()
         db.drop_all()
+        _rate_limits.clear()
 
 
 def _headers(token="test-token-123"):
@@ -128,3 +131,73 @@ class TestIncomingEndpoint:
         })
         assert resp.status_code == 201
         assert len(resp.get_json()["created"]) == 2
+
+
+class TestRateLimiting:
+    """Rate limiter: 30 requests/min per IP."""
+
+    def test_requests_within_limit_succeed(self, client):
+        """Requests under the limit should all pass."""
+        from app.routes.api_ext import _rate_limits
+        _rate_limits.clear()
+
+        for _ in range(5):
+            resp = client.post("/api/ext/report", headers=_headers(), json={
+                "attacker": {"name": "A"}, "defender": {"name": "D"},
+            })
+            assert resp.status_code == 201
+
+    def test_rate_limit_exceeded_returns_429(self, client):
+        """Exceeding 30 req/min should return 429."""
+        from app.routes.api_ext import _rate_limits, _RATE_LIMIT
+        _rate_limits.clear()
+
+        for _ in range(_RATE_LIMIT):
+            resp = client.post("/api/ext/report", headers=_headers(), json={
+                "attacker": {"name": "A"}, "defender": {"name": "D"},
+            })
+            assert resp.status_code == 201
+
+        # 31st request should be blocked
+        resp = client.post("/api/ext/report", headers=_headers(), json={
+            "attacker": {"name": "A"}, "defender": {"name": "D"},
+        })
+        assert resp.status_code == 429
+        assert "Rate limit" in resp.get_json()["error"]
+
+    def test_rate_limit_does_not_block_options(self, client):
+        """CORS preflight (OPTIONS) should bypass rate limiter."""
+        from app.routes.api_ext import _rate_limits
+        _rate_limits.clear()
+
+        for _ in range(35):
+            resp = client.options("/api/ext/report")
+            assert resp.status_code == 204
+
+    def test_rate_limit_window_expires(self, client):
+        """After window passes, requests should succeed again."""
+        import time as _time
+        from unittest.mock import patch
+        from app.routes.api_ext import _rate_limits, _RATE_LIMIT
+        _rate_limits.clear()
+
+        # Fill up the limit at t=0
+        with patch("app.routes.api_ext.time") as mock_time:
+            mock_time.time.return_value = 1000.0
+            for _ in range(_RATE_LIMIT):
+                client.post("/api/ext/report", headers=_headers(), json={
+                    "attacker": {"name": "A"}, "defender": {"name": "D"},
+                })
+
+            # Still at t=0 — should be blocked
+            resp = client.post("/api/ext/report", headers=_headers(), json={
+                "attacker": {"name": "A"}, "defender": {"name": "D"},
+            })
+            assert resp.status_code == 429
+
+            # Jump forward 61 seconds — window expired
+            mock_time.time.return_value = 1061.0
+            resp = client.post("/api/ext/report", headers=_headers(), json={
+                "attacker": {"name": "A"}, "defender": {"name": "D"},
+            })
+            assert resp.status_code == 201
