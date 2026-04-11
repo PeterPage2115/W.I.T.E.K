@@ -1,7 +1,11 @@
 """Player profile route."""
 
-from flask import Blueprint, render_template, abort, jsonify
+import csv
+import io
+
+from flask import Blueprint, render_template, abort, jsonify, Response
 from sqlalchemy import func
+from ..auth_utils import login_required
 from ..database import db
 from ..models import Player, Village, Snapshot, TRIBE_NAMES
 
@@ -155,4 +159,35 @@ def profile(uid):
         pop_change_class=pop_change_class,
         avg_daily_growth=avg_daily_growth,
         first_seen_date=first_seen_date,
+    )
+
+
+@bp.route("/players/export")
+@login_required
+def export_csv():
+    """Export all players as CSV."""
+    players = (
+        db.session.query(Player)
+        .order_by(Player.total_pop.desc())
+        .all()
+    )
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Gracz", "Sojusz", "Populacja", "Wioski", "Plemię"])
+    for p in players:
+        writer.writerow([
+            p.name,
+            p.alliance_name or "",
+            p.total_pop or 0,
+            p.village_count or 0,
+            TRIBE_NAMES.get(p.tid, "Nieznane"),
+        ])
+
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": "attachment; filename=gracze_eksport.csv",
+        },
     )
