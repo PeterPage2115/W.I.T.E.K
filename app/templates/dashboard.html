@@ -90,6 +90,130 @@
 </div>
 {% endif %}
 
+<!-- New widgets row: Alerts, Server Pop Trend, Top Movers -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+
+    <!-- Recent Alerts -->
+    <div class="trav-panel overflow-hidden">
+        <div class="trav-panel-header" style="background: linear-gradient(135deg, #5e463a, #3d2b24); border-bottom: 2px solid #d4a017;">
+            <h2 class="font-medieval text-base font-semibold" style="color: #ffd700;">🔔 Ostatnie Alerty</h2>
+        </div>
+        {% if recent_alerts %}
+        <div class="divide-y divide-trav-brown/10">
+            {% for alert in recent_alerts %}
+            <div class="px-4 py-2.5 flex items-start gap-3">
+                <span class="text-lg mt-0.5">
+                    {% if alert.alert_type == 'pop_drop' %}📉
+                    {% elif alert.alert_type == 'new_village' %}🏘️
+                    {% elif alert.alert_type == 'alliance_change' %}🔄
+                    {% else %}⚠️{% endif %}
+                </span>
+                <div class="flex-1 min-w-0">
+                    <div class="text-sm text-trav-text truncate">
+                        {% if alert.alert_type == 'pop_drop' %}Spadek populacji
+                        {% elif alert.alert_type == 'new_village' %}Nowa wioska
+                        {% elif alert.alert_type == 'alliance_change' %}Zmiana sojuszu
+                        {% else %}{{ alert.alert_type }}{% endif %}
+                    </div>
+                    <div class="text-xs text-trav-text-muted mt-0.5">{{ alert.created_at.strftime('%d.%m %H:%M') }}</div>
+                </div>
+                {% if alert.notified %}
+                <span class="text-xs text-trav-green-dark" title="Wysłano">✅</span>
+                {% else %}
+                <span class="text-xs text-trav-text-muted" title="Oczekuje">⏳</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="p-6 text-center text-trav-text-muted text-sm">Brak alertów</div>
+        {% endif %}
+    </div>
+
+    <!-- Server Population Trend -->
+    <div class="trav-panel overflow-hidden">
+        <div class="trav-panel-header" style="background: linear-gradient(135deg, #5e463a, #3d2b24); border-bottom: 2px solid #d4a017;">
+            <h2 class="font-medieval text-base font-semibold" style="color: #ffd700;">📊 Populacja Serwera</h2>
+        </div>
+        {% if server_pop_trend|length > 1 %}
+        <div class="p-4">
+            <div class="flex items-end justify-between gap-1" style="height: 80px;">
+                {% set max_pop = server_pop_trend|map(attribute='total_pop')|max %}
+                {% set min_pop = server_pop_trend|map(attribute='total_pop')|min %}
+                {% set pop_range = max_pop - min_pop if max_pop != min_pop else 1 %}
+                {% for point in server_pop_trend %}
+                {% set bar_pct = ((point.total_pop - min_pop) / pop_range * 70 + 30)|int %}
+                <div class="flex-1 rounded-t-sm transition-all hover:opacity-80"
+                     style="height: {{ bar_pct }}%; background: linear-gradient(to top, #5a9a0a, #7cc015);"
+                     title="{{ point.fetched_at.strftime('%d.%m %H:%M') }}: {{ '{:,}'.format(point.total_pop) }}">
+                </div>
+                {% endfor %}
+            </div>
+            <div class="mt-3 flex justify-between text-xs text-trav-text-muted">
+                <span>{{ server_pop_trend[0].fetched_at.strftime('%d.%m') }}</span>
+                <span>{{ server_pop_trend[-1].fetched_at.strftime('%d.%m') }}</span>
+            </div>
+            {% set first_pop = server_pop_trend[0].total_pop %}
+            {% set last_pop = server_pop_trend[-1].total_pop %}
+            {% set pop_diff = last_pop - first_pop %}
+            <div class="mt-2 text-center">
+                <span class="text-lg font-bold text-trav-brown-dark">{{ "{:,}".format(last_pop) }}</span>
+                {% if pop_diff > 0 %}
+                <span class="text-sm font-semibold ml-2" style="color: #5a9a0a;">▲ +{{ "{:,}".format(pop_diff) }}</span>
+                {% elif pop_diff < 0 %}
+                <span class="text-sm font-semibold ml-2" style="color: #dc2626;">▼ {{ "{:,}".format(pop_diff) }}</span>
+                {% else %}
+                <span class="text-sm text-trav-text-muted ml-2">— bez zmian</span>
+                {% endif %}
+            </div>
+        </div>
+        {% elif server_pop_trend|length == 1 %}
+        <div class="p-6 text-center">
+            <span class="text-lg font-bold text-trav-brown-dark">{{ "{:,}".format(server_pop_trend[0].total_pop) }}</span>
+            <div class="text-xs text-trav-text-muted mt-1">Jeden snapshot — brak trendu</div>
+        </div>
+        {% else %}
+        <div class="p-6 text-center text-trav-text-muted text-sm">Brak danych</div>
+        {% endif %}
+    </div>
+
+    <!-- Top Movers -->
+    <div class="trav-panel overflow-hidden">
+        <div class="trav-panel-header" style="background: linear-gradient(135deg, #5e463a, #3d2b24); border-bottom: 2px solid #d4a017;">
+            <h2 class="font-medieval text-base font-semibold" style="color: #ffd700;">📈 Największe Zmiany</h2>
+        </div>
+        {% if top_gainers or top_losers %}
+        <div class="p-3">
+            {% if top_gainers %}
+            <div class="mb-2">
+                <div class="text-xs uppercase tracking-wider text-trav-text-muted mb-1 px-1">▲ Wzrosty</div>
+                {% for g in top_gainers %}
+                <div class="flex items-center justify-between px-2 py-1.5 rounded {% if loop.index is odd %}bg-trav-parchment-dark/20{% endif %}">
+                    <a href="/player/{{ g.uid }}" class="text-sm text-trav-blue hover:text-blue-700 transition font-medium truncate flex-1">{{ g.name }}</a>
+                    <span class="text-sm font-bold ml-2 whitespace-nowrap" style="color: #5a9a0a;">+{{ "{:,}".format(g.diff) }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% if top_losers %}
+            <div>
+                <div class="text-xs uppercase tracking-wider text-trav-text-muted mb-1 px-1">▼ Spadki</div>
+                {% for l in top_losers %}
+                <div class="flex items-center justify-between px-2 py-1.5 rounded {% if loop.index is odd %}bg-trav-parchment-dark/20{% endif %}">
+                    <a href="/player/{{ l.uid }}" class="text-sm text-trav-blue hover:text-blue-700 transition font-medium truncate flex-1">{{ l.name }}</a>
+                    <span class="text-sm font-bold ml-2 whitespace-nowrap" style="color: #dc2626;">{{ "{:,}".format(l.diff) }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="p-6 text-center text-trav-text-muted text-sm">Potrzeba ≥ 2 snapshotów</div>
+        {% endif %}
+    </div>
+
+</div>
+
 <!-- Two columns -->
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 

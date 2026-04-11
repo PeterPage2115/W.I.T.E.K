@@ -554,4 +554,276 @@
 
     return result;
   }
+
+  // ─── New parsers: hero, marketplace, training ──────
+
+  /**
+   * Parse hero page (hero.php).
+   * Extracts health, experience, level, adventure status, and equipped items.
+   */
+  function parseHero() {
+    const data = { page_type: 'hero' };
+
+    // Hero health — look for health bar or percentage text
+    const healthBar = document.querySelector('.heroHealthBar .bar, .health .bar, .powerBar .bar');
+    if (healthBar) {
+      const style = healthBar.getAttribute('style') || '';
+      const widthMatch = style.match(/width:\s*([\d.]+)%/);
+      if (widthMatch) data.health_percent = parseFloat(widthMatch[1]);
+    }
+    // Fallback: text-based health value
+    if (data.health_percent == null) {
+      const healthEl = document.querySelector('.heroHealth .value, .health .value, [class*="health"] .value');
+      if (healthEl) {
+        const val = parseFloat(healthEl.textContent.replace(/[^\d.]/g, ''));
+        if (!isNaN(val)) data.health_percent = val;
+      }
+    }
+
+    // Hero level
+    const levelEl = document.querySelector('.heroLevel .value, .level .value, .heroStatus .level');
+    if (levelEl) {
+      const lvl = parseInt(levelEl.textContent.replace(/\D/g, ''));
+      if (!isNaN(lvl)) data.level = lvl;
+    }
+    // Fallback: look in attribute tables
+    if (data.level == null) {
+      document.querySelectorAll('.heroAttributes tr, .attributeTable tr, .heroStatus tr').forEach((row) => {
+        const label = row.querySelector('td:first-child, th')?.textContent?.toLowerCase() || '';
+        if (label.includes('poziom') || label.includes('level')) {
+          const val = parseInt(row.querySelector('td:last-child, .value')?.textContent?.replace(/\D/g, '') || '');
+          if (!isNaN(val)) data.level = val;
+        }
+      });
+    }
+
+    // Experience
+    const xpEl = document.querySelector('.heroExperience .value, .experience .value, .xp .value');
+    if (xpEl) {
+      const xp = parseInt(xpEl.textContent.replace(/\D/g, ''));
+      if (!isNaN(xp)) data.experience = xp;
+    }
+
+    // Adventure status — check for adventure button/counter
+    const adventureBtn = document.querySelector('.adventure .content, .heroAdventure, #annotatedHeroAdventure');
+    if (adventureBtn) {
+      const countEl = adventureBtn.querySelector('.content .value, .number, .count');
+      if (countEl) {
+        const count = parseInt(countEl.textContent.replace(/\D/g, ''));
+        if (!isNaN(count)) data.adventures_available = count;
+      }
+      data.adventure_status = adventureBtn.textContent.trim().substring(0, 100);
+    }
+
+    // Equipped items
+    const items = [];
+    document.querySelectorAll('.heroItem, .equipmentSlot, .item[class*="hero"]').forEach((slot) => {
+      const img = slot.querySelector('img');
+      const tooltip = slot.getAttribute('title') || slot.getAttribute('data-tooltip') || '';
+      const name = img?.getAttribute('alt') || tooltip || '';
+      if (name) {
+        const item = { name: name.trim() };
+        const classMatch = slot.className.match(/slot(\d+)/);
+        if (classMatch) item.slot = parseInt(classMatch[1]);
+        items.push(item);
+      }
+    });
+    if (items.length > 0) data.equipped_items = items;
+
+    // Hero status (home/away/dead)
+    const statusEl = document.querySelector('.heroStatus .status, .heroState, .hero_state');
+    if (statusEl) {
+      data.status = statusEl.textContent.trim().substring(0, 50);
+    }
+
+    return { type: 'hero', data };
+  }
+
+  /**
+   * Parse marketplace page (build.php?gid=17).
+   * Extracts active trade offers and merchant info.
+   */
+  function parseMarketplace() {
+    const result = { page_type: 'marketplace' };
+
+    // Merchant count — look for merchant availability text
+    const merchantEl = document.querySelector('.merchantInfo, .traderCount, [class*="merchant"]');
+    if (merchantEl) {
+      const match = merchantEl.textContent.match(/(\d+)\s*\/\s*(\d+)/);
+      if (match) {
+        result.merchants_available = parseInt(match[1]);
+        result.merchants_total = parseInt(match[2]);
+      }
+    }
+    // Fallback: look for specific elements
+    if (result.merchants_available == null) {
+      document.querySelectorAll('.val, .value').forEach((el) => {
+        const parent = el.closest('[class*="merchant"], [class*="trader"]');
+        if (parent) {
+          const match = el.textContent.match(/(\d+)\s*\/\s*(\d+)/);
+          if (match) {
+            result.merchants_available = parseInt(match[1]);
+            result.merchants_total = parseInt(match[2]);
+          }
+        }
+      });
+    }
+
+    // Active trade offers
+    const offers = [];
+    document.querySelectorAll('.tradeOffer, .offerRow, table.market tbody tr, .marketOffer').forEach((row) => {
+      const offer = {};
+
+      // Offered resources
+      const offered = {};
+      const offeredSection = row.querySelector('.offer, .offered, td:nth-child(1)');
+      if (offeredSection) {
+        ['lumber', 'clay', 'iron', 'crop'].forEach((res) => {
+          const icon = offeredSection.querySelector(`i.${res}, .${res}, img[class*="${res}"]`);
+          if (icon) {
+            const parent = icon.closest('.inlineIcon, td, div, span');
+            if (parent) {
+              const valEl = parent.querySelector('.value, span');
+              if (valEl) {
+                const val = parseInt(valEl.textContent.replace(/\D/g, ''));
+                if (!isNaN(val) && val > 0) offered[res] = val;
+              }
+            }
+          }
+        });
+      }
+      if (Object.keys(offered).length > 0) offer.offered = offered;
+
+      // Requested resources
+      const requested = {};
+      const requestedSection = row.querySelector('.request, .wanted, td:nth-child(2)');
+      if (requestedSection) {
+        ['lumber', 'clay', 'iron', 'crop'].forEach((res) => {
+          const icon = requestedSection.querySelector(`i.${res}, .${res}, img[class*="${res}"]`);
+          if (icon) {
+            const parent = icon.closest('.inlineIcon, td, div, span');
+            if (parent) {
+              const valEl = parent.querySelector('.value, span');
+              if (valEl) {
+                const val = parseInt(valEl.textContent.replace(/\D/g, ''));
+                if (!isNaN(val) && val > 0) requested[res] = val;
+              }
+            }
+          }
+        });
+      }
+      if (Object.keys(requested).length > 0) offer.requested = requested;
+
+      // Duration/timer
+      const timer = row.querySelector('.timer, .duration');
+      if (timer) {
+        const seconds = parseInt(timer.getAttribute('value'));
+        if (!isNaN(seconds)) offer.duration_seconds = seconds;
+        offer.duration_text = timer.textContent.trim();
+      }
+
+      if (offer.offered || offer.requested) {
+        offers.push(offer);
+      }
+    });
+
+    result.offers = offers;
+    return { type: 'marketplace', data: result };
+  }
+
+  /**
+   * Parse training page (barracks gid=12, stable gid=19).
+   * Extracts training queue with unit types, quantities and time remaining.
+   */
+  function parseTraining() {
+    const result = { page_type: 'training' };
+
+    // Determine building type from URL
+    const gidMatch = url.match(/gid=(\d+)/);
+    result.building_gid = gidMatch ? parseInt(gidMatch[1]) : null;
+    result.building_type = result.building_gid === 12 ? 'barracks' : 'stable';
+
+    // Training queue — look for items in build/training queue
+    const queue = [];
+    document.querySelectorAll('.buildingQueue .content, .trainQueue .queueItem, .buildQueue li, .troop_queue tr, .trainMovements .trainMovement').forEach((item) => {
+      const entry = {};
+
+      // Unit name/type
+      const unitImg = item.querySelector('img.unit, img[class*="u"]');
+      if (unitImg) {
+        entry.unit_id = getUnitId(unitImg);
+      }
+      const nameEl = item.querySelector('.name, .unitName, .desc, .troopName');
+      if (nameEl) {
+        entry.unit_name = nameEl.textContent.trim();
+      }
+
+      // Quantity
+      const countEl = item.querySelector('.count, .num, .value, .amount');
+      if (countEl) {
+        const count = parseInt(countEl.textContent.replace(/\D/g, ''));
+        if (!isNaN(count)) entry.count = count;
+      }
+
+      // Time remaining
+      const timer = item.querySelector('.timer, .dur, .duration');
+      if (timer) {
+        const seconds = parseInt(timer.getAttribute('value'));
+        if (!isNaN(seconds)) entry.seconds_remaining = seconds;
+        entry.time_text = timer.textContent.trim();
+      }
+
+      if (entry.unit_id || entry.unit_name || entry.count) {
+        queue.push(entry);
+      }
+    });
+
+    // Fallback: look for a simpler queue table structure
+    if (queue.length === 0) {
+      document.querySelectorAll('table.under_progress tbody tr, .trainMovements tr, .buildingList tr').forEach((row) => {
+        const entry = {};
+        const img = row.querySelector('img.unit, img[class*="u"]');
+        if (img) entry.unit_id = getUnitId(img);
+
+        const cells = row.querySelectorAll('td');
+        cells.forEach((cell) => {
+          const text = cell.textContent.trim();
+          if (/^\d+$/.test(text) && !entry.count) {
+            entry.count = parseInt(text);
+          }
+          const timer = cell.querySelector('.timer');
+          if (timer) {
+            const seconds = parseInt(timer.getAttribute('value'));
+            if (!isNaN(seconds)) entry.seconds_remaining = seconds;
+            entry.time_text = timer.textContent.trim();
+          }
+        });
+
+        const nameEl = row.querySelector('.name, .desc, a');
+        if (nameEl && !entry.unit_name) {
+          entry.unit_name = nameEl.textContent.trim();
+        }
+
+        if (entry.unit_id || entry.unit_name) {
+          queue.push(entry);
+        }
+      });
+    }
+
+    result.queue = queue;
+
+    // Currently trainable units (what's available to train)
+    const trainable = [];
+    document.querySelectorAll('.action.troops .innerTroopWrapper, .trainUnits .unitBlock, .trainTable tbody tr').forEach((block) => {
+      const unit = {};
+      const img = block.querySelector('img.unit, img[class*="u"]');
+      if (img) unit.unit_id = getUnitId(img);
+      const nameEl = block.querySelector('.unitName, .name, .desc');
+      if (nameEl) unit.name = nameEl.textContent.trim();
+      if (unit.unit_id || unit.name) trainable.push(unit);
+    });
+    if (trainable.length > 0) result.trainable_units = trainable;
+
+    return { type: 'training', data: result };
+  }
 })();
