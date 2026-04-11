@@ -136,8 +136,8 @@
                     <span class="font-medieval text-trav-gold text-xl font-bold tracking-wide group-hover:text-trav-gold-light transition">W.I.T.E.K</span>
                 </a>
 
-                <!-- Nav Links -->
-                <div class="flex items-center space-x-5 text-sm">
+                <!-- Nav Links (desktop) -->
+                <div class="hidden md:flex items-center space-x-5 text-sm">
                     <a href="/" class="text-trav-parchment/80 hover:text-trav-gold transition font-medium">📊 Dashboard</a>
                     <a href="/attacks" class="text-trav-parchment/80 hover:text-trav-gold transition font-medium">⚔️ Ataki</a>
                     <a href="/defense" class="text-trav-parchment/80 hover:text-trav-gold transition font-medium">🛡️ Obrona</a>
@@ -146,26 +146,62 @@
                     {% block nav_extra %}{% endblock %}
                 </div>
 
-                <!-- Auth -->
-                <div class="flex items-center space-x-3">
-                {% if current_user %}
-                    <span class="text-trav-gold text-xs">👤 {{ current_user.discord_name }}</span>
-                    <a href="/auth/logout" class="text-trav-parchment/60 hover:text-trav-red text-xs transition">Wyloguj</a>
-                {% else %}
-                    <a href="/auth/login" class="text-trav-gold hover:text-trav-gold-light text-xs font-medium transition">🔒 Zaloguj</a>
-                {% endif %}
+                <!-- Right side: auth + freshness (desktop) -->
+                <div class="hidden md:flex items-center space-x-4">
+                    <!-- Auth -->
+                    <div class="flex items-center space-x-3">
+                    {% if current_user %}
+                        <span class="text-trav-gold text-xs">👤 {{ current_user.discord_name }}</span>
+                        <a href="/auth/logout" class="text-trav-parchment/60 hover:text-trav-red text-xs transition">Wyloguj</a>
+                    {% else %}
+                        <a href="/auth/login" class="text-trav-gold hover:text-trav-gold-light text-xs font-medium transition">🔒 Zaloguj</a>
+                    {% endif %}
+                    </div>
+
+                    <!-- Data freshness -->
+                    {% if snapshot %}
+                    <div class="text-xs text-trav-parchment/60 text-right leading-tight">
+                        📡 {{ snapshot.fetched_at.strftime('%d.%m %H:%M') }} UTC
+                        <br>
+                        🏘️ {{ snapshot.village_count | default(0) }} wiosek
+                    </div>
+                    {% else %}
+                    <div class="text-xs text-trav-red font-medium">⚠️ Brak danych</div>
+                    {% endif %}
                 </div>
 
-                <!-- Data freshness -->
-                {% if snapshot %}
-                <div class="text-xs text-trav-parchment/60 text-right leading-tight">
-                    📡 {{ snapshot.fetched_at.strftime('%d.%m %H:%M') }} UTC
-                    <br>
-                    🏘️ {{ snapshot.village_count | default(0) }} wiosek
+                <!-- Mobile hamburger button -->
+                <button id="mobile-menu-btn" class="md:hidden text-trav-parchment hover:text-trav-gold transition p-1" aria-label="Menu">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path id="hamburger-icon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Mobile menu (hidden by default) -->
+            <div id="mobile-menu" class="hidden md:hidden pb-3 border-t border-trav-gold/20 mt-2 pt-3">
+                <div class="flex flex-col space-y-2 text-sm">
+                    <a href="/" class="text-trav-parchment/80 hover:text-trav-gold transition font-medium px-2 py-1">📊 Dashboard</a>
+                    <a href="/attacks" class="text-trav-parchment/80 hover:text-trav-gold transition font-medium px-2 py-1">⚔️ Ataki</a>
+                    <a href="/defense" class="text-trav-parchment/80 hover:text-trav-gold transition font-medium px-2 py-1">🛡️ Obrona</a>
+                    <a href="/map" class="text-trav-parchment/80 hover:text-trav-gold transition font-medium px-2 py-1">🗺️ Mapa</a>
+                    <a href="/reports" class="text-trav-parchment/80 hover:text-trav-gold transition font-medium px-2 py-1">📜 Raporty</a>
                 </div>
-                {% else %}
-                <div class="text-xs text-trav-red font-medium">⚠️ Brak danych</div>
-                {% endif %}
+                <div class="mt-3 px-2 flex items-center justify-between">
+                    <div>
+                    {% if current_user %}
+                        <span class="text-trav-gold text-xs">👤 {{ current_user.discord_name }}</span>
+                        <a href="/auth/logout" class="text-trav-parchment/60 hover:text-trav-red text-xs transition ml-2">Wyloguj</a>
+                    {% else %}
+                        <a href="/auth/login" class="text-trav-gold hover:text-trav-gold-light text-xs font-medium transition">🔒 Zaloguj</a>
+                    {% endif %}
+                    </div>
+                    {% if snapshot %}
+                    <div class="text-xs text-trav-parchment/60 text-right leading-tight">
+                        📡 {{ snapshot.fetched_at.strftime('%d.%m %H:%M') }} UTC
+                    </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </nav>
@@ -197,5 +233,34 @@
     </footer>
 
     {% block scripts %}{% endblock %}
+    <script>
+    // Mobile menu toggle
+    (function() {
+        var btn = document.getElementById('mobile-menu-btn');
+        var menu = document.getElementById('mobile-menu');
+        if (btn && menu) {
+            btn.addEventListener('click', function() {
+                menu.classList.toggle('hidden');
+            });
+        }
+    })();
+    // Relative time for snapshot timestamps
+    (function() {
+        document.querySelectorAll('[data-utc]').forEach(function(el) {
+            var utc = el.getAttribute('data-utc');
+            if (!utc) return;
+            var then = new Date(utc);
+            var now = new Date();
+            var diffMs = now - then;
+            var diffMin = Math.floor(diffMs / 60000);
+            var text;
+            if (diffMin < 1) text = 'przed chwilą';
+            else if (diffMin < 60) text = diffMin + ' min temu';
+            else if (diffMin < 1440) text = Math.floor(diffMin / 60) + ' godz. temu';
+            else text = Math.floor(diffMin / 1440) + ' dni temu';
+            el.textContent = text;
+        });
+    })();
+    </script>
 </body>
 </html>

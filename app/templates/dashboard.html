@@ -34,6 +34,7 @@
     <div class="trav-panel p-4">
         <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-1">📡 Snapshot</div>
         <div class="text-lg font-bold text-trav-green-dark">{{ snapshot.fetched_at.strftime('%d.%m.%Y %H:%M') }}</div>
+        <div class="text-xs text-trav-text-muted mt-1">🕐 <span data-utc="{{ snapshot.fetched_at.isoformat() }}Z">ładowanie...</span></div>
     </div>
 </div>
 
