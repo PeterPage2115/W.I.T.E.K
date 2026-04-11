@@ -21,21 +21,21 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Tylko biblioteki runtime (libpq5), curl do healthchecka — bez gcc
+# Tylko biblioteki runtime (libpq5), curl do healthchecka, postgresql-client do pg_isready
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends libpq5 curl && \
+    apt-get install -y --no-install-recommends libpq5 curl postgresql-client && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /install /usr/local
 
 COPY . .
 
+RUN chmod +x docker-entrypoint.sh
+
 EXPOSE 5000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:5000/ || exit 1
 
-# NOTE: Migracje nie używają Alembic — pliki SQL w migrations/ stosowane ręcznie.
-# Gdyby Alembic był skonfigurowany, dodać:
-#   CMD flask db upgrade && python run.py --scheduled --port 5000
+ENTRYPOINT ["./docker-entrypoint.sh"]
 CMD ["python", "run.py", "--scheduled", "--port", "5000"]
