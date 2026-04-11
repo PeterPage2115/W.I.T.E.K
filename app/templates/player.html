@@ -24,15 +24,28 @@
                 Bez sojuszu
                 {% endif %}
             </p>
+            {% if activity_label %}
+            <span class="inline-block mt-1 px-2 py-0.5 rounded text-xs font-semibold
+                {% if activity_status == 'active' %}bg-green-900/30 text-green-400
+                {% elif activity_status == 'inactive' %}bg-red-900/30 text-red-400
+                {% else %}bg-yellow-900/30 text-yellow-400{% endif %}">
+                {{ activity_label }}
+            </span>
+            {% endif %}
         </div>
     </div>
 </div>
 
-<!-- Stats -->
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+<!-- Stats Row 1 -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
     <div class="trav-panel p-4">
         <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-1">Populacja</div>
         <div class="text-2xl font-bold text-trav-brown-dark">{{ "{:,}".format(player.total_pop) }}</div>
+        {% if pop_change is not none %}
+        <div class="text-sm mt-1 {{ pop_change_class }}">
+            {{ pop_arrow }} {{ "{:+,}".format(pop_change) }}
+        </div>
+        {% endif %}
     </div>
     <div class="trav-panel p-4">
         <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-1">Wioski</div>
@@ -44,6 +57,32 @@
             {% if player.village_count %}{{ "{:,.0f}".format(player.total_pop / player.village_count) }}{% else %}0{% endif %}
         </div>
     </div>
+</div>
+
+<!-- Stats Row 2 -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    {% if avg_daily_growth is not none %}
+    <div class="trav-panel p-4">
+        <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-1">Średni dzienny wzrost</div>
+        <div class="text-2xl font-bold {{ 'text-green-600' if avg_daily_growth > 0 else 'text-red-600' if avg_daily_growth < 0 else 'text-trav-brown-dark' }}">
+            {{ "{:+,.1f}".format(avg_daily_growth) }} / dzień
+        </div>
+    </div>
+    {% endif %}
+    {% if first_seen_date %}
+    <div class="trav-panel p-4">
+        <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-1">Pierwszy snapshot</div>
+        <div class="text-lg font-bold text-trav-brown-dark">
+            {{ first_seen_date.strftime('%d.%m.%Y %H:%M') }}
+        </div>
+    </div>
+    {% endif %}
+    {% if activity_label and avg_daily_growth is not none %}
+    <div class="trav-panel p-4">
+        <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-1">Status aktywności</div>
+        <div class="text-lg font-bold">{{ activity_label }}</div>
+    </div>
+    {% endif %}
 </div>
 
 <!-- Population History Chart -->

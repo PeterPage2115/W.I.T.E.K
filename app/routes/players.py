@@ -59,10 +59,76 @@ def profile(uid):
 
     tribe_name = TRIBE_NAMES.get(player.tid, "Nieznane")
 
+    # --- Activity detection ---
+    snapshot_rows = (
+        db.session.query(
+            Snapshot.id,
+            Snapshot.fetched_at,
+            func.sum(Village.population).label("total_pop"),
+        )
+        .join(Village, Village.snapshot_id == Snapshot.id)
+        .filter(Village.uid == uid)
+        .group_by(Snapshot.id)
+        .order_by(Snapshot.fetched_at)
+        .all()
+    )
+
+    activity_status = None
+    activity_label = ""
+    pop_change = None
+    pop_arrow = ""
+    pop_change_class = ""
+    avg_daily_growth = None
+    first_seen_date = None
+
+    if snapshot_rows:
+        first_seen_date = snapshot_rows[0].fetched_at
+        first_total = snapshot_rows[0].total_pop or 0
+        latest_total = snapshot_rows[-1].total_pop or 0
+
+        if len(snapshot_rows) >= 2:
+            pop_change = latest_total - first_total
+            if pop_change > 0:
+                pop_arrow = "▲"
+                pop_change_class = "text-green-600"
+            elif pop_change < 0:
+                pop_arrow = "▼"
+                pop_change_class = "text-red-600"
+            else:
+                pop_arrow = "▶"
+                pop_change_class = "text-trav-text-muted"
+
+            days_between = max(
+                (snapshot_rows[-1].fetched_at - snapshot_rows[0].fetched_at).total_seconds() / 86400,
+                0.01,
+            )
+            avg_daily_growth = pop_change / days_between
+
+        # Activity: check last 3 snapshots
+        recent = snapshot_rows[-3:] if len(snapshot_rows) >= 3 else snapshot_rows
+        if len(recent) >= 2:
+            pops = [r.total_pop or 0 for r in recent]
+            if pops[-1] != pops[0]:
+                activity_status = "active"
+                activity_label = "Aktywny 🟢"
+            else:
+                activity_status = "inactive"
+                activity_label = "Nieaktywny 🔴"
+        else:
+            activity_status = "new"
+            activity_label = "Nowy gracz 🟡"
+
     return render_template(
         "player.html",
         player=player,
         villages=villages,
         tribe_name=tribe_name,
         snapshot=latest_snapshot,
+        activity_status=activity_status,
+        activity_label=activity_label,
+        pop_change=pop_change,
+        pop_arrow=pop_arrow,
+        pop_change_class=pop_change_class,
+        avg_daily_growth=avg_daily_growth,
+        first_seen_date=first_seen_date,
     )
