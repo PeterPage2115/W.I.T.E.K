@@ -4,6 +4,8 @@
 
 {% block head %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
 <style>
     #map-container {
         height: calc(100vh - 180px);
@@ -29,6 +31,29 @@
         border-radius: 6px; padding: 8px;
     }
     .filter-btn.active { outline: 2px solid #c8a415; outline-offset: 1px; }
+    .marker-cluster-small {
+        background-color: rgba(90, 154, 10, 0.6);
+    }
+    .marker-cluster-small div {
+        background-color: rgba(90, 154, 10, 0.8);
+    }
+    .marker-cluster-medium {
+        background-color: rgba(241, 211, 87, 0.6);
+    }
+    .marker-cluster-medium div {
+        background-color: rgba(241, 211, 87, 0.8);
+    }
+    .marker-cluster-large {
+        background-color: rgba(192, 57, 43, 0.6);
+    }
+    .marker-cluster-large div {
+        background-color: rgba(192, 57, 43, 0.8);
+    }
+    .marker-cluster div {
+        color: #fff;
+        font-weight: bold;
+        text-align: center;
+    }
 </style>
 {% endblock %}
 
@@ -65,6 +90,7 @@
 
 {% block scripts %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script>
 (function() {
     const map = L.map('map-container', {
@@ -93,7 +119,16 @@
     const SERVER_URL = {{ config.TRAVIAN_SERVER_URL | default('', true) | tojson }};
 
     let allVillages = [];
-    let markers = L.layerGroup().addTo(map);
+    let markers = L.markerClusterGroup({
+        maxClusterRadius: 40,
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        zoomToBoundsOnClick: true,
+        disableClusteringAtZoom: 3,
+        chunkedLoading: true,
+        chunkInterval: 100,
+        chunkDelay: 10,
+    }).addTo(map);
     let activeFilter = 'all';
 
     function getColor(village) {
@@ -113,6 +148,7 @@
 
     function renderMarkers(villages) {
         markers.clearLayers();
+        const markerList = [];
         villages.forEach(function(v) {
             const color = getColor(v);
             const marker = L.circleMarker([v.y, v.x], {
@@ -141,8 +177,9 @@
                 '</div>'
             );
 
-            markers.addLayer(marker);
+            markerList.push(marker);
         });
+        markers.addLayers(markerList);
     }
 
     function applyFilters() {
