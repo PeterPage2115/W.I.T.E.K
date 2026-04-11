@@ -7,7 +7,7 @@ from app import create_app
 from app.database import db as _db
 from app.models import Snapshot, Village
 
-from bot.cogs.recon import _bbox_filter, _bbox_query, _find_inactive_players
+from bot.cogs.recon import _bbox_filter, _bbox_query, _find_inactive_players, _find_enemy_players
 from bot.utils import torus_distance
 
 
@@ -355,3 +355,135 @@ class TestFindInactivePlayers:
         assert len(result) == 1
         assert result[0]["pop"] == 300
         assert result[0]["village_count"] == 2
+
+
+# ------------------------------------------------------------------ #
+# _find_enemy_players
+# ------------------------------------------------------------------ #
+
+
+class TestFindEnemyPlayers:
+    """Test enemy player search logic."""
+
+    def _setup_snapshot(self, db_session):
+        """Create a single snapshot."""
+        now = datetime.now(timezone.utc)
+        s = Snapshot(fetched_at=now, village_count=10)
+        db_session.add(s)
+        db_session.commit()
+        return s
+
+    def test_returns_none_without_snapshot(self, db_session):
+        """No snapshots at all should return None."""
+        result = _find_enemy_players(0, 0, 50, 100, [], "", 401)
+        assert result is None
+
+    def test_our_alliance_excluded(self, db_session):
+        """Villages from our alliances should be excluded."""
+        s = self._setup_snapshot(db_session)
+        db_session.add_all([
+            _make_village(1, s.id, 5, 5, 10, "AllyGuy", aid=1,
+                          alliance_name="UFKI", population=500),
+            _make_village(2, s.id, 6, 6, 20, "Enemy", aid=99,
+                          alliance_name="BAD", population=500),
+        ])
+        db_session.commit()
+
+        result = _find_enemy_players(0, 0, 50, 100, [1], "", 401)
+        names = {p["name"] for p in result}
+        assert "AllyGuy" not in names
+        assert "Enemy" in names
+
+    def test_non_allied_included(self, db_session):
+        """Non-allied players should appear in results."""
+        s = self._setup_snapshot(db_session)
+        db_session.add(_make_village(
+            1, s.id, 5, 5, 10, "Neutral", aid=50,
+            alliance_name="OTHER", population=200,
+        ))
+        db_session.commit()
+
+        result = _find_enemy_players(0, 0, 50, 100, [1, 2], "", 401)
+        assert len(result) == 1
+        assert result[0]["name"] == "Neutral"
+
+    def test_min_pop_filter(self, db_session):
+        """Players below min_pop should be excluded."""
+        s = self._setup_snapshot(db_session)
+        db_session.add_all([
+            _make_village(1, s.id, 5, 5, 10, "Tiny", aid=99,
+                          alliance_name="X", population=50),
+            _make_village(2, s.id, 6, 6, 20, "Big", aid=99,
+                          alliance_name="X", population=500),
+        ])
+        db_session.commit()
+
+        result = _find_enemy_players(0, 0, 50, 100, [], "", 401)
+        names = {p["name"] for p in result}
+        assert "Tiny" not in names
+        assert "Big" in names
+
+    def test_grouping_by_player(self, db_session):
+        """Multiple villages of same player should aggregate pop and count."""
+        s = self._setup_snapshot(db_session)
+        db_session.add_all([
+            _make_village(1, s.id, 3, 3, 10, "Multi", aid=99,
+                          alliance_name="X", population=200),
+            _make_village(2, s.id, 4, 4, 10, "Multi", aid=99,
+                          alliance_name="X", population=150),
+        ])
+        db_session.commit()
+
+        result = _find_enemy_players(0, 0, 50, 100, [], "", 401)
+        assert len(result) == 1
+        assert result[0]["pop"] == 350
+        assert result[0]["village_count"] == 2
+
+    def test_sorted_by_pop_descending(self, db_session):
+        """Results should be sorted by total population, highest first."""
+        s = self._setup_snapshot(db_session)
+        db_session.add_all([
+            _make_village(1, s.id, 5, 5, 10, "Small", aid=99,
+                          alliance_name="X", population=200),
+            _make_village(2, s.id, 6, 6, 20, "Big", aid=99,
+                          alliance_name="X", population=800),
+        ])
+        db_session.commit()
+
+        result = _find_enemy_players(0, 0, 50, 100, [], "", 401)
+        assert len(result) == 2
+        assert result[0]["name"] == "Big"
+        assert result[1]["name"] == "Small"
+
+    def test_closest_village_tracked(self, db_session):
+        """Player's closest village coords should be recorded."""
+        s = self._setup_snapshot(db_session)
+        db_session.add_all([
+            _make_village(1, s.id, 10, 10, 10, "Player", aid=99,
+                          alliance_name="X", population=200),
+            _make_village(2, s.id, 3, 3, 10, "Player", aid=99,
+                          alliance_name="X", population=100),
+        ])
+        db_session.commit()
+
+        result = _find_enemy_players(0, 0, 50, 100, [], "", 401)
+        assert result[0]["closest_x"] == 3
+        assert result[0]["closest_y"] == 3
+
+    def test_out_of_radius_excluded(self, db_session):
+        """Players outside search radius should be excluded."""
+        s = self._setup_snapshot(db_session)
+        db_session.add(_make_village(
+            1, s.id, 100, 100, 10, "FarAway", aid=99,
+            alliance_name="X", population=500,
+        ))
+        db_session.commit()
+
+        result = _find_enemy_players(0, 0, 10, 100, [], "", 401)
+        assert result == []
+
+    def test_empty_area(self, db_session):
+        """No villages in area should return empty list."""
+        s = self._setup_snapshot(db_session)
+        result = _find_enemy_players(0, 0, 50, 100, [], "", 401)
+        assert result == []
