@@ -1783,6 +1783,75 @@ class CombatSimModal(discord.ui.Modal):
 
         await interaction.response.send_message(embed=embed)
 
+    # ------------------------------------------------------------------ #
+    # /tbuildtime — simplified training time calculator with autocomplete
+    # ------------------------------------------------------------------ #
+
+    async def _jednostka_autocomplete(self, ctx: discord.AutocompleteContext):
+        """Autocomplete for unit names from TRAINING_COSTS."""
+        current = (ctx.value or "").lower()
+        return [
+            name for name in TRAINING_COSTS
+            if current in name.lower()
+        ][:25]
+
+    @discord.slash_command(
+        name="tbuildtime",
+        description="Kalkulator czasu treningu — oblicz czas i koszt szkolenia jednostek",
+    )
+    @discord.option("jednostka", str, description="Nazwa jednostki",
+                    autocomplete=_jednostka_autocomplete)
+    @discord.option("poziom", int, description="Poziom budynku (1-20)",
+                    required=False, default=1, min_value=1, max_value=20)
+    @discord.option("ilosc", int, description="Liczba jednostek",
+                    required=False, default=1, min_value=1)
+    async def tbuildtime(
+        self,
+        ctx: discord.ApplicationContext,
+        jednostka: str,
+        poziom: int,
+        ilosc: int,
+    ):
+        cost = TRAINING_COSTS.get(jednostka)
+        if cost is None:
+            await ctx.response.send_message(
+                f"❌ Nieznana jednostka **{jednostka}**. Użyj autouzupełniania.",
+                ephemeral=True,
+            )
+            return
+
+        time_per_unit = calc_training_time(cost["time"], poziom)
+        total_time = time_per_unit * ilosc
+
+        total_lumber = cost["lumber"] * ilosc
+        total_clay = cost["clay"] * ilosc
+        total_iron = cost["iron"] * ilosc
+        total_crop = cost["crop"] * ilosc
+
+        embed = discord.Embed(
+            title="🏗️ Kalkulator Czasu Treningu",
+            color=0xFFD700,
+        )
+        embed.add_field(name="⚔️ Jednostka", value=jednostka, inline=True)
+        embed.add_field(name="🏛️ Budynek", value=cost["building"], inline=True)
+        embed.add_field(name="📊 Poziom", value=str(poziom), inline=True)
+        embed.add_field(name="🔢 Ilość", value=_fmt_num(ilosc), inline=True)
+        embed.add_field(name="⏱️ Czas/szt", value=format_duration(time_per_unit), inline=True)
+        embed.add_field(name="⏳ Czas łączny", value=format_duration(total_time), inline=True)
+        embed.add_field(
+            name="💰 Koszt łączny",
+            value=(
+                f"🪵 Drewno: **{_fmt_num(total_lumber)}**\n"
+                f"🧱 Glina: **{_fmt_num(total_clay)}**\n"
+                f"⛏️ Żelazo: **{_fmt_num(total_iron)}**\n"
+                f"🌾 Zboże: **{_fmt_num(total_crop)}**"
+            ),
+            inline=False,
+        )
+        embed.set_footer(text=FOOTER)
+
+        await ctx.response.send_message(embed=embed)
+
 
 def setup(bot):
     bot.add_cog(Economy(bot))
