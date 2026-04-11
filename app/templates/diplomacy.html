@@ -8,6 +8,44 @@
     <p class="text-trav-parchment/60 text-sm mt-1">Relacje dyplomatyczne sojuszu</p>
 </div>
 
+{% if logged_in %}
+<div class="trav-panel mb-6">
+    <div class="trav-panel-header">
+        <h2 class="text-lg font-medieval">➕ Dodaj relację</h2>
+    </div>
+    <div class="p-4">
+        <form method="POST" action="{{ url_for('diplomacy.diplomacy_add') }}" class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+            <div>
+                <label class="block text-xs font-semibold text-trav-text mb-1">Typ relacji</label>
+                <select name="relation_type" required
+                    class="w-full px-3 py-2 rounded bg-white/80 border border-trav-brown-light text-trav-text text-sm focus:outline-none focus:ring-2 focus:ring-trav-green">
+                    <option value="ally">🤝 Sojusz</option>
+                    <option value="pact">📜 Pakt</option>
+                    <option value="nap">📜 NAP</option>
+                    <option value="war">⚔️ Wojna</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-trav-text mb-1">Nazwa sojuszu</label>
+                <input type="text" name="target_alliance_name" required maxlength="100" placeholder="np. UFOLODZY2"
+                    class="w-full px-3 py-2 rounded bg-white/80 border border-trav-brown-light text-trav-text text-sm focus:outline-none focus:ring-2 focus:ring-trav-green">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-trav-text mb-1">Notatki</label>
+                <input type="text" name="notes" maxlength="500" placeholder="Opcjonalne notatki..."
+                    class="w-full px-3 py-2 rounded bg-white/80 border border-trav-brown-light text-trav-text text-sm focus:outline-none focus:ring-2 focus:ring-trav-green">
+            </div>
+            <div>
+                <button type="submit"
+                    class="w-full px-4 py-2 rounded bg-trav-green hover:bg-trav-green-dark text-white font-semibold text-sm transition-colors">
+                    Dodaj
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
 {% set type_config = {
     'ally': {'label': '🤝 Sojusze', 'border': 'border-green-600', 'bg': 'bg-green-900/20', 'text': 'text-green-300'},
     'pact': {'label': '📜 Pakty', 'border': 'border-blue-500', 'bg': 'bg-blue-900/20', 'text': 'text-blue-300'},
@@ -15,10 +53,14 @@
     'war': {'label': '⚔️ Wojny', 'border': 'border-red-600', 'bg': 'bg-red-900/20', 'text': 'text-red-300'}
 } %}
 
+{% set type_labels = {'ally': 'Sojusz', 'pact': 'Pakt', 'nap': 'NAP', 'war': 'Wojna'} %}
+
 {% if not relations %}
 <div class="trav-panel p-6 text-center">
     <p class="text-trav-text-muted text-lg">Brak aktywnych relacji dyplomatycznych.</p>
-    <p class="text-trav-text-muted text-sm mt-2">Użyj komendy <code>/tdodaj_relacje</code> na Discordzie, aby dodać relację.</p>
+    {% if not logged_in %}
+    <p class="text-trav-text-muted text-sm mt-2">Zaloguj się, aby zarządzać relacjami.</p>
+    {% endif %}
 </div>
 {% else %}
 
@@ -33,19 +75,65 @@
         </div>
         <div class="p-4 space-y-3">
             {% for rel in relations[rtype] %}
-            <div class="flex items-start justify-between border-l-4 {{ cfg.border }} pl-3 py-1">
-                <div>
-                    <span class="font-semibold text-trav-text">{{ rel.target_alliance_name or 'ID:' ~ rel.target_alliance_id }}</span>
-                    {% if rel.notes %}
-                    <p class="text-xs text-trav-text-muted mt-0.5">📝 {{ rel.notes }}</p>
-                    {% endif %}
+            <div class="border-l-4 {{ cfg.border }} pl-3 py-1" id="rel-{{ rel.id }}">
+                {# Display mode #}
+                <div class="flex items-start justify-between" id="rel-display-{{ rel.id }}">
+                    <div>
+                        <span class="font-semibold text-trav-text">{{ rel.target_alliance_name or 'ID:' ~ rel.target_alliance_id }}</span>
+                        {% if rel.notes %}
+                        <p class="text-xs text-trav-text-muted mt-0.5">📝 {{ rel.notes }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="flex items-start gap-2">
+                        <div class="text-right text-xs text-trav-text-muted leading-tight">
+                            {% if rel.created_by %}
+                            <div>{{ rel.created_by }}</div>
+                            {% endif %}
+                            <div>{{ rel.created_at.strftime('%d.%m.%Y') }}</div>
+                        </div>
+                        {% if logged_in %}
+                        <div class="flex gap-1 ml-2">
+                            <button onclick="toggleEdit({{ rel.id }})" title="Edytuj"
+                                class="px-1.5 py-0.5 text-xs rounded bg-trav-brown/20 hover:bg-trav-brown/40 text-trav-text transition-colors">✏️</button>
+                            <form method="POST" action="{{ url_for('diplomacy.diplomacy_delete', rel_id=rel.id) }}"
+                                onsubmit="return confirm('Dezaktywować relację z {{ rel.target_alliance_name }}?')">
+                                <button type="submit" title="Dezaktywuj"
+                                    class="px-1.5 py-0.5 text-xs rounded bg-trav-red/20 hover:bg-trav-red/40 text-trav-text transition-colors">🗑️</button>
+                            </form>
+                        </div>
+                        {% endif %}
+                    </div>
                 </div>
-                <div class="text-right text-xs text-trav-text-muted leading-tight">
-                    {% if rel.created_by %}
-                    <div>{{ rel.created_by }}</div>
-                    {% endif %}
-                    <div>{{ rel.created_at.strftime('%d.%m.%Y') }}</div>
+
+                {% if logged_in %}
+                {# Edit mode (hidden by default) #}
+                <div class="hidden mt-2" id="rel-edit-{{ rel.id }}">
+                    <form method="POST" action="{{ url_for('diplomacy.diplomacy_edit', rel_id=rel.id) }}" class="space-y-2">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-semibold text-trav-text mb-0.5">Typ</label>
+                                <select name="relation_type"
+                                    class="w-full px-2 py-1 rounded bg-white/80 border border-trav-brown-light text-trav-text text-xs focus:outline-none focus:ring-2 focus:ring-trav-green">
+                                    {% for val, lbl in [('ally', '🤝 Sojusz'), ('pact', '📜 Pakt'), ('nap', '📜 NAP'), ('war', '⚔️ Wojna')] %}
+                                    <option value="{{ val }}" {{ 'selected' if rel.relation_type == val }}>{{ lbl }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-trav-text mb-0.5">Notatki</label>
+                                <input type="text" name="notes" value="{{ rel.notes or '' }}" maxlength="500"
+                                    class="w-full px-2 py-1 rounded bg-white/80 border border-trav-brown-light text-trav-text text-xs focus:outline-none focus:ring-2 focus:ring-trav-green">
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="submit"
+                                class="px-3 py-1 rounded bg-trav-green hover:bg-trav-green-dark text-white text-xs font-semibold transition-colors">Zapisz</button>
+                            <button type="button" onclick="toggleEdit({{ rel.id }})"
+                                class="px-3 py-1 rounded bg-trav-brown/30 hover:bg-trav-brown/50 text-trav-text text-xs transition-colors">Anuluj</button>
+                        </div>
+                    </form>
                 </div>
+                {% endif %}
             </div>
             {% endfor %}
         </div>
@@ -55,4 +143,18 @@
 </div>
 
 {% endif %}
+
+<script>
+function toggleEdit(id) {
+    var display = document.getElementById('rel-display-' + id);
+    var edit = document.getElementById('rel-edit-' + id);
+    if (edit.classList.contains('hidden')) {
+        edit.classList.remove('hidden');
+        display.classList.add('opacity-50');
+    } else {
+        edit.classList.add('hidden');
+        display.classList.remove('opacity-50');
+    }
+}
+</script>
 {% endblock %}
