@@ -38,6 +38,58 @@
     </div>
 </div>
 
+<!-- Active Attacks Timeline -->
+{% if active_attacks %}
+<div class="trav-panel overflow-hidden mb-6">
+    <div class="trav-panel-header" style="background: linear-gradient(135deg, #8b2500, #5e463a); border-bottom: 2px solid #d4a017;">
+        <h2 class="font-medieval text-base font-semibold" style="color: #ffd700;">⚔️ Aktywne Ataki</h2>
+        <span class="text-xs" style="color: #ffd700cc;">{{ active_attacks|length }} aktywn{{ 'y' if active_attacks|length == 1 else 'ych' }}</span>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-trav-text-muted text-xs uppercase border-b-2 border-trav-brown/20" style="background: rgba(139, 37, 0, 0.1);">
+                    <th class="px-4 py-2.5 text-left">Cel</th>
+                    <th class="px-4 py-2.5 text-left">Atakujący</th>
+                    <th class="px-4 py-2.5 text-center">Czas ataku</th>
+                    <th class="px-4 py-2.5 text-center">Odliczanie</th>
+                    <th class="px-4 py-2.5 text-center">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for atk in active_attacks %}
+                <tr class="hover-row border-b border-trav-brown/10" data-attack-unix="{{ atk.attack_unix or '' }}">
+                    <td class="px-4 py-2">
+                        <div class="font-semibold text-trav-text">{{ atk.defender_village or atk.defender_name or '?' }}</div>
+                        <div class="text-xs text-trav-text-muted">({{ atk.defender_x }}, {{ atk.defender_y }})</div>
+                    </td>
+                    <td class="px-4 py-2">
+                        <span class="text-trav-red font-medium">{{ atk.attacker_name or '?' }}</span>
+                        {% if atk.attacker_alliance %}
+                        <span class="text-xs text-trav-text-muted">[{{ atk.attacker_alliance }}]</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-2 text-center font-mono font-bold text-trav-text">{{ atk.attack_time or '?' }}</td>
+                    <td class="px-4 py-2 text-center">
+                        <span class="attack-countdown font-mono font-bold" data-unix="{{ atk.attack_unix or '' }}" style="color: #d4a017;">
+                            --:--:--
+                        </span>
+                    </td>
+                    <td class="px-4 py-2 text-center">
+                        <span class="attack-status text-xs font-semibold px-2 py-1 rounded"
+                              data-unix="{{ atk.attack_unix or '' }}"
+                              style="background: rgba(212, 160, 23, 0.2); color: #d4a017;">
+                            {{ atk.status }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
 <!-- Two columns -->
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
@@ -115,5 +167,49 @@
     </div>
 
 </div>
+{% endif %}
+
+{% if active_attacks %}
+<script>
+(function() {
+    function updateCountdowns() {
+        var now = Math.floor(Date.now() / 1000);
+        document.querySelectorAll('.attack-countdown').forEach(function(el) {
+            var unix = parseInt(el.dataset.unix, 10);
+            if (!unix) { el.textContent = '--:--:--'; return; }
+            var diff = unix - now;
+            if (diff <= 0) {
+                el.textContent = '⚔️ W TRAKCIE';
+                el.style.color = '#dc2626';
+            } else {
+                var h = Math.floor(diff / 3600);
+                var m = Math.floor((diff % 3600) / 60);
+                var s = diff % 60;
+                el.textContent = String(h).padStart(2, '0') + ':' +
+                                 String(m).padStart(2, '0') + ':' +
+                                 String(s).padStart(2, '0');
+                if (diff < 300) {
+                    el.style.color = '#dc2626';
+                } else if (diff < 900) {
+                    el.style.color = '#f59e0b';
+                } else {
+                    el.style.color = '#d4a017';
+                }
+            }
+        });
+        document.querySelectorAll('.attack-status').forEach(function(el) {
+            var unix = parseInt(el.dataset.unix, 10);
+            if (!unix) return;
+            if (unix - now <= 0) {
+                el.textContent = '⚔️ W TRAKCIE';
+                el.style.background = 'rgba(220, 38, 38, 0.2)';
+                el.style.color = '#dc2626';
+            }
+        });
+    }
+    updateCountdowns();
+    setInterval(updateCountdowns, 1000);
+})();
+</script>
 {% endif %}
 {% endblock %}
