@@ -12,7 +12,7 @@ def create_app(config_class=Config):
     db.init_app(app)
     init_db(app)
 
-    from .routes import dashboard, players, alliances, attacks, defense, map as map_route, reports, auth
+    from .routes import dashboard, players, alliances, attacks, defense, map as map_route, reports, auth, diplomacy
     app.register_blueprint(dashboard.bp)
     app.register_blueprint(players.bp)
     app.register_blueprint(alliances.bp)
@@ -21,6 +21,7 @@ def create_app(config_class=Config):
     app.register_blueprint(map_route.bp)
     app.register_blueprint(reports.bp)
     app.register_blueprint(auth.bp)
+    app.register_blueprint(diplomacy.bp)
 
     from .routes import api_ext
     app.register_blueprint(api_ext.bp)

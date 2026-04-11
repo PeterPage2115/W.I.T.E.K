@@ -256,3 +256,18 @@ class DefenseThread(db.Model):
     status = db.Column(db.Text, default="active")  # active / resolved
     created_at = db.Column(db.DateTime, default=_utcnow)
     updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
+
+
+class DiplomaticRelation(db.Model):
+    """Diplomatic relation with another alliance (ally, pact, nap, war)."""
+
+    __tablename__ = "diplomatic_relations"
+
+    id = db.Column(db.Integer, primary_key=True)
+    relation_type = db.Column(db.String(20), nullable=False)
+    target_alliance_id = db.Column(db.Integer, nullable=False)
+    target_alliance_name = db.Column(db.String(100), nullable=True)
+    created_at = db.Column(db.DateTime, default=_utcnow)
+    created_by = db.Column(db.String(100))
+    notes = db.Column(db.Text, nullable=True)
+    active = db.Column(db.Boolean, default=True)
