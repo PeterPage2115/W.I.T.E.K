@@ -38,17 +38,19 @@ class Config:
     else:
         SQLALCHEMY_ENGINE_OPTIONS = {}
 
-    # Travian
-    travian = _yaml.get("travian", {})
-    TRAVIAN_SERVER_URL = os.getenv(
-        "TRAVIAN_SERVER_URL",
-        travian.get("server_url", "https://ts31.x3.europe.travian.com"),
-    )
-    TRAVIAN_MAP_SIZE = travian.get("map_size", 401)
-    TRAVIAN_OUR_ALLIANCES = travian.get("our_alliances", [])
-    TRAVIAN_SPEED_MULTIPLIER = travian.get("speed_multiplier", 3)
-    TRAVIAN_TROOP_SPEED_MULTIPLIER = travian.get("troop_speed_multiplier", 2)
-    TRAVIAN_AVAILABLE_TRIBES = travian.get("available_tribes", [1, 2, 3])
+    # Server profile (shared loader — avoids config divergence between Flask and bot)
+    from server_profile import load_profile
+    _profile = load_profile()
+
+    TRAVIAN_SERVER_URL = _profile["url"]
+    TRAVIAN_MAP_SIZE = _profile["map_size"]
+    TRAVIAN_OUR_ALLIANCES = _profile["our_alliances"]
+    TRAVIAN_SPEED_MULTIPLIER = _profile["speed"]
+    TRAVIAN_TROOP_SPEED_MULTIPLIER = _profile["troop_speed_multiplier"]
+    TRAVIAN_AVAILABLE_TRIBES = _profile["tribes"]
+    TRAVIAN_FEATURES = _profile["features"]
+    TRAVIAN_LEGIONNAIRE_REBALANCED = _profile.get("legionnaire_rebalanced", False)
+    SERVER_PROFILE_NAME = _profile["name"]
 
     # Attacks
     _attacks = _yaml.get("attacks", {})
