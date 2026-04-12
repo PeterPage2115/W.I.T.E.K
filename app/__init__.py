@@ -23,8 +23,9 @@ def create_app(config_class=Config):
     app.register_blueprint(auth.bp)
     app.register_blueprint(diplomacy.bp)
 
-    from .routes import api_ext
+    from .routes import api_ext, search
     app.register_blueprint(api_ext.bp)
+    app.register_blueprint(search.bp)
 
     @app.context_processor
     def inject_user():
