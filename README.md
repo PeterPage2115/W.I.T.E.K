@@ -72,6 +72,10 @@ Dashboard: http://localhost:5000
 | **📜 Raporty** | |
 | `/traport` | Wklej raport bitewny (modal) |
 | `/traporty` | Lista ostatnich raportów bitewnych |
+| **🕊️ Dyplomacja** | |
+| `/tdyplomacja` | Pokaż relacje dyplomatyczne |
+| `/tdodaj_relacje` | Dodaj relację dyplomatyczną |
+| `/tusun_relacje` | Usuń relację dyplomatyczną |
 | **🗺️ Rozpoznanie** | |
 | `/tnieaktywni` | Znajdź nieaktywnych graczy w okolicy |
 | `/tcropper` | Szukaj cropperów (9c/15c) w zasięgu |
@@ -82,10 +86,8 @@ Dashboard: http://localhost:5000
 | `/tileobrony` | Ile obrony potrzeba na daną armię atakującą |
 | `/tprzechwyc` | Kalkulator przechwycenia — kto zdąży wysłać def |
 | `/tsymulacja` | Symulator bitwy (modal) |
-| **📊 Monitoring** | |
+| **📊 Analiza** | |
 | `/tdigest` | Tygodniowe podsumowanie zmian sojuszu |
-| `/tmonitor` | Włącz/wyłącz monitoring wiosek (alerty DM) |
-| `/tmonitor_ustawienia` | Ustaw progi monitoringu |
 
 ## Funkcje dashboardu
 
@@ -95,6 +97,9 @@ Dashboard: http://localhost:5000
 - 📈 Statystyki serwera (populacja, liczba graczy)
 - 🗺️ Historia snapshotów map.sql
 - 🔒 Strefa sojuszu zabezpieczona hasłem
+- 🔔 System alertów z filtrowaniem i historią
+- 🔍 Szybkie wyszukiwanie graczy i sojuszy
+- 🕊️ Dyplomacja — zarządzanie relacjami między sojuszami
 
 ## Architektura
 
@@ -107,9 +112,9 @@ run.py                  # Punkt wejścia: Flask + bot + scheduler
 │   └── templates/      # Szablony Jinja2 (styl Travian)
 ├── bot/                # Bot Discord (py-cord)
 │   ├── bot.py          # Fabryka bota + db_query()
-│   └── cogs/           # 10 kogów z komendami slash
+│   └── cogs/           # 9 kogów z komendami slash
 ├── config/             # Konfiguracja YAML
-└── tests/              # 853+ testów pytest
+└── tests/              # 871 testów pytest
 ```
 
 ### Multi-server (RoF)

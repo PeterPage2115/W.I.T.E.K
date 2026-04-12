@@ -25,5 +25,3 @@ Thumbs.db
 # Cached data
 data_cache/
 
-# Alembic
-migrations/versions/__pycache__/

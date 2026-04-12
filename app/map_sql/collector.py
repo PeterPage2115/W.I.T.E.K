@@ -209,7 +209,13 @@ def _run_alert_detection(app, new_snapshot):
             db.session.add(alert)
 
         db.session.commit()
-        logger.info("Zapisano %d alertów dla snapshotu #%d", len(alerts), new_snapshot.id)
+
+        from collections import Counter
+        type_counts = Counter(a["type"] for a in alerts)
+        logger.info(
+            "Zapisano %d alertów dla snapshotu #%d: %s",
+            len(alerts), new_snapshot.id, dict(type_counts),
+        )
 
     except Exception:
         logger.exception("Błąd detekcji alertów")

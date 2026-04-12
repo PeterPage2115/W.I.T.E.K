@@ -159,7 +159,29 @@ docker exec witek-app python run.py --collect
 docker exec witek-app python run.py --from-file /app/map.sql
 ```
 
-### 5. Sprawdź dashboard
+### 5. System alertów
+
+Po pierwszym pobraniu map.sql, system alertów automatycznie porównuje kolejne snapshoty i generuje powiadomienia:
+
+| Typ alertu | Opis | Discord? |
+|------------|------|----------|
+| `pop_drop` | Spadek populacji gracza ≥ próg (domyślnie 25%) | ✅ Tak |
+| `new_village` | Nowa niealiancka wioska w pobliżu sojuszu | ❌ Tylko dashboard |
+| `alliance_change` | Gracz zmienił/opuścił/dołączył do sojuszu | ❌ Tylko dashboard |
+
+Konfiguracja progów w `config/config.yaml`:
+
+```yaml
+alerts:
+  pop_drop_threshold: 25    # % spadku populacji
+  new_village_radius: 15    # Promień w polach
+  min_pop: 100              # Min. populacja do monitoringu
+  cooldown_hours: 24        # Cooldown między alertami tego samego typu
+```
+
+Alerty widoczne na dashboardzie (zakładka Alerty) i na kanale Discord ustawionym w `DISCORD_ALERTS_CHANNEL_ID`.
+
+### 6. Sprawdź dashboard
 
 Otwórz http://localhost:5000 (lub `http://YOUR_SERVER:5000`) — powinny się pojawić dane po pierwszym pobraniu.
 
@@ -176,6 +198,8 @@ docker compose up -d --build
 ```
 
 Dane w PostgreSQL są zachowane w wolumenie — aktualizacja nie kasuje bazy.
+
+> **Uwaga:** Od wersji 0.2.0 migracje schematu bazy wykonywane są automatycznie przez `_ensure_columns()` przy starcie aplikacji. Nie ma potrzeby ręcznego uruchamiania skryptów migracyjnych.
 
 ---
 

@@ -114,13 +114,25 @@ def detect_alerts(new_snapshot_id: int, prev_snapshot_id: int, config: dict) -> 
     cooldown_hours = config.get("ALERT_COOLDOWN_HOURS", 6)
 
     alerts = []
-    alerts.extend(_detect_pop_drops(
+
+    pop_drops = _detect_pop_drops(
         new_snapshot_id, prev_snapshot_id, our_alliances, threshold, map_size,
-        min_pop, cooldown_hours))
-    alerts.extend(_detect_new_villages(
-        new_snapshot_id, prev_snapshot_id, our_alliances, radius, map_size))
-    alerts.extend(_detect_alliance_changes(
-        new_snapshot_id, prev_snapshot_id, our_alliances, map_size))
+        min_pop, cooldown_hours)
+    alerts.extend(pop_drops)
+
+    new_villages = _detect_new_villages(
+        new_snapshot_id, prev_snapshot_id, our_alliances, radius, map_size)
+    alerts.extend(new_villages)
+
+    alliance_changes = _detect_alliance_changes(
+        new_snapshot_id, prev_snapshot_id, our_alliances, map_size)
+    alerts.extend(alliance_changes)
+
+    logger.info(
+        "detect_alerts: pop_drop=%d, new_village=%d, alliance_change=%d",
+        len(pop_drops), len(new_villages), len(alliance_changes),
+    )
+
     return alerts
 
 

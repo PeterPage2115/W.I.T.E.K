@@ -10,8 +10,8 @@ from app.database import db as _db
 from app.models import (
     Snapshot, Village, Player, Alliance, User, AttackReport,
     DefenseThread, VillageTroops, TroopSupport, BattleReport,
-    Alert, MonitorSettings, PersonalAlert, DiplomaticRelation,
-    SpyReport, NightWatchSetting,
+    Alert, DiplomaticRelation,
+    SpyReport,
 )
 
 
@@ -375,46 +375,6 @@ class TestSpyReport:
 
 
 # ---------------------------------------------------------------------------
-# NightWatchSetting — time window, defaults
-# ---------------------------------------------------------------------------
-
-class TestNightWatchSetting:
-    def test_create_and_defaults(self, db):
-        nw = NightWatchSetting(discord_id=999)
-        db.session.add(nw)
-        db.session.commit()
-        assert nw.enabled is True
-        assert nw.start_hour == 22
-        assert nw.start_minute == 0
-        assert nw.end_hour == 6
-        assert nw.end_minute == 0
-        assert nw.dm_count == 0
-
-    def test_custom_time_window(self, db):
-        nw = NightWatchSetting(discord_id=888, start_hour=23, start_minute=30,
-                               end_hour=5, end_minute=45)
-        db.session.add(nw)
-        db.session.commit()
-        assert nw.start_hour == 23
-        assert nw.end_minute == 45
-
-    def test_discord_id_unique(self, db):
-        nw1 = NightWatchSetting(discord_id=777)
-        nw2 = NightWatchSetting(discord_id=777)
-        db.session.add(nw1)
-        db.session.commit()
-        db.session.add(nw2)
-        with pytest.raises(IntegrityError):
-            db.session.commit()
-
-    def test_discord_id_required(self, db):
-        nw = NightWatchSetting()
-        db.session.add(nw)
-        with pytest.raises(IntegrityError):
-            db.session.commit()
-
-
-# ---------------------------------------------------------------------------
 # DefenseThread
 # ---------------------------------------------------------------------------
 
@@ -436,31 +396,7 @@ class TestDefenseThread:
 
 
 # ---------------------------------------------------------------------------
-# MonitorSettings
-# ---------------------------------------------------------------------------
-
-class TestMonitorSettings:
-    def test_create_and_defaults(self, db):
-        ms = MonitorSettings(discord_id=55555)
-        db.session.add(ms)
-        db.session.commit()
-        assert ms.enabled is True
-        assert ms.pop_drop_threshold == 50
-        assert ms.neighbor_radius == 15
-        assert ms.enemy_radius == 20
-
-    def test_discord_id_unique(self, db):
-        ms1 = MonitorSettings(discord_id=66666)
-        ms2 = MonitorSettings(discord_id=66666)
-        db.session.add(ms1)
-        db.session.commit()
-        db.session.add(ms2)
-        with pytest.raises(IntegrityError):
-            db.session.commit()
-
-
-# ---------------------------------------------------------------------------
-# TroopSupport — status defaults
+# TroopSupport— status defaults
 # ---------------------------------------------------------------------------
 
 class TestTroopSupport:
@@ -483,26 +419,6 @@ class TestTroopSupport:
         ts.status = "arrived"
         db.session.commit()
         assert TroopSupport.query.get(ts.id).status == "arrived"
-
-
-# ---------------------------------------------------------------------------
-# PersonalAlert
-# ---------------------------------------------------------------------------
-
-class TestPersonalAlert:
-    def test_create_and_defaults(self, db):
-        pa = PersonalAlert(discord_id=111222, alert_type="pop_drop",
-                           data=json.dumps({"village": "X"}))
-        db.session.add(pa)
-        db.session.commit()
-        assert pa.notified is False
-        assert pa.created_at is not None
-
-    def test_required_alert_type(self, db):
-        pa = PersonalAlert(discord_id=333444)
-        db.session.add(pa)
-        with pytest.raises(IntegrityError):
-            db.session.commit()
 
 
 # ---------------------------------------------------------------------------

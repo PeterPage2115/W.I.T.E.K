@@ -23,10 +23,5 @@ if echo "$DATABASE_URL" | grep -qi "^postgres"; then
     echo "[entrypoint] PostgreSQL is ready."
 fi
 
-# ── Apply SQL migrations ─────────────────────────────────────────
-echo "[entrypoint] Running migrations …"
-python scripts/apply_migrations.py
-echo "[entrypoint] Migrations complete."
-
 # ── Hand off to CMD ──────────────────────────────────────────────
 exec "$@"

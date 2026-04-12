@@ -4,6 +4,27 @@ Wszystkie istotne zmiany w projekcie W.I.T.E.K.
 
 Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
+## [0.2.0] — 2026-04-12
+
+### Naprawione
+- Fix `_ensure_columns()` — dodano kompatybilność z PostgreSQL (wcześniej PRAGMA crashowało na PG)
+- Fix spamowania alertów na Discord — jednorazowa migracja `discord_eligible` dla starych alertów
+- Logging alertów — breakdown per typ w collector i per detektor w alerts.py
+
+### Usunięte
+- Modele deprecated: `MonitorSettings`, `PersonalAlert`, `NightWatchSetting` (oraz ich testy)
+- Komendy: `/tmonitor`, `/tmonitor_ustawienia` (usunięte w Sprint 3, teraz też modele)
+- Zależność: `alembic` z `requirements.txt`
+- Pliki: `migrations/`, `scripts/apply_migrations.py`, `scripts/validate_rof_*.py`
+- Pliki: `docs/superpowers/` (10 plików planistycznych — przeniesione do historii)
+- Sekcja migracji z `docker-entrypoint.sh` (migracje teraz przez `_ensure_columns`)
+
+### Zmienione
+- Wersja: 0.1.0 → 0.2.0 (`pyproject.toml`)
+- README.md — zaktualizowane komendy, architektura (9 cogów), liczba testów
+- DEPLOY.md — dodano sekcję o systemie alertów
+- CLAUDE.md — synchronizacja z aktualnym stanem kodu
+
 ## [0.1.0] — 2026-04-12
 
 ### Dodane

@@ -19,7 +19,7 @@ run.py                  # Entrypoint: Flask + bot + scheduler
 │   ├── auth_utils.py    # RBAC decorators (login_required, role_required)
 │   ├── models.py       # Snapshot, Village, Player, Alliance, User, AttackReport,
 │   │                   # DefenseThread, VillageTroops, TroopSupport, BattleReport,
-│   │                   # Alert, MonitorSettings, PersonalAlert
+│   │                   # Alert, SpyReport, DiplomaticRelation, GameData
 │   ├── map_sql/        # Parser + collector + alerts for Travian map.sql
 │   │   ├── parser.py   # map.sql line parser
 │   │   ├── collector.py# Fetch + store + run alert detection
@@ -30,10 +30,13 @@ run.py                  # Entrypoint: Flask + bot + scheduler
 ├── bot/                # Discord bot
 │   ├── bot.py          # create_bot(), db_query() helper
 │   ├── utils.py        # Unit speeds, crop tables, distance calc, time parsing
+│   ├── tribes.py       # Single source of truth for tribe/unit data
+│   ├── deep_links.py   # Travian in-game link generator
 │   └── cogs/           # general.py, identity.py, attacks.py, defense.py,
 │                       # alerts.py (auto-send alerts), recon.py (/tnieaktywni),
 │                       # economy.py (/tcropper, /tszukaj, /tporownaj, /tsymulacja),
-│                       # digest.py (/tdigest), monitor.py (/tmonitor)
+│                       # digest.py (/tdigest), diplomacy.py (/tdyplomacja)
+├── server_profile.py   # Multi-server profile resolver
 ├── config/             # YAML config (config.yaml)
 ├── tests/              # pytest tests
 └── docker-compose*.yml # Dev (SQLite) and prod (PostgreSQL) Docker configs
@@ -82,9 +85,11 @@ The bot runs in a daemon thread alongside Flask. The Werkzeug reloader guard in 
 After each map.sql snapshot, `collector.py` runs `detect_alerts()` which compares the new snapshot with the previous one. Alerts are stored as `Alert` rows in the DB (persist → commit → deliver pattern). The `AlertsCog` bot cog has a 60s background loop that picks up `notified=False` alerts, sends Discord embeds, and marks them as notified.
 
 **Alert types:**
-- `pop_drop` — Player population dropped ≥ threshold% (default 15%)
-- `new_village` — New non-allied village appeared within radius of allied positions
-- `alliance_change` — Player joined/left/switched alliance (involving our alliances or nearby enemies)
+- `pop_drop` — Player population dropped ≥ threshold% (default 25%) → Discord + dashboard
+- `new_village` — New non-allied village appeared within radius of allied positions → dashboard only
+- `alliance_change` — Player joined/left/switched alliance (involving our alliances or nearby enemies) → dashboard only
+
+**`discord_eligible` flag:** Each alert has a `discord_eligible` boolean. Only `pop_drop` alerts are sent to Discord by default. The `AlertsCog` background loop (60s interval) picks up unnotified discord-eligible alerts, sends embeds, and marks them notified.
 
 **Snapshot validation:** `validate_snapshot_pair()` rejects new snapshots with < 50% of previous village count (truncation guard prevents false alerts from partial downloads).
 
@@ -145,8 +150,9 @@ python -m pytest tests/ -v
 | `/tileobrony` | Defense calculator — how much def needed vs attacking army |
 | `/tprzechwyc` | Interception calculator — when to send def to arrive on time |
 | `/tdigest` | Weekly alliance digest (population, members, attacks) |
-| `/tmonitor` | Enable/disable personal village monitoring (DM alerts) |
-| `/tmonitor_ustawienia` | Adjust monitoring thresholds (pop drop, radius) |
+| `/tdyplomacja` | Show diplomatic relations |
+| `/tdodaj_relacje` | Add diplomatic relation |
+| `/tusun_relacje` | Remove diplomatic relation |
 
 ## Coding Conventions
 

@@ -215,37 +215,6 @@ class Alert(db.Model):
     created_at = db.Column(db.DateTime, default=_utcnow)
 
 
-class MonitorSettings(db.Model):  # DEPRECATED — /tmonitor removed, kept for DB compat
-    """User preferences for personal monitoring."""
-
-    __tablename__ = "monitor_settings"
-
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    discord_id = db.Column(db.BigInteger, unique=True, nullable=False)
-    enabled = db.Column(db.Boolean, default=True)
-    pop_drop_threshold = db.Column(db.Integer, default=50)
-    neighbor_radius = db.Column(db.Integer, default=15)
-    enemy_radius = db.Column(db.Integer, default=20)
-    last_checked_snapshot_id = db.Column(db.Integer, nullable=True)
-    created_at = db.Column(db.DateTime, default=_utcnow)
-    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
-
-
-class PersonalAlert(db.Model):  # DEPRECATED — /tmonitor removed, kept for DB compat
-    """Personal notification preferences and history for linked users."""
-
-    __tablename__ = "personal_alerts"
-
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    discord_id = db.Column(db.BigInteger, nullable=False, index=True)
-    snapshot_id = db.Column(db.Integer, nullable=True)
-    alert_type = db.Column(db.Text, nullable=False)
-    # Types: pop_drop, new_neighbor, enemy_nearby
-    data = db.Column(db.Text)  # JSON with details
-    notified = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=_utcnow)
-
-
 class DefenseThread(db.Model):
     """Thread-level state for defense coordination on Discord forum."""
 
@@ -320,22 +289,3 @@ class GameData(db.Model):
     __table_args__ = (
         db.Index("ix_game_data_type", "data_type"),
     )
-
-
-class NightWatchSetting(db.Model):
-    """Per-user night watch (czuwanie nocne) preferences."""
-
-    __tablename__ = "night_watch_settings"
-
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    discord_id = db.Column(db.BigInteger, unique=True, nullable=False)
-    enabled = db.Column(db.Boolean, default=True)
-    start_hour = db.Column(db.Integer, nullable=False, default=22)
-    start_minute = db.Column(db.Integer, nullable=False, default=0)
-    end_hour = db.Column(db.Integer, nullable=False, default=6)
-    end_minute = db.Column(db.Integer, nullable=False, default=0)
-    dm_count = db.Column(db.Integer, default=0)  # DMs sent in current session
-    session_date = db.Column(db.Text, nullable=True)  # ISO date of current session
-    last_checked_at = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, default=_utcnow)
-    updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)

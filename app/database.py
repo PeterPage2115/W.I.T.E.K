@@ -33,16 +33,38 @@ def _ensure_columns(app):
         },
     }
     engine = db.engine
+    is_sqlite = "sqlite" in str(engine.url)
     with engine.connect() as conn:
         for table, cols in expected.items():
-            result = conn.execute(db.text(f"PRAGMA table_info({table})"))
-            existing = {row[1] for row in result}
+            if is_sqlite:
+                result = conn.execute(db.text(f"PRAGMA table_info({table})"))
+                existing = {row[1] for row in result}
+            else:
+                result = conn.execute(
+                    db.text(
+                        "SELECT column_name FROM information_schema.columns "
+                        "WHERE table_name = :tbl"
+                    ),
+                    {"tbl": table},
+                )
+                existing = {row[0] for row in result}
             for col_name, col_type in cols.items():
                 if col_name not in existing:
                     conn.execute(
                         db.text(f"ALTER TABLE {table} ADD COLUMN {col_name} {col_type}")
                     )
                     app.logger.info("Migration: added %s.%s", table, col_name)
+
+        # One-time data fix: old alerts created before discord_eligible column
+        # had DEFAULT 1, making dashboard-only alerts appear on Discord
+        conn.execute(
+            db.text(
+                "UPDATE alerts SET discord_eligible = 0 "
+                "WHERE alert_type IN ('new_village', 'alliance_change') "
+                "AND notified = 0"
+            )
+        )
+
         conn.commit()
 
 
