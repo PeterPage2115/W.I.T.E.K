@@ -165,33 +165,14 @@ class TestNewTribes:
         assert mar.att == 180
         assert mar.speed == 14
 
-    # --- Vikings (tid=8) ---
-    def test_vikings_metadata(self):
-        t = TRIBES[8]
-        assert t.name_pl == "Wikingowie"
-        assert t.emoji == "⛵"
-        assert t.wall_type == "Barricade"
-
-    def test_vikings_ram_crop(self):
-        """Viking Ram crop=3 (official wiki, not kirilloid's 2)."""
-        ram = TRIBES[8].units[6]
-        assert ram.name == "Ram"
-        assert ram.crop == 3
-
-    def test_vikings_valkyrie(self):
-        vb = TRIBES[8].units[5]
-        assert vb.name == "Valkyrie's Blessing"
-        assert vb.att == 160
-        assert vb.speed == 9
-
-    # --- Spartans (tid=9) ---
+    # --- Spartans (tid=8) ---
     def test_spartans_metadata(self):
-        t = TRIBES[9]
+        t = TRIBES[8]
         assert t.name_pl == "Spartanie"
         assert t.emoji == "🛡️"
 
     def test_spartans_corinthian_crusher(self):
-        cc = TRIBES[9].units[5]
+        cc = TRIBES[8].units[5]
         assert cc.name == "Corinthian Crusher"
         assert cc.att == 195
         assert cc.speed == 9
@@ -199,9 +180,28 @@ class TestNewTribes:
 
     def test_spartans_four_infantry(self):
         """Spartans are unique: 4 infantry units."""
-        s = TRIBES[9]
+        s = TRIBES[8]
         inf_count = sum(1 for u in s.units if u.unit_type == "inf")
         assert inf_count == 4
+
+    # --- Vikings (tid=9) ---
+    def test_vikings_metadata(self):
+        t = TRIBES[9]
+        assert t.name_pl == "Wikingowie"
+        assert t.emoji == "⛵"
+        assert t.wall_type == "Barricade"
+
+    def test_vikings_ram_crop(self):
+        """Viking Ram crop=3 (official wiki, not kirilloid's 2)."""
+        ram = TRIBES[9].units[6]
+        assert ram.name == "Ram"
+        assert ram.crop == 3
+
+    def test_vikings_valkyrie(self):
+        vb = TRIBES[9].units[5]
+        assert vb.name == "Valkyrie's Blessing"
+        assert vb.att == 160
+        assert vb.speed == 9
 
 
 class TestCrossTribeConsistency:
@@ -233,31 +233,31 @@ class TestCrossTribeConsistency:
 class TestConfigHelpers:
     def test_get_speed_multiplier_default(self):
         from bot.tribes import get_speed_multiplier
-        with patch("bot.tribes._load_travian_config", return_value={}):
+        with patch("bot.tribes._load_server_profile", return_value={}):
             assert get_speed_multiplier() == 2  # fallback
 
     def test_get_speed_multiplier_from_config(self):
         from bot.tribes import get_speed_multiplier
-        with patch("bot.tribes._load_travian_config",
+        with patch("bot.tribes._load_server_profile",
                    return_value={"troop_speed_multiplier": 1}):
             assert get_speed_multiplier() == 1
 
     def test_get_available_tribes_default(self):
         from bot.tribes import get_available_tribes
-        with patch("bot.tribes._load_travian_config", return_value={}):
+        with patch("bot.tribes._load_server_profile", return_value={}):
             assert get_available_tribes() == [1, 2, 3]
 
     def test_get_available_tribes_from_config(self):
         from bot.tribes import get_available_tribes
-        with patch("bot.tribes._load_travian_config",
-                   return_value={"available_tribes": [1, 3, 6, 7, 8, 9]}):
+        with patch("bot.tribes._load_server_profile",
+                   return_value={"tribes": [1, 3, 6, 7, 8, 9]}):
             result = get_available_tribes()
             assert result == [1, 3, 6, 7, 8, 9]
 
     def test_get_available_tribes_filters_invalid(self):
         from bot.tribes import get_available_tribes
-        with patch("bot.tribes._load_travian_config",
-                   return_value={"available_tribes": [1, 2, 99, 3]}):
+        with patch("bot.tribes._load_server_profile",
+                   return_value={"tribes": [1, 2, 99, 3]}):
             result = get_available_tribes()
             assert 99 not in result
             assert 1 in result

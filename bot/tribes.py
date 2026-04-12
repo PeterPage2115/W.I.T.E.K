@@ -175,28 +175,9 @@ def _build_tribes() -> dict[int, TribeDef]:
         settler_name="Settler",
     )
 
-    # ── Vikings (tid=8) ─────────────────────────────────────────────
+    # ── Spartans (tid=8) ────────────────────────────────────────────
     tribes[8] = TribeDef(
-        tid=8, name_pl="Wikingowie", name_en="Vikings",
-        emoji="⛵", wall_type="Barricade", icon_slug="viking",
-        units=(
-            UnitDef("Thrall", 45, 22, 5, 7, 1, "inf"),
-            UnitDef("Shield Maiden", 20, 50, 30, 7, 1, "inf"),
-            UnitDef("Berserker", 70, 30, 25, 5, 2, "inf"),
-            UnitDef("Heimdall's Eye", 0, 10, 5, 9, 1, "cav"),
-            UnitDef("Huskarl Rider", 45, 95, 100, 12, 2, "cav"),
-            UnitDef("Valkyrie's Blessing", 160, 50, 75, 9, 2, "cav"),
-            UnitDef("Ram", 65, 30, 80, 4, 3, "siege"),
-            UnitDef("Catapult", 50, 60, 10, 3, 6, "siege"),
-            UnitDef("Jarl", 40, 40, 60, 5, 4, "special"),
-            UnitDef("Settler", 0, 80, 80, 5, 1, "special"),
-        ),
-        settler_name="Settler",
-    )
-
-    # ── Spartans (tid=9) ────────────────────────────────────────────
-    tribes[9] = TribeDef(
-        tid=9, name_pl="Spartanie", name_en="Spartans",
+        tid=8, name_pl="Spartanie", name_en="Spartans",
         emoji="🛡️", wall_type="Defensive Wall", icon_slug="spartan",
         units=(
             UnitDef("Hoplite", 50, 35, 30, 6, 1, "inf"),
@@ -213,6 +194,25 @@ def _build_tribes() -> dict[int, TribeDef]:
         settler_name="Settler",
     )
 
+    # ── Vikings (tid=9) ─────────────────────────────────────────────
+    tribes[9] = TribeDef(
+        tid=9, name_pl="Wikingowie", name_en="Vikings",
+        emoji="⛵", wall_type="Barricade", icon_slug="viking",
+        units=(
+            UnitDef("Thrall", 45, 22, 5, 7, 1, "inf"),
+            UnitDef("Shield Maiden", 20, 50, 30, 7, 1, "inf"),
+            UnitDef("Berserker", 70, 30, 25, 5, 2, "inf"),
+            UnitDef("Heimdall's Eye", 0, 10, 5, 9, 1, "cav"),
+            UnitDef("Huskarl Rider", 45, 95, 100, 12, 2, "cav"),
+            UnitDef("Valkyrie's Blessing", 160, 50, 75, 9, 2, "cav"),
+            UnitDef("Ram", 65, 30, 80, 4, 3, "siege"),
+            UnitDef("Catapult", 50, 60, 10, 3, 6, "siege"),
+            UnitDef("Jarl", 40, 40, 60, 5, 4, "special"),
+            UnitDef("Settler", 0, 80, 80, 5, 1, "special"),
+        ),
+        settler_name="Settler",
+    )
+
     return tribes
 
 
@@ -222,31 +222,40 @@ TRIBES.update(_build_tribes())
 _VALID_TIDS = frozenset(TRIBES.keys())
 
 
-def _load_travian_config() -> dict:
-    """Load travian section from config.yaml."""
-    config_path = Path(__file__).resolve().parent.parent / "config" / "config.yaml"
-    if config_path.exists():
-        with open(config_path, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f) or {}
-        return data.get("travian", {})
-    return {}
+def _load_server_profile() -> dict:
+    """Load server profile using shared loader."""
+    from server_profile import load_profile
+    return load_profile()
 
 
 def get_speed_multiplier() -> int:
-    """Get troop speed multiplier from config (default 2)."""
-    cfg = _load_travian_config()
-    val = cfg.get("troop_speed_multiplier", 2)
-    if val not in (1, 2):
-        log.warning("Invalid troop_speed_multiplier=%s, using 2", val)
-        return 2
-    return val
+    """Get troop speed multiplier from server profile (default 2)."""
+    profile = _load_server_profile()
+    return profile.get("troop_speed_multiplier", 2)
 
 
 def get_available_tribes() -> list[int]:
-    """Get list of available tribe IDs from config (default [1,2,3])."""
-    cfg = _load_travian_config()
-    raw = cfg.get("available_tribes", [1, 2, 3])
+    """Get list of available tribe IDs from server profile."""
+    profile = _load_server_profile()
+    raw = profile.get("tribes", [1, 2, 3])
     valid = [t for t in raw if t in _VALID_TIDS]
     if len(valid) != len(raw):
         log.warning("Filtered invalid tribe IDs from config: %s → %s", raw, valid)
     return valid if valid else [1, 2, 3]
+
+
+def get_legionnaire_stats(rebalanced: bool = False) -> dict:
+    """Get Legionnaire stats, optionally rebalanced for RoF.
+
+    Rebalanced (on servers with Vikings, no Teutons):
+    - Cav def: 50 → 70, Speed: 6 → 7
+    """
+    base = TRIBES[1].units[0]  # Legionnaire is first Roman unit
+    if not rebalanced:
+        return {"att": base.att, "def_inf": base.def_inf, "def_cav": base.def_cav, "speed": base.speed}
+    return {
+        "att": base.att,
+        "def_inf": base.def_inf,
+        "def_cav": 70,
+        "speed": 7,
+    }

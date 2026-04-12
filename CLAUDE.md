@@ -64,7 +64,7 @@ INSERT INTO `x_world` VALUES (1,-200,-200,3,10187,'01',480,'player',38,'alliance
 ```
 16 fields: id, x, y, tid, vid, village_name, uid, player_name, aid, alliance_name, population, (5 NULLs)
 
-**Tribe IDs (tid):** 1=Romans, 2=Teutons, 3=Gauls, 4=Nature, 5=Natars, 6=Egyptians, 7=Huns, 8=Vikings, 9=Spartans
+**Tribe IDs (tid):** 1=Romans, 2=Teutons, 3=Gauls, 4=Nature, 5=Natars, 6=Egyptians, 7=Huns, 8=Spartans, 9=Vikings
 
 `bot/tribes.py` is the single source of truth for all tribe/unit data (speeds, crop, combat stats). `bot/utils.py` generates its legacy dicts from it.
 
