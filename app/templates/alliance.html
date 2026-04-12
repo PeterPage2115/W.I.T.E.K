@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import tribe_icon %}
 
 {% block title %}{{ alliance.name }}{% endblock %}
 
@@ -82,10 +83,7 @@
                         </a>
                     </td>
                     <td class="px-4 py-2">
-                        {% if m.tid == 1 %}<span class="trav-tribe trav-tribe-roman" title="Rzymianie"></span>
-                        {% elif m.tid == 2 %}<span class="trav-tribe trav-tribe-teuton" title="Germanie"></span>
-                        {% elif m.tid == 3 %}<span class="trav-tribe trav-tribe-gaul" title="Galowie"></span>
-                        {% endif %}
+                        {{ tribe_icon(m.tid, tribe_names=TRIBE_NAMES, tribe_icons=TRIBE_ICONS) }}
                     </td>
                     <td class="px-4 py-2 text-right text-trav-text-light">{{ m.village_count }}</td>
                     <td class="px-4 py-2 text-right font-semibold text-trav-text">{{ "{:,}".format(m.total_pop) }}</td>

@@ -1,0 +1,11 @@
+{% macro tribe_icon(tid, size='24px', tribe_names=None, tribe_icons=None) %}
+{%- set title = tribe_names.get(tid, 'Nieznane') if tribe_names else '' -%}
+{%- set icon = tribe_icons.get(tid, {}) if tribe_icons else {} -%}
+{%- if icon.get('css') -%}
+<span class="trav-tribe {{ icon.css }}" title="{{ title }}" style="width:{{size}};height:{{size}};"></span>
+{%- elif icon.get('emoji') -%}
+<span title="{{ title }}" style="font-size:calc({{size}} - 4px);">{{ icon.emoji }}</span>
+{%- else -%}
+<span title="{{ title }}" style="font-size:calc({{size}} - 4px);">👤</span>
+{%- endif -%}
+{% endmacro %}

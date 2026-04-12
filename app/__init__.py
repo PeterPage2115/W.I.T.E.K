@@ -31,4 +31,14 @@ def create_app(config_class=Config):
         from .auth_utils import get_current_user
         return {"current_user": get_current_user()}
 
+    @app.context_processor
+    def inject_tribe_names():
+        from .models import TRIBE_NAMES
+        from bot.tribes import TRIBES
+        tribe_icons = {
+            tid: {"css": f"trav-tribe-{t.icon_slug}" if t.icon_slug else "", "emoji": t.emoji}
+            for tid, t in TRIBES.items()
+        }
+        return {"TRIBE_NAMES": TRIBE_NAMES, "TRIBE_ICONS": tribe_icons}
+
     return app

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import tribe_icon %}
 
 {% block title %}{{ player.name }}{% endblock %}
 
@@ -10,10 +11,7 @@
 <!-- Player Header -->
 <div class="trav-panel p-5 mb-6">
     <div class="flex items-center space-x-4">
-        {% if player.tid == 1 %}<span class="trav-tribe trav-tribe-roman" style="width:36px;height:36px;"></span>
-        {% elif player.tid == 2 %}<span class="trav-tribe trav-tribe-teuton" style="width:36px;height:36px;"></span>
-        {% elif player.tid == 3 %}<span class="trav-tribe trav-tribe-gaul" style="width:36px;height:36px;"></span>
-        {% else %}<span class="text-3xl">👤</span>{% endif %}
+        {{ tribe_icon(player.tid, size='36px', tribe_names=TRIBE_NAMES, tribe_icons=TRIBE_ICONS) }}
         <div>
             <h1 class="font-medieval text-trav-brown-dark text-2xl font-bold">{{ player.name }}</h1>
             <p class="text-trav-text-light text-sm">

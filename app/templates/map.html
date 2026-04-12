@@ -144,7 +144,7 @@
         return 2;
     }
 
-    const tribeNames = {1: 'Rzymianie', 2: 'Germanie', 3: 'Galowie'};
+    const tribeNames = {{ TRIBE_NAMES | tojson }};
 
     function renderMarkers(villages) {
         markers.clearLayers();
