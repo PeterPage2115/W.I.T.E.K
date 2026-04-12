@@ -93,7 +93,7 @@ jobs:
       - name: Get version from pyproject.toml
         id: version
         run: |
-          VERSION=$(grep -oP 'version\s*=\s*"\K[^"]+' pyproject.toml)
+          VERSION=$(grep -oP '^version\s*=\s*"\K[^"]+' pyproject.toml)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Version: $VERSION"
 
