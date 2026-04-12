@@ -1,9 +1,9 @@
 """Alert detection — porównanie snapshotów map.sql."""
 
 import logging
-from datetime import timezone
+from datetime import datetime, timedelta, timezone
 from ..database import db
-from ..models import Snapshot, Village
+from ..models import Alert, Snapshot, Village
 
 logger = logging.getLogger(__name__)
 
@@ -97,21 +97,26 @@ def detect_alerts(new_snapshot_id: int, prev_snapshot_id: int, config: dict) -> 
 
     config keys:
     - TRAVIAN_OUR_ALLIANCES: list[int]
-    - POP_DROP_THRESHOLD: int (percentage, e.g. 15 = 15%)
+    - POP_DROP_THRESHOLD: int (percentage, e.g. 25 = 25%)
     - NEW_VILLAGE_RADIUS: int (fields)
     - TRAVIAN_MAP_SIZE: int (default 401)
+    - MIN_POP_FOR_ALERTS: int (default 500)
+    - ALERT_COOLDOWN_HOURS: int (default 6)
     """
     if not validate_snapshot_pair(new_snapshot_id, prev_snapshot_id):
         return []
 
     our_alliances = set(config.get("TRAVIAN_OUR_ALLIANCES", []))
-    threshold = config.get("POP_DROP_THRESHOLD", 15)
+    threshold = config.get("POP_DROP_THRESHOLD", 25)
     radius = config.get("NEW_VILLAGE_RADIUS", 30)
     map_size = config.get("TRAVIAN_MAP_SIZE", 401)
+    min_pop = config.get("MIN_POP_FOR_ALERTS", 500)
+    cooldown_hours = config.get("ALERT_COOLDOWN_HOURS", 6)
 
     alerts = []
     alerts.extend(_detect_pop_drops(
-        new_snapshot_id, prev_snapshot_id, our_alliances, threshold, map_size))
+        new_snapshot_id, prev_snapshot_id, our_alliances, threshold, map_size,
+        min_pop, cooldown_hours))
     alerts.extend(_detect_new_villages(
         new_snapshot_id, prev_snapshot_id, our_alliances, radius, map_size))
     alerts.extend(_detect_alliance_changes(
@@ -203,15 +208,15 @@ def _get_player_alliance_map(snapshot_id: int) -> dict[int, dict]:
     }
 
 
-def _detect_pop_drops(new_id, prev_id, our_alliances, threshold, map_size):
-    """Wykrywa spadki populacji graczy (procentowe).
+def _detect_pop_drops(new_id, prev_id, our_alliances, threshold, map_size,
+                      min_pop=500, cooldown_hours=6):
+    """Wykrywa spadki populacji graczy z NASZYCH sojuszów.
 
+    Tylko gracze gdzie aid in our_alliances (w prev LUB new snapshot).
     Porównuje SUM(population) GROUP BY uid z Village table.
     """
     prev_players = _get_player_populations(prev_id)
     new_players = _get_player_populations(new_id)
-
-    ally_positions = _get_ally_positions(new_id, our_alliances, map_size)
 
     # Unia graczy z obu snapshotów — obsługuje znikniętych graczy (pop → 0)
     all_uids = set(prev_players.keys()) | set(new_players.keys())
@@ -228,18 +233,33 @@ def _detect_pop_drops(new_id, prev_id, our_alliances, threshold, map_size):
         if old_pop == 0:
             continue
 
+        # Filtr: tylko gracze z naszych sojuszów (prev LUB new)
+        is_our = prev_data["aid"] in our_alliances
+        if new_data:
+            is_our = is_our or new_data["aid"] in our_alliances
+        if not is_our:
+            continue
+
+        # Min pop — pomijamy małe konta z niestabilnym %
+        if old_pop < min_pop:
+            continue
+
         new_pop = new_data["total_pop"] if new_data else 0
         drop_pct = ((old_pop - new_pop) / old_pop) * 100
 
         if drop_pct < threshold:
             continue
 
-        # Filtr: gracze z naszych sojuszów LUB wrogowie blisko nas
-        is_our = prev_data["aid"] in our_alliances
-        if not is_our and not _is_player_near_allies(
-            uid, new_id, prev_id, ally_positions, radius=50, map_size=map_size
-        ):
-            continue
+        # Cooldown dedup — nie alertuj jeśli już był alert w ostatnich N godzinach
+        if cooldown_hours > 0:
+            cutoff = datetime.now(timezone.utc) - timedelta(hours=cooldown_hours)
+            recent = Alert.query.filter(
+                Alert.alert_type == "pop_drop",
+                Alert.data.contains(f'"uid": {uid},'),
+                Alert.created_at >= cutoff,
+            ).first()
+            if recent:
+                continue
 
         alerts.append({
             "type": "pop_drop",

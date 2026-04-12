@@ -62,8 +62,11 @@ class Config:
 
     # Alerts
     alerts = _yaml.get("alerts", {})
-    POP_DROP_THRESHOLD = alerts.get("pop_drop_threshold", 15)
+    POP_DROP_THRESHOLD = alerts.get("pop_drop_threshold", 25)
     NEW_VILLAGE_RADIUS = alerts.get("new_village_radius", 30)
+    MIN_POP_FOR_ALERTS = alerts.get("min_pop_for_alerts", 500)
+    ALERT_COOLDOWN_HOURS = alerts.get("alert_cooldown_hours", 6)
+    MAX_ALERTS_PER_TYPE = alerts.get("max_alerts_per_type", 10)
 
     # Extension API
     EXT_API_TOKEN = os.getenv("EXT_API_TOKEN", "")

@@ -186,9 +186,11 @@ def _run_alert_detection(app, new_snapshot):
 
         config = {
             "TRAVIAN_OUR_ALLIANCES": app.config.get("TRAVIAN_OUR_ALLIANCES", []),
-            "POP_DROP_THRESHOLD": app.config.get("POP_DROP_THRESHOLD", 15),
+            "POP_DROP_THRESHOLD": app.config.get("POP_DROP_THRESHOLD", 25),
             "NEW_VILLAGE_RADIUS": app.config.get("NEW_VILLAGE_RADIUS", 30),
             "TRAVIAN_MAP_SIZE": app.config.get("TRAVIAN_MAP_SIZE", 401),
+            "MIN_POP_FOR_ALERTS": app.config.get("MIN_POP_FOR_ALERTS", 500),
+            "ALERT_COOLDOWN_HOURS": app.config.get("ALERT_COOLDOWN_HOURS", 6),
         }
 
         alerts = detect_alerts(new_snapshot.id, prev_snapshot.id, config)

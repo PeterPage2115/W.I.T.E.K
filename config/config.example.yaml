@@ -36,8 +36,11 @@ scheduler:
   fetch_interval_minutes: 60
 
 alerts:
-  pop_drop_threshold: 50
+  pop_drop_threshold: 25
+  min_pop_for_alerts: 500
+  alert_cooldown_hours: 6
   new_village_radius: 30
+  max_alerts_per_type: 10
 
 attacks:
   auto_resolve_after_minutes: 120

@@ -15,7 +15,7 @@ class TestConfig:
     TRAVIAN_SERVER_URL = "https://test.travian.com"
     TRAVIAN_MAP_SIZE = 401
     TRAVIAN_OUR_ALLIANCES = [1, 2]
-    POP_DROP_THRESHOLD = 15
+    POP_DROP_THRESHOLD = 25
     NEW_VILLAGE_RADIUS = 30
     DISCORD_TOKEN = ""
     DISCORD_GUILD_ID = None
@@ -60,12 +60,14 @@ def _make_village(map_id, snapshot_id, uid, player_name, aid, alliance_name,
     )
 
 
-def _config(our_alliances=None, threshold=15, radius=30, map_size=401):
+def _config(our_alliances=None, threshold=25, radius=30, map_size=401):
     return {
         "TRAVIAN_OUR_ALLIANCES": our_alliances or [1, 2],
         "POP_DROP_THRESHOLD": threshold,
         "NEW_VILLAGE_RADIUS": radius,
         "TRAVIAN_MAP_SIZE": map_size,
+        "MIN_POP_FOR_ALERTS": 500,
+        "ALERT_COOLDOWN_HOURS": 0,
     }
 
 
@@ -107,7 +109,7 @@ class TestPopDrops:
                                      aid=1, alliance_name="NASI", population=500))
         db_session.commit()
 
-        alerts = detect_alerts(s2.id, s1.id, _config(threshold=15))
+        alerts = detect_alerts(s2.id, s1.id, _config(threshold=25))
         pop_drops = [a for a in alerts if a["type"] == "pop_drop"]
         assert len(pop_drops) == 1
         assert pop_drops[0]["player_name"] == "Gracz1"
@@ -119,14 +121,14 @@ class TestPopDrops:
         db_session.add_all([s1, s2])
         db_session.flush()
 
-        # Spadek 5% — poniżej progu 15%
+        # Spadek 5% — poniżej progu 25%
         db_session.add(_make_village(1, s1.id, uid=10, player_name="Gracz1",
                                      aid=1, alliance_name="NASI", population=1000))
         db_session.add(_make_village(1, s2.id, uid=10, player_name="Gracz1",
                                      aid=1, alliance_name="NASI", population=950))
         db_session.commit()
 
-        alerts = detect_alerts(s2.id, s1.id, _config(threshold=15))
+        alerts = detect_alerts(s2.id, s1.id, _config(threshold=25))
         pop_drops = [a for a in alerts if a["type"] == "pop_drop"]
         assert len(pop_drops) == 0
 
@@ -147,7 +149,7 @@ class TestPopDrops:
                                      aid=1, alliance_name="NASI", population=200, x=5, y=5))
         db_session.commit()
 
-        alerts = detect_alerts(s2.id, s1.id, _config(threshold=15))
+        alerts = detect_alerts(s2.id, s1.id, _config(threshold=25))
         pop_drops = [a for a in alerts if a["type"] == "pop_drop"]
         assert len(pop_drops) == 1
         assert pop_drops[0]["new_pop"] == 0
@@ -173,7 +175,7 @@ class TestPopDrops:
                                      aid=99, alliance_name="WRÓG", population=500, x=100, y=100))
         db_session.commit()
 
-        alerts = detect_alerts(s2.id, s1.id, _config(threshold=15))
+        alerts = detect_alerts(s2.id, s1.id, _config(threshold=25))
         pop_drops = [a for a in alerts if a["type"] == "pop_drop"]
         # Powinien być alert tylko dla NaszGracz NIE (bo nie spadł)
         # DalekiWróg daleko — nie powinien być alertowany
@@ -196,7 +198,7 @@ class TestPopDrops:
                                      aid=1, alliance_name="NASI", population=300, vid=101))
         db_session.commit()
 
-        alerts = detect_alerts(s2.id, s1.id, _config(threshold=15))
+        alerts = detect_alerts(s2.id, s1.id, _config(threshold=25))
         pop_drops = [a for a in alerts if a["type"] == "pop_drop"]
         assert len(pop_drops) == 1
         assert pop_drops[0]["old_pop"] == 1000
@@ -546,7 +548,7 @@ class TestSnapshotValidation:
                                       aid=1, alliance_name="NASI", population=500))
         db_session.commit()
 
-        alerts = detect_alerts(s2.id, s1.id, _config(threshold=15))
+        alerts = detect_alerts(s2.id, s1.id, _config(threshold=25))
         pop_drops = [a for a in alerts if a["type"] == "pop_drop"]
         assert len(pop_drops) == 1
 
