@@ -97,14 +97,6 @@ class General(commands.Cog):
             ),
             inline=False,
         )
-        embed.add_field(
-            name="🔔 Monitor",
-            value=(
-                "`/tmonitor <wlacz|wylacz|status>` — Osobisty monitoring wiosek (DM)\n"
-                "`/tmonitor_ustawienia` — Zmień progi alertów"
-            ),
-            inline=False,
-        )
         embed.set_footer(text=FOOTER)
         await ctx.respond(embed=embed)
 

@@ -37,10 +37,6 @@ class TestCogLoading:
         from bot.cogs.digest import Digest
         assert Digest is not None
 
-    def test_monitor_cog_imports(self):
-        from bot.cogs.monitor import Monitor
-        assert Monitor is not None
-
     def test_tribes_module(self):
         from bot.tribes import TRIBES
         assert len(TRIBES) >= 7  # tid 1,2,3,6,7,8,9

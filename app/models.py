@@ -214,7 +214,7 @@ class Alert(db.Model):
     created_at = db.Column(db.DateTime, default=_utcnow)
 
 
-class MonitorSettings(db.Model):
+class MonitorSettings(db.Model):  # DEPRECATED — /tmonitor removed, kept for DB compat
     """User preferences for personal monitoring."""
 
     __tablename__ = "monitor_settings"
@@ -230,7 +230,7 @@ class MonitorSettings(db.Model):
     updated_at = db.Column(db.DateTime, default=_utcnow, onupdate=_utcnow)
 
 
-class PersonalAlert(db.Model):
+class PersonalAlert(db.Model):  # DEPRECATED — /tmonitor removed, kept for DB compat
     """Personal notification preferences and history for linked users."""
 
     __tablename__ = "personal_alerts"
