@@ -21,8 +21,8 @@ Kompletna instrukcja uruchomienia W.I.T.E.K w środowisku produkcyjnym i dewelop
 ### 1. Sklonuj repozytorium
 
 ```bash
-git clone https://github.com/TWOJ-USER/witek.git
-cd witek
+git clone https://github.com/PeterPage2115/W.I.T.E.K.git
+cd W.I.T.E.K
 ```
 
 ### 2. Utwórz plik `.env`
@@ -59,8 +59,9 @@ cp config/config.example.yaml config/config.yaml
 Edytuj `config/config.yaml` — najważniejsze:
 
 ```yaml
-travian:
-  our_alliances: [123, 456]  # ← Wstaw ID swoich sojuszy z map.sql
+servers:
+  ts31:
+    our_alliances: [123, 456]  # ← Wstaw ID swoich sojuszy z map.sql
 ```
 
 ID sojuszy znajdziesz w map.sql (pole `aid` w danych wioski).
@@ -92,6 +93,20 @@ docker compose up -d
 - Dashboard: http://localhost:5000 (lub port z `WITEK_PORT`)
 - Baza: PostgreSQL w osobnym kontenerze
 - Dane zachowane w wolumenie `witek-pgdata`
+
+### Reign of Fire (RoF)
+
+Oddzielna instancja dla serwera RoF:
+
+```bash
+cp .env.rof.example .env.rof
+# Uzupełnij .env.rof (osobny token bota!)
+docker compose --env-file .env.rof -f docker-compose.rof.yml up -d
+```
+
+- Dashboard: http://localhost:5001 (port 5001)
+- Baza: Oddzielny PostgreSQL (`witek_rof`)
+- Oddzielna sieć Docker, wolumen i token bota
 
 ### Sprawdzenie statusu
 
@@ -146,7 +161,7 @@ docker exec witek-app python run.py --from-file /app/map.sql
 
 ### 5. Sprawdź dashboard
 
-Otwórz http://localhost:5000 (lub `http://TWOJ_SERWER:5000`) — powinny się pojawić dane po pierwszym pobraniu.
+Otwórz http://localhost:5000 (lub `http://YOUR_SERVER:5000`) — powinny się pojawić dane po pierwszym pobraniu.
 
 ---
 
@@ -234,21 +249,21 @@ Aby opublikować obraz w GitHub Container Registry:
 ### Logowanie do GHCR
 
 ```bash
-echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
+echo $GITHUB_TOKEN | docker login ghcr.io -u peterpage2115 --password-stdin
 ```
 
 ### Budowanie i publikacja
 
 ```bash
 # Zbuduj z tagiem
-docker build -t ghcr.io/USERNAME/witek:latest .
+docker build -t ghcr.io/peterpage2115/w.i.t.e.k:latest .
 
 # Wypchnij do registry
-docker push ghcr.io/USERNAME/witek:latest
+docker push ghcr.io/peterpage2115/w.i.t.e.k:latest
 
 # Z wersjonowaniem
-docker build -t ghcr.io/USERNAME/witek:1.0.0 .
-docker push ghcr.io/USERNAME/witek:1.0.0
+docker build -t ghcr.io/peterpage2115/w.i.t.e.k:1.0.0 .
+docker push ghcr.io/peterpage2115/w.i.t.e.k:1.0.0
 ```
 
 ### Użycie w docker-compose.yml
@@ -258,7 +273,7 @@ Zamiast budowania lokalnego, użyj gotowego obrazu:
 ```yaml
 services:
   witek-app:
-    image: ghcr.io/USERNAME/witek:latest
+    image: ghcr.io/peterpage2115/w.i.t.e.k:latest
     # zakomentuj sekcję build:
     # build:
     #   context: .

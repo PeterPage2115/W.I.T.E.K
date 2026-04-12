@@ -1,6 +1,6 @@
 # ⚔️ W.I.T.E.K — Wirtualny Informator Taktyczno-Ekonomiczny Koalicji
 
-[![CI](https://github.com/PeterPage2115/witek/actions/workflows/ci.yml/badge.svg)](https://github.com/PeterPage2115/witek/actions/workflows/ci.yml)
+[![CI](https://github.com/PeterPage2115/W.I.T.E.K/actions/workflows/ci.yml/badge.svg)](https://github.com/PeterPage2115/W.I.T.E.K/actions/workflows/ci.yml)
 
 Narzędzie analityczne sojuszu **Travian Legends** + bot Discord.
 Nazwane na cześć H2P_Gucio (Witold Tacikiewicz).
@@ -21,8 +21,8 @@ W.I.T.E.K to narzędzie dla sojuszu UFOLODZY na serwerze Travian Legends, które
 ### 1. Sklonuj i skonfiguruj
 
 ```bash
-git clone https://github.com/TWOJ-USER/witek.git
-cd witek
+git clone https://github.com/PeterPage2115/W.I.T.E.K.git
+cd W.I.T.E.K
 cp .env.example .env
 cp config/config.example.yaml config/config.yaml
 ```
@@ -109,8 +109,19 @@ run.py                  # Punkt wejścia: Flask + bot + scheduler
 │   ├── bot.py          # Fabryka bota + db_query()
 │   └── cogs/           # 10 kogów z komendami slash
 ├── config/             # Konfiguracja YAML
-└── tests/              # 385 testów pytest
+└── tests/              # 853+ testów pytest
 ```
+
+### Multi-server (RoF)
+
+W.I.T.E.K obsługuje wiele serwerów Travian jednocześnie. Konfiguracja przez `SERVER_PROFILE`:
+
+```bash
+# RoF x3 International
+docker compose --env-file .env.rof -f docker-compose.rof.yml up -d
+```
+
+Konfiguracja serwerów w `config/config.yaml` pod kluczem `servers:`.
 
 ## Uruchomienie lokalne (bez Dockera)
 
@@ -130,14 +141,12 @@ python -m pytest tests/ -v
 
 ## Technologie
 
-- **Backend**: Flask, SQLAlchemy, Alembic
+- **Backend**: Flask, SQLAlchemy
 - **Bot**: py-cord (Pycord)
 - **Baza**: PostgreSQL (prod) / SQLite (dev)
 - **Scheduler**: APScheduler
 - **Docker**: Multi-stage build, Docker Compose
 
 ---
-
-<!-- TODO: Dodaj zrzuty ekranu dashboardu i komend Discord -->
 
 *⚔️ W.I.T.E.K — Na cześć Gucio*
