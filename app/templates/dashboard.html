@@ -171,10 +171,10 @@
         {% elif server_pop_trend|length == 1 %}
         <div class="p-6 text-center">
             <span class="text-lg font-bold text-trav-brown-dark">{{ "{:,}".format(server_pop_trend[0].total_pop) }}</span>
-            <div class="text-xs text-trav-text-muted mt-1">Jeden snapshot — brak trendu</div>
+            <div class="text-xs text-trav-text-muted mt-1">📊 Pierwszy snapshot — trend pojawi się po kolejnym pobraniu danych</div>
         </div>
         {% else %}
-        <div class="p-6 text-center text-trav-text-muted text-sm">Brak danych</div>
+        <div class="p-6 text-center text-trav-text-muted text-sm">📊 Brak danych o populacji serwera</div>
         {% endif %}
     </div>
 
@@ -209,7 +209,7 @@
             {% endif %}
         </div>
         {% else %}
-        <div class="p-6 text-center text-trav-text-muted text-sm">Potrzeba ≥ 2 snapshotów</div>
+        <div class="p-6 text-center text-trav-text-muted text-sm">📈 Zmiany populacji pojawią się po kolejnym pobraniu danych</div>
         {% endif %}
     </div>
 

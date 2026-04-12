@@ -198,7 +198,7 @@ class TestDashboardServerPopTrend:
         db_session.commit()
         resp = client.get("/")
         assert resp.status_code == 200
-        assert "Jeden snapshot".encode() in resp.data
+        assert "Pierwszy snapshot".encode() in resp.data
 
 
 class TestDashboardTopMovers:
@@ -253,4 +253,4 @@ class TestDashboardTopMovers:
         db_session.commit()
         resp = client.get("/")
         assert resp.status_code == 200
-        assert "2 snapshot".encode() in resp.data
+        assert "Zmiany populacji".encode() in resp.data
