@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Alerty{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="mb-6">
+    <h1 class="font-medieval text-trav-parchment text-3xl font-bold mb-1 drop-shadow-lg">
+        🔔 Alerty
+    </h1>
+    <p class="text-trav-parchment/60 text-sm">Historia alertów — spadki populacji, nowe wioski, zmiany sojuszy</p>
+</div>
+
+<!-- Stats -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+    <div class="trav-panel p-4">
+        <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-1">📋 Wszystkie alerty</div>
+        <div class="text-2xl font-bold text-trav-brown-dark">{{ total }}</div>
+    </div>
+    <div class="trav-panel p-4">
+        <div class="text-trav-text-muted text-xs uppercase tracking-wider mb-1">📄 Strona</div>
+        <div class="text-2xl font-bold text-trav-brown-dark">{{ page }} / {{ total_pages }}</div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="trav-panel p-4 mb-6">
+    <form method="get" action="/alerts" class="flex flex-wrap gap-3 items-end">
+        <div>
+            <label class="block text-xs text-trav-text-muted mb-1">Typ alertu</label>
+            <select name="type"
+                    class="px-3 py-1.5 rounded border border-trav-brown/30 bg-trav-parchment-light text-sm text-trav-text focus:outline-none focus:ring-1 focus:ring-trav-gold">
+                <option value="">Wszystkie</option>
+                {% for key, meta in alert_types.items() %}
+                <option value="{{ key }}" {% if type_filter == key %}selected{% endif %}>
+                    {{ meta.icon }} {{ meta.label }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs text-trav-text-muted mb-1">Gracz</label>
+            <input type="text" name="search" value="{{ search or '' }}"
+                   placeholder="Szukaj gracza..."
+                   class="px-3 py-1.5 rounded border border-trav-brown/30 bg-trav-parchment-light text-sm text-trav-text focus:outline-none focus:ring-1 focus:ring-trav-gold">
+        </div>
+        <button type="submit"
+                class="px-4 py-1.5 bg-trav-brown text-trav-parchment text-sm rounded hover:bg-trav-brown-dark transition font-medium">
+            🔍 Szukaj
+        </button>
+        {% if type_filter or search %}
+        <a href="/alerts" class="px-4 py-1.5 bg-trav-parchment/80 text-trav-brown text-sm rounded hover:bg-trav-parchment transition font-medium">
+            ✖ Wyczyść
+        </a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Alerts Table -->
+<div class="trav-panel overflow-hidden">
+    <div class="trav-panel-header">
+        <h2 class="font-medieval text-base font-semibold">
+            🔔 Alerty ({{ alerts | length }}{% if total > alerts | length %} z {{ total }}{% endif %})
+        </h2>
+    </div>
+
+    {% if alerts %}
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-trav-text-muted text-xs uppercase border-b-2 border-trav-brown/20 bg-trav-parchment-dark/50">
+                    <th class="px-3 py-2.5 text-left">Typ</th>
+                    <th class="px-3 py-2.5 text-left">Gracz</th>
+                    <th class="px-3 py-2.5 text-left">Szczegóły</th>
+                    <th class="px-3 py-2.5 text-center">Data</th>
+                    <th class="px-3 py-2.5 text-center">Discord</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in alerts %}
+                <tr class="hover-row border-b border-trav-brown/10">
+                    <td class="px-3 py-2">
+                        <span title="{{ a.label }}">{{ a.icon }}</span>
+                        <span class="text-xs text-trav-text-muted">{{ a.label }}</span>
+                    </td>
+                    <td class="px-3 py-2 font-medium text-trav-brown-dark">{{ a.player_name }}</td>
+                    <td class="px-3 py-2 text-xs text-trav-text-muted">{{ a.details }}</td>
+                    <td class="px-3 py-2 text-center text-xs text-trav-text-muted">{{ a.timestamp }}</td>
+                    <td class="px-3 py-2 text-center">
+                        {% if a.notified %}
+                        <span class="text-green-600" title="Wysłano na Discord">✅</span>
+                        {% else %}
+                        <span class="text-gray-400" title="Nie wysłano">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="p-4 flex justify-center gap-2 border-t border-trav-brown/20">
+        {% if page > 1 %}
+        <a href="/alerts?page={{ page - 1 }}{% if type_filter %}&type={{ type_filter }}{% endif %}{% if search %}&search={{ search }}{% endif %}"
+           class="px-3 py-1 bg-trav-parchment/80 text-trav-brown text-sm rounded hover:bg-trav-parchment transition">
+            ← Poprzednia
+        </a>
+        {% endif %}
+        <span class="px-3 py-1 text-trav-text-muted text-sm">{{ page }} / {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="/alerts?page={{ page + 1 }}{% if type_filter %}&type={{ type_filter }}{% endif %}{% if search %}&search={{ search }}{% endif %}"
+           class="px-3 py-1 bg-trav-parchment/80 text-trav-brown text-sm rounded hover:bg-trav-parchment transition">
+            Następna →
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <!-- Empty state -->
+    <div class="p-8 text-center">
+        <div class="text-4xl mb-3">🔔</div>
+        <h3 class="font-medieval text-trav-brown-dark text-lg font-bold mb-2">Brak alertów</h3>
+        <p class="text-trav-text-muted text-sm">
+            {% if type_filter or search %}
+            Brak alertów pasujących do filtrów. <a href="/alerts" class="text-trav-blue hover:text-blue-700">Pokaż wszystkie</a>
+            {% else %}
+            Nie wykryto jeszcze żadnych alertów. Alerty pojawią się automatycznie po porównaniu snapshotów.
+            {% endif %}
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
