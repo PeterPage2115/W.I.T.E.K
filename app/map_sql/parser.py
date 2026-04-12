@@ -1,8 +1,9 @@
 """Parser for Travian map.sql file.
 
-The map.sql file contains INSERT statements like:
+The map.sql file contains INSERT statements with 16 fields:
 INSERT INTO x_world VALUES (id, x, y, tid, vid, 'village_name', uid, 'player_name',
-                            aid, 'alliance_name', population, NULL, FALSE, NULL, NULL, NULL);
+                            aid, 'alliance_name', population, region, is_capital,
+                            is_city, has_harbor, victory_points);
 """
 
 import re
@@ -14,7 +15,7 @@ class VillageRow:
     map_id: int
     x: int
     y: int
-    tid: int  # tribe: 1=Romans, 2=Teutons, 3=Gauls
+    tid: int  # tribe: 1=Romans, 2=Teutons, 3=Gauls, 6=Egyptians, 7=Huns, 8=Spartans, 9=Vikings
     vid: int  # village id
     name: str
     uid: int  # player id
@@ -22,23 +23,32 @@ class VillageRow:
     aid: int  # alliance id
     alliance_name: str
     population: int
+    # RoF extended fields (None on classic servers)
+    region: str | None = None
+    is_capital: bool | None = None
+    is_city: bool | None = None
+    has_harbor: bool | None = None
+    victory_points: int | None = None
 
 
-# Matches one VALUES(...) group from INSERT INTO x_world VALUES (...);
 _ROW_PATTERN = re.compile(
     r"INSERT\s+INTO\s+`?x_world`?\s+VALUES\s*\("
-    r"(\d+),"       # map_id
-    r"(-?\d+),"     # x
-    r"(-?\d+),"     # y
-    r"(\d+),"       # tid
-    r"(\d+),"       # vid
-    r"'((?:[^'\\]|'')*)',"  # village_name (escaped single quotes)
-    r"(\d+),"       # uid
-    r"'((?:[^'\\]|'')*)',"  # player_name
-    r"(\d+),"       # aid
-    r"'((?:[^'\\]|'')*)',"  # alliance_name
-    r"(\d+)"        # population
-    r"(?:,\s*(?:NULL|FALSE|TRUE|\d+))*"  # extra trailing fields (unknown)
+    r"(\d+),"               # 1: map_id
+    r"(-?\d+),"             # 2: x
+    r"(-?\d+),"             # 3: y
+    r"(\d+),"               # 4: tid
+    r"(\d+),"               # 5: vid
+    r"'((?:[^'\\]|'')*)',"  # 6: village_name
+    r"(\d+),"               # 7: uid
+    r"'((?:[^'\\]|'')*)',"  # 8: player_name
+    r"(\d+),"               # 9: aid
+    r"'((?:[^'\\]|'')*)',"  # 10: alliance_name
+    r"(\d+),"               # 11: population
+    r"(NULL|'(?:[^'\\]|'')*'),"  # 12: region (NULL or 'RegionName')
+    r"(TRUE|FALSE|NULL),"   # 13: is_capital
+    r"(TRUE|FALSE|NULL),"   # 14: is_city
+    r"(TRUE|FALSE|NULL),"   # 15: has_harbor
+    r"(\d+|NULL)"           # 16: victory_points
     r"\s*\);",
     re.IGNORECASE,
 )
@@ -47,6 +57,30 @@ _ROW_PATTERN = re.compile(
 def _unescape_sql(s: str) -> str:
     """Unescape SQL single-quoted string ('' → ')."""
     return s.replace("''", "'")
+
+
+def _parse_bool(val: str) -> bool | None:
+    """Parse SQL boolean: TRUE→True, FALSE→False, NULL→None."""
+    v = val.upper()
+    if v == "TRUE":
+        return True
+    if v == "FALSE":
+        return False
+    return None
+
+
+def _parse_int_or_none(val: str) -> int | None:
+    """Parse SQL int or NULL."""
+    if val.upper() == "NULL":
+        return None
+    return int(val)
+
+
+def _parse_region(val: str) -> str | None:
+    """Parse region: NULL→None, 'Name'→Name."""
+    if val.upper() == "NULL":
+        return None
+    return val.strip("'").replace("''", "'")
 
 
 def parse_line(line: str) -> VillageRow | None:
@@ -66,6 +100,11 @@ def parse_line(line: str) -> VillageRow | None:
         aid=int(m.group(9)),
         alliance_name=_unescape_sql(m.group(10)),
         population=int(m.group(11)),
+        region=_parse_region(m.group(12)),
+        is_capital=_parse_bool(m.group(13)),
+        is_city=_parse_bool(m.group(14)),
+        has_harbor=_parse_bool(m.group(15)),
+        victory_points=_parse_int_or_none(m.group(16)),
     )
 
 

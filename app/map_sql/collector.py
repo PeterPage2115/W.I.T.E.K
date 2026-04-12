@@ -40,16 +40,18 @@ def store_snapshot(raw_text: str) -> Snapshot:
         Village(
             map_id=r.map_id,
             snapshot_id=snapshot.id,
-            x=r.x,
-            y=r.y,
-            tid=r.tid,
-            vid=r.vid,
-            name=r.name,
-            uid=r.uid,
+            x=r.x, y=r.y,
+            tid=r.tid, vid=r.vid,
+            name=r.name, uid=r.uid,
             player_name=r.player_name,
             aid=r.aid,
             alliance_name=r.alliance_name,
             population=r.population,
+            region=r.region,
+            is_capital=r.is_capital,
+            is_city=r.is_city,
+            has_harbor=r.has_harbor,
+            victory_points=r.victory_points,
         )
         for r in rows
     ]
@@ -66,23 +68,33 @@ def store_snapshot(raw_text: str) -> Snapshot:
 
 def _update_players(rows, now):
     """Update player aggregates from parsed village rows."""
+    from collections import Counter
+
     player_data = {}
+    player_tribes = {}
     for r in rows:
         if r.uid == 0:
             continue
         if r.uid not in player_data:
             player_data[r.uid] = {
                 "name": r.player_name,
-                "tid": r.tid,
                 "aid": r.aid,
                 "alliance_name": r.alliance_name,
                 "total_pop": 0,
                 "village_count": 0,
             }
+            player_tribes[r.uid] = []
         player_data[r.uid]["total_pop"] += r.population
         player_data[r.uid]["village_count"] += 1
+        player_tribes[r.uid].append(r.tid)
 
     for uid, data in player_data.items():
+        # Most common tribe; tie → lowest tid (deterministic)
+        tids = player_tribes[uid]
+        tid_counts = Counter(tids)
+        primary_tid = min(tid_counts, key=lambda t: (-tid_counts[t], t))
+        data["tid"] = primary_tid
+
         player = db.session.get(Player, uid)
         if player is None:
             player = Player(uid=uid, first_seen_at=now, **data)

@@ -35,6 +35,12 @@ class Village(db.Model):
     aid = db.Column(db.Integer)  # alliance id
     alliance_name = db.Column(db.Text)
     population = db.Column(db.Integer)
+    # RoF extended fields (NULL on classic servers)
+    region = db.Column(db.Text, nullable=True)
+    is_capital = db.Column(db.Boolean, nullable=True)
+    is_city = db.Column(db.Boolean, nullable=True)
+    has_harbor = db.Column(db.Boolean, nullable=True)
+    victory_points = db.Column(db.Integer, nullable=True)
 
     snapshot = db.relationship("Snapshot", back_populates="villages")
 

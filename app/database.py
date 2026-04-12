@@ -21,6 +21,13 @@ def _ensure_columns(app):
             "kill_cost_atk": "TEXT",
             "kill_cost_def": "TEXT",
         },
+        "villages": {
+            "region": "TEXT",
+            "is_capital": "BOOLEAN",
+            "is_city": "BOOLEAN",
+            "has_harbor": "BOOLEAN",
+            "victory_points": "INTEGER",
+        },
     }
     engine = db.engine
     with engine.connect() as conn:
