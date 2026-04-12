@@ -10,7 +10,7 @@
     <meta property="og:type" content="website">
     <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="any">
-    <title>{% block title %}W.I.T.E.K{% endblock %} — W.I.T.E.K</title>
+    <title>{% block title %}Panel Dowodzenia{% endblock %} — W.I.T.E.K</title>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -144,14 +144,19 @@
                 </a>
 
                 <!-- Nav Links (desktop) -->
+                {% set nav_items = [
+                    ('/', '📊 Dashboard'),
+                    ('/attacks', '⚔️ Ataki'),
+                    ('/defense', '🛡️ Obrona'),
+                    ('/map', '🗺️ Mapa'),
+                    ('/reports', '📜 Raporty'),
+                    ('/diplomacy', '🤝 Dyplomacja'),
+                ] %}
                 <div class="hidden md:flex items-center space-x-5 text-sm">
-                    <a href="/" class="text-trav-parchment/80 hover:text-trav-gold transition font-medium">📊 Dashboard</a>
-                    <a href="/attacks" class="text-trav-parchment/80 hover:text-trav-gold transition font-medium">⚔️ Ataki</a>
-                    <a href="/defense" class="text-trav-parchment/80 hover:text-trav-gold transition font-medium">🛡️ Obrona</a>
-                    <a href="/map" class="text-trav-parchment/80 hover:text-trav-gold transition font-medium">🗺️ Mapa</a>
-                    <a href="/reports" class="text-trav-parchment/80 hover:text-trav-gold transition font-medium">📜 Raporty</a>
-                    <a href="/diplomacy" class="text-trav-parchment/80 hover:text-trav-gold transition font-medium">🤝 Dyplomacja</a>
-                    {% block nav_extra %}{% endblock %}
+                    {% for href, label in nav_items %}
+                    {% set is_active = (request.path == href) or (href != '/' and request.path.startswith(href + '/')) %}
+                    <a href="{{ href }}" class="{{ 'text-trav-gold font-semibold' if is_active else 'text-trav-parchment/80 hover:text-trav-gold' }} transition font-medium">{{ label }}</a>
+                    {% endfor %}
                 </div>
 
                 <!-- Right side: auth + freshness (desktop) -->
@@ -189,12 +194,10 @@
             <!-- Mobile menu (hidden by default) -->
             <div id="mobile-menu" class="hidden md:hidden pb-3 border-t border-trav-gold/20 mt-2 pt-3">
                 <div class="flex flex-col space-y-2 text-sm">
-                    <a href="/" class="text-trav-parchment/80 hover:text-trav-gold transition font-medium px-2 py-1">📊 Dashboard</a>
-                    <a href="/attacks" class="text-trav-parchment/80 hover:text-trav-gold transition font-medium px-2 py-1">⚔️ Ataki</a>
-                    <a href="/defense" class="text-trav-parchment/80 hover:text-trav-gold transition font-medium px-2 py-1">🛡️ Obrona</a>
-                    <a href="/map" class="text-trav-parchment/80 hover:text-trav-gold transition font-medium px-2 py-1">🗺️ Mapa</a>
-                    <a href="/reports" class="text-trav-parchment/80 hover:text-trav-gold transition font-medium px-2 py-1">📜 Raporty</a>
-                    <a href="/diplomacy" class="text-trav-parchment/80 hover:text-trav-gold transition font-medium px-2 py-1">🤝 Dyplomacja</a>
+                    {% for href, label in nav_items %}
+                    {% set is_active = (request.path == href) or (href != '/' and request.path.startswith(href + '/')) %}
+                    <a href="{{ href }}" class="{{ 'text-trav-gold font-semibold' if is_active else 'text-trav-parchment/80 hover:text-trav-gold' }} transition font-medium px-2 py-1">{{ label }}</a>
+                    {% endfor %}
                 </div>
                 <div class="mt-3 px-2 flex items-center justify-between">
                     <div>
