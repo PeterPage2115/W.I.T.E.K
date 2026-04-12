@@ -83,9 +83,13 @@ docker-compose.rof.yml      # RoF x3 instance (separate DB, bot token, guild)
 ```
 
 Each compose file references the same image but different `.env`:
-- `DISCORD_TOKEN` — different bot per server (or same bot, 2 guilds)
+- `DISCORD_TOKEN` — **separate Discord application/token per server** (mandatory, see Decision #6)
 - `SERVER_PROFILE` — selects config block
 - `DATABASE_URL` — separate DB per instance
+
+### Shared Profile Loader
+
+**Critical**: Both `app/config.py` and `bot/tribes.py` currently read config independently. The refactor must introduce a **single shared profile loader** used by both Flask app and bot to prevent config divergence (e.g., bot uses one server URL while web uses another). The loader reads `config.yaml`, selects the `SERVER_PROFILE` block, and exposes it as a dict accessible from both sides.
 
 ---
 
@@ -346,13 +350,23 @@ Bot calculates for each participant:
 
 ### New Columns for Village Model
 
-```sql
-ALTER TABLE villages ADD COLUMN region VARCHAR(50);
-ALTER TABLE villages ADD COLUMN is_capital BOOLEAN;
-ALTER TABLE villages ADD COLUMN is_city BOOLEAN;
-ALTER TABLE villages ADD COLUMN has_harbor BOOLEAN;
-ALTER TABLE villages ADD COLUMN victory_points INTEGER DEFAULT 0;
+Using the existing `_ensure_columns()` pattern in `app/database.py` — a dict-of-dicts approach:
+
+```python
+# Added to the `expected` dict in _ensure_columns():
+expected = {
+    # ... existing entries ...
+    "villages": {
+        "region": "VARCHAR(50)",
+        "is_capital": "BOOLEAN",
+        "is_city": "BOOLEAN",
+        "has_harbor": "BOOLEAN",
+        "victory_points": "INTEGER DEFAULT 0",
+    },
+}
 ```
+
+No raw `ALTER TABLE` statements — the helper handles idempotent column addition with PRAGMA introspection.
 
 ### New Table: Operations (Phase 2)
 
@@ -510,7 +524,7 @@ Instead of detecting "classic vs RoF" by checking field 12, we always parse all 
 
 RoF allows conquering villages of other tribes. This means one player can own villages of multiple tribes.
 
-**MVP approach**: `Player.tid` stores the tribe of their **first/most common village**. Village-level pages always show the correct per-village tribe. Player-level displays show primary tribe with "(mixed)" indicator if they have villages of different tribes.
+**MVP approach**: `Player.tid` stores the **most common tribe** among their villages (by village count). Tie-breaking: lowest tid wins (deterministic). Village-level pages always show the correct per-village tribe. Player-level displays show primary tribe with "(mixed)" indicator if they have villages of different tribes.
 
 ### 4. Ships in Separate Registry
 
@@ -537,17 +551,23 @@ Running two Docker containers with the same bot token causes event duplication. 
 
 ### 7. Database Migrations
 
-Our codebase uses `_ensure_columns()` in `database.py`, not Alembic. New columns will be added via this mechanism:
+Our codebase uses `_ensure_columns()` in `database.py`, not Alembic. New columns are added by extending the `expected` dict:
 
 ```python
-_ensure_columns('villages', [
-    ('region', 'VARCHAR(50)'),
-    ('is_capital', 'BOOLEAN'),
-    ('is_city', 'BOOLEAN'),
-    ('has_harbor', 'BOOLEAN'),
-    ('victory_points', 'INTEGER DEFAULT 0'),
-])
+# In _ensure_columns(app), add to the expected dict:
+expected = {
+    # ... existing attack_reports, battle_reports entries ...
+    "villages": {
+        "region": "VARCHAR(50)",
+        "is_capital": "BOOLEAN",
+        "is_city": "BOOLEAN",
+        "has_harbor": "BOOLEAN",
+        "victory_points": "INTEGER DEFAULT 0",
+    },
+}
 ```
+
+This matches the actual codebase pattern (`app/database.py:6-36`) — a table→columns dict with PRAGMA introspection for idempotent upgrades.
 
 ### 8. Testing: End-to-End Coverage
 
