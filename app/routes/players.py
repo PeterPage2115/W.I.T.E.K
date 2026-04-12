@@ -8,6 +8,7 @@ from sqlalchemy import func
 from ..auth_utils import login_required
 from ..database import db
 from ..models import Player, Village, Snapshot, TRIBE_NAMES
+from ..snapshot_helpers import get_latest_snapshot
 
 bp = Blueprint("players", __name__)
 
@@ -73,9 +74,7 @@ def profile(uid):
     if player is None:
         abort(404)
 
-    latest_snapshot = (
-        db.session.query(Snapshot).order_by(Snapshot.fetched_at.desc()).first()
-    )
+    latest_snapshot = get_latest_snapshot()
     villages = []
     if latest_snapshot:
         villages = (
@@ -151,7 +150,6 @@ def profile(uid):
         player=player,
         villages=villages,
         tribe_name=tribe_name,
-        snapshot=latest_snapshot,
         activity_status=activity_status,
         activity_label=activity_label,
         pop_change=pop_change,

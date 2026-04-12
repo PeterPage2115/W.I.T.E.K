@@ -8,6 +8,7 @@ from sqlalchemy import func
 from ..auth_utils import login_required
 from ..database import db
 from ..models import Alliance, Player, Village, Snapshot
+from ..snapshot_helpers import get_latest_snapshot
 
 bp = Blueprint("alliances", __name__)
 
@@ -126,9 +127,7 @@ def profile(aid):
         .all()
     )
 
-    latest_snapshot = (
-        db.session.query(Snapshot).order_by(Snapshot.fetched_at.desc()).first()
-    )
+    latest_snapshot = get_latest_snapshot()
     villages = []
     if latest_snapshot:
         villages = (
@@ -145,7 +144,6 @@ def profile(aid):
         alliance=alliance,
         members=members,
         villages=villages,
-        snapshot=latest_snapshot,
         pop_changes=pop_changes,
     )
 

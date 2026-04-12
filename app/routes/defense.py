@@ -10,7 +10,7 @@ from sqlalchemy import func, or_, and_
 from ..database import db
 from ..models import (
     DefenseThread, VillageTroops, TroopSupport,
-    AttackReport, BattleReport, Snapshot,
+    AttackReport, BattleReport,
 )
 from . import paginate_query
 
@@ -141,9 +141,6 @@ def index():
             "last_activity": last_activity,
         })
 
-    latest_snapshot = (
-        db.session.query(Snapshot).order_by(Snapshot.fetched_at.desc()).first()
-    )
     server_url = current_app.config.get("TRAVIAN_SERVER_URL", "")
 
     extra_args = {}
@@ -160,7 +157,6 @@ def index():
         resolved=resolved,
         total_garrison_troops=total_garrison_troops,
         total_support_troops=total_support_troops,
-        snapshot=latest_snapshot,
         server_url=server_url,
         extra_args=extra_args,
     )
@@ -251,9 +247,6 @@ def detail(thread_id):
     total_troops = total_garrison_troops + total_support_troops
     total_crop = total_garrison_crop + total_support_crop
 
-    latest_snapshot = (
-        db.session.query(Snapshot).order_by(Snapshot.fetched_at.desc()).first()
-    )
     server_url = current_app.config.get("TRAVIAN_SERVER_URL", "")
 
     return render_template(
@@ -269,6 +262,5 @@ def detail(thread_id):
         total_support_crop=total_support_crop,
         total_troops=total_troops,
         total_crop=total_crop,
-        snapshot=latest_snapshot,
         server_url=server_url,
     )

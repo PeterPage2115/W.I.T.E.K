@@ -1,8 +1,8 @@
 """Interactive 2D map of Travian world (S4.5)."""
 
 from flask import Blueprint, render_template, jsonify, request, current_app
-from ..models import Village, Snapshot
-from ..database import db
+from ..models import Village
+from ..snapshot_helpers import get_latest_snapshot
 
 bp = Blueprint("map", __name__)
 
@@ -10,11 +10,8 @@ bp = Blueprint("map", __name__)
 @bp.route("/map")
 def map_view():
     """Render the map page."""
-    snapshot = (
-        db.session.query(Snapshot).order_by(Snapshot.fetched_at.desc()).first()
-    )
     our_alliances = current_app.config.get("TRAVIAN_OUR_ALLIANCES", [])
-    return render_template("map.html", snapshot=snapshot, our_alliances=our_alliances)
+    return render_template("map.html", our_alliances=our_alliances)
 
 
 @bp.route("/api/map/villages")
@@ -26,9 +23,7 @@ def api_villages():
     - alliance: filter by alliance name (optional)
     - player: filter by player name (optional)
     """
-    snapshot = (
-        db.session.query(Snapshot).order_by(Snapshot.fetched_at.desc()).first()
-    )
+    snapshot = get_latest_snapshot()
     if not snapshot:
         return jsonify([])
 

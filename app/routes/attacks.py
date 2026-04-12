@@ -8,7 +8,7 @@ from math import sqrt
 from flask import Blueprint, render_template, request, current_app, abort, Response
 from ..auth_utils import login_required
 from ..database import db
-from ..models import AttackReport, DefenseThread, TroopSupport, BattleReport, Snapshot
+from ..models import AttackReport, DefenseThread, TroopSupport, BattleReport
 from . import paginate_query
 
 bp = Blueprint("attacks", __name__)
@@ -53,9 +53,6 @@ def index():
         AttackReport.status == "resolved"
     ).count()
 
-    latest_snapshot = (
-        db.session.query(Snapshot).order_by(Snapshot.fetched_at.desc()).first()
-    )
     server_url = current_app.config.get("TRAVIAN_SERVER_URL", "")
 
     extra_args = {}
@@ -70,7 +67,6 @@ def index():
         total=total,
         active=active,
         resolved=resolved,
-        snapshot=latest_snapshot,
         server_url=server_url,
         extra_args=extra_args,
     )
@@ -139,9 +135,6 @@ def detail(attack_id):
             map_size,
         )
 
-    latest_snapshot = (
-        db.session.query(Snapshot).order_by(Snapshot.fetched_at.desc()).first()
-    )
     server_url = current_app.config.get("TRAVIAN_SERVER_URL", "")
 
     return render_template(
@@ -151,7 +144,6 @@ def detail(attack_id):
         reports=parsed_reports,
         thread=thread,
         distance=distance,
-        snapshot=latest_snapshot,
         server_url=server_url,
     )
 

@@ -1,7 +1,7 @@
 """Diplomacy route — diplomatic relations page."""
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session as flask_session
-from ..models import DiplomaticRelation, Snapshot
+from ..models import DiplomaticRelation
 from ..database import db
 from ..auth_utils import login_required
 
@@ -12,10 +12,6 @@ VALID_RELATION_TYPES = {"ally", "pact", "nap", "war"}
 
 @bp.route("/diplomacy")
 def diplomacy():
-    latest_snapshot = (
-        db.session.query(Snapshot).order_by(Snapshot.fetched_at.desc()).first()
-    )
-
     relations = (
         DiplomaticRelation.query
         .filter_by(active=True)
@@ -30,7 +26,6 @@ def diplomacy():
 
     return render_template(
         "diplomacy.html",
-        snapshot=latest_snapshot,
         relations=grouped,
         logged_in=logged_in,
     )

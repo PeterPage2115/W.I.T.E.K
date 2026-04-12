@@ -7,7 +7,7 @@ import json
 from flask import Blueprint, render_template, request, current_app, abort, Response
 from ..auth_utils import login_required
 from ..database import db
-from ..models import BattleReport, AttackReport, Snapshot, SpyReport
+from ..models import BattleReport, AttackReport, SpyReport
 
 bp = Blueprint("reports", __name__)
 
@@ -139,9 +139,6 @@ def report_list():
 
     total_pages = max(1, (total + per_page - 1) // per_page)
 
-    latest_snapshot = (
-        db.session.query(Snapshot).order_by(Snapshot.fetched_at.desc()).first()
-    )
     server_url = current_app.config.get("TRAVIAN_SERVER_URL", "")
 
     return render_template(
@@ -152,7 +149,6 @@ def report_list():
         total_pages=total_pages,
         attack_id=attack_id,
         player_filter=player,
-        snapshot=latest_snapshot,
         server_url=server_url,
     )
 
@@ -205,9 +201,6 @@ def report_detail(report_id):
     if report.attack_report_id:
         linked_attack = db.session.query(AttackReport).get(report.attack_report_id)
 
-    latest_snapshot = (
-        db.session.query(Snapshot).order_by(Snapshot.fetched_at.desc()).first()
-    )
     server_url = current_app.config.get("TRAVIAN_SERVER_URL", "")
 
     return render_template(
@@ -223,7 +216,6 @@ def report_detail(report_id):
         bounty_total=bounty_total,
         result=result_code,
         linked_attack=linked_attack,
-        snapshot=latest_snapshot,
         server_url=server_url,
     )
 
@@ -263,9 +255,6 @@ def spy_report_list():
             "wall_level": buildings.get("wall"),
         })
 
-    latest_snapshot = (
-        db.session.query(Snapshot).order_by(Snapshot.fetched_at.desc()).first()
-    )
     server_url = current_app.config.get("TRAVIAN_SERVER_URL", "")
 
     return render_template(
@@ -276,7 +265,6 @@ def spy_report_list():
         total_pages=total_pages,
         player_filter=player,
         spy_type_filter=spy_type,
-        snapshot=latest_snapshot,
         server_url=server_url,
     )
 

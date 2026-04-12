@@ -41,4 +41,9 @@ def create_app(config_class=Config):
         }
         return {"TRIBE_NAMES": TRIBE_NAMES, "TRIBE_ICONS": tribe_icons}
 
+    @app.context_processor
+    def inject_snapshot():
+        from .snapshot_helpers import get_latest_snapshot
+        return {"snapshot": get_latest_snapshot()}
+
     return app

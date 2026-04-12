@@ -131,10 +131,6 @@ def _top_movers(limit=5):
 
 @bp.route("/")
 def index():
-    latest_snapshot = (
-        db.session.query(Snapshot).order_by(Snapshot.fetched_at.desc()).first()
-    )
-
     top_alliances = (
         db.session.query(Alliance)
         .order_by(Alliance.total_pop.desc())
@@ -166,7 +162,6 @@ def index():
 
     return render_template(
         "dashboard.html",
-        snapshot=latest_snapshot,
         top_alliances=top_alliances,
         top_players=top_players,
         total_alliances=total_alliances,
