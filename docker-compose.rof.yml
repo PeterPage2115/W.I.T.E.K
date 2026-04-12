@@ -1,0 +1,58 @@
+# W.I.T.E.K — Docker Compose (RoF x3 International)
+# Uruchomienie: docker compose --env-file .env.rof -f docker-compose.rof.yml up -d
+
+services:
+  witek-rof-db:
+    image: postgres:16-alpine
+    container_name: witek-rof-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-witek_rof}
+      POSTGRES_USER: ${POSTGRES_USER:-witek}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Ustaw POSTGRES_PASSWORD w .env.rof}
+    volumes:
+      - witek-rof-pgdata:/var/lib/postgresql/data
+    networks:
+      - witek-rof-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-witek} -d ${POSTGRES_DB:-witek_rof}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  witek-rof-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: witek-rof-app
+    restart: unless-stopped
+    ports:
+      - "${WITEK_PORT:-5001}:5000"
+    env_file:
+      - .env.rof
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-witek}:${POSTGRES_PASSWORD}@witek-rof-db:5432/${POSTGRES_DB:-witek_rof}
+      SERVER_PROFILE: rof-x3
+      FLASK_DEBUG: "false"
+    volumes:
+      - ./config/config.yaml:/app/config/config.yaml:ro
+    depends_on:
+      witek-rof-db:
+        condition: service_healthy
+    networks:
+      - witek-rof-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  witek-rof-pgdata:
+    name: witek-rof-pgdata
+
+networks:
+  witek-rof-net:
+    name: witek-rof-net
