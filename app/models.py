@@ -211,6 +211,7 @@ class Alert(db.Model):
     alert_type = db.Column(db.Text)  # pop_drop, new_village, alliance_change
     data = db.Column(db.Text)  # JSON with details
     notified = db.Column(db.Boolean, default=False)
+    discord_eligible = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=_utcnow)
 
 

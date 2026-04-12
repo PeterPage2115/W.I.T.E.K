@@ -2,6 +2,7 @@
 
 import json
 import logging
+from datetime import datetime, timezone
 
 import discord
 from discord.ext import commands, tasks
@@ -46,9 +47,11 @@ class AlertsCog(commands.Cog):
             pending_count = len(alerts_data)
             logger.info("Znaleziono %d oczekujących alertów do wysłania", pending_count)
 
+            max_per_type = self.bot.flask_app.config.get("MAX_ALERTS_PER_TYPE", 10)
+
             grouped = _group_alerts(alerts_data)
             for alert_type, items in grouped.items():
-                embed = _build_embed(alert_type, items)
+                embed = _build_embed(alert_type, items, max_items=max_per_type)
                 await channel.send(embed=embed)
 
             alert_ids = [a["id"] for a in alerts_data]
@@ -59,12 +62,12 @@ class AlertsCog(commands.Cog):
             logger.exception("Błąd wysyłania alertów")
 
     def _fetch_pending_alerts(self):
-        """Pobiera niewysłane alerty z bazy (uruchamiane w db_query)."""
+        """Pobiera niewysłane alerty kwalifikujące się do Discorda (uruchamiane w db_query)."""
         from app.models import Alert
 
         rows = (
             Alert.query
-            .filter_by(notified=False)
+            .filter_by(notified=False, discord_eligible=True)
             .order_by(Alert.created_at.asc())
             .limit(50)
             .all()
@@ -100,27 +103,34 @@ def _group_alerts(alerts_data: list[dict]) -> dict[str, list[dict]]:
     return grouped
 
 
-def _build_embed(alert_type: str, items: list[dict]) -> discord.Embed:
+def _build_embed(alert_type: str, items: list[dict],
+                 max_items: int = 10) -> discord.Embed:
     """Tworzy embed Discordowy dla grupy alertów."""
     if alert_type == "pop_drop":
-        return _embed_pop_drops(items)
+        return _embed_pop_drops(items, max_items=max_items)
     elif alert_type == "new_village":
-        return _embed_new_villages(items)
+        return _embed_new_villages(items, max_items=max_items)
     elif alert_type == "alliance_change":
-        return _embed_alliance_changes(items)
+        return _embed_alliance_changes(items, max_items=max_items)
     else:
         embed = discord.Embed(title="⚠️ Nieznany typ alertu", color=COLOR_WARNING)
         embed.set_footer(text=FOOTER)
         return embed
 
 
-def _embed_pop_drops(items: list[dict]) -> discord.Embed:
+def _timestamp_footer() -> str:
+    return f"{FOOTER} • {datetime.now(timezone.utc).strftime('%H:%M %d.%m.%Y')}"
+
+
+def _embed_pop_drops(items: list[dict], max_items: int = 10) -> discord.Embed:
     embed = discord.Embed(
         title="🔻 Spadki populacji",
         color=COLOR_ATTACK,
     )
+    sorted_items = sorted(items, key=lambda x: x.get("drop_pct", 0), reverse=True)
+
     lines = []
-    for item in items[:25]:
+    for item in sorted_items[:max_items]:
         name = item.get("player_name", "?")
         alliance = item.get("alliance_name", "")
         old_pop = item.get("old_pop", 0)
@@ -133,19 +143,20 @@ def _embed_pop_drops(items: list[dict]) -> discord.Embed:
         )
 
     embed.description = "\n".join(lines) if lines else "Brak danych"
-    if len(items) > 25:
-        embed.description += f"\n\n… i {len(items) - 25} więcej"
-    embed.set_footer(text=FOOTER)
+    overflow = len(items) - max_items
+    if overflow > 0:
+        embed.description += f"\n\n… i {overflow} więcej — sprawdź /alerts na dashboardzie"
+    embed.set_footer(text=_timestamp_footer())
     return embed
 
 
-def _embed_new_villages(items: list[dict]) -> discord.Embed:
+def _embed_new_villages(items: list[dict], max_items: int = 10) -> discord.Embed:
     embed = discord.Embed(
         title="🏘️ Nowe wioski wrogów w okolicy",
         color=0xE67E22,  # pomarańczowy
     )
     lines = []
-    for item in items[:25]:
+    for item in items[:max_items]:
         vname = item.get("village_name", "?")
         x = item.get("x", 0)
         y = item.get("y", 0)
@@ -159,20 +170,21 @@ def _embed_new_villages(items: list[dict]) -> discord.Embed:
         )
 
     embed.description = "\n".join(lines) if lines else "Brak danych"
-    if len(items) > 25:
-        embed.description += f"\n\n… i {len(items) - 25} więcej"
-    embed.set_footer(text=FOOTER)
+    overflow = len(items) - max_items
+    if overflow > 0:
+        embed.description += f"\n\n… i {overflow} więcej — sprawdź /alerts na dashboardzie"
+    embed.set_footer(text=_timestamp_footer())
     return embed
 
 
-def _embed_alliance_changes(items: list[dict]) -> discord.Embed:
+def _embed_alliance_changes(items: list[dict], max_items: int = 10) -> discord.Embed:
     embed = discord.Embed(
         title="🔄 Zmiany w sojuszach",
         color=COLOR_PURPLE,
     )
     lines = []
     type_emoji = {"leave": "🚪", "join": "✅", "switch": "🔀"}
-    for item in items[:25]:
+    for item in items[:max_items]:
         name = item.get("player_name", "?")
         pop = item.get("total_pop", 0)
         old_alliance = item.get("old_alliance_name", "—")
@@ -187,9 +199,10 @@ def _embed_alliance_changes(items: list[dict]) -> discord.Embed:
         )
 
     embed.description = "\n".join(lines) if lines else "Brak danych"
-    if len(items) > 25:
-        embed.description += f"\n\n… i {len(items) - 25} więcej"
-    embed.set_footer(text=FOOTER)
+    overflow = len(items) - max_items
+    if overflow > 0:
+        embed.description += f"\n\n… i {overflow} więcej — sprawdź /alerts na dashboardzie"
+    embed.set_footer(text=_timestamp_footer())
     return embed
 
 

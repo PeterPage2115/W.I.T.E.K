@@ -21,6 +21,9 @@ def _ensure_columns(app):
             "kill_cost_atk": "TEXT",
             "kill_cost_def": "TEXT",
         },
+        "alerts": {
+            "discord_eligible": "BOOLEAN DEFAULT 1",
+        },
         "villages": {
             "region": "TEXT",
             "is_capital": "BOOLEAN",

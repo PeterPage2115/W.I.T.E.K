@@ -269,6 +269,7 @@ def _detect_pop_drops(new_id, prev_id, our_alliances, threshold, map_size,
             "old_pop": old_pop,
             "new_pop": new_pop,
             "drop_pct": round(drop_pct, 1),
+            "discord_eligible": True,
         })
 
     return alerts
@@ -312,6 +313,7 @@ def _detect_new_villages(new_id, prev_id, our_alliances, radius, map_size):
             "aid": v["aid"],
             "alliance_name": v["alliance_name"],
             "distance": round(min_dist, 1),
+            "discord_eligible": False,
         })
 
     return alerts
@@ -376,6 +378,7 @@ def _detect_alliance_changes(new_id, prev_id, our_alliances, map_size):
             "new_aid": new_aid,
             "new_alliance_name": new_map[uid]["alliance_name"],
             "total_pop": new_map[uid]["total_pop"],
+            "discord_eligible": False,
         })
 
     return alerts

@@ -204,6 +204,7 @@ def _run_alert_detection(app, new_snapshot):
                 snapshot_id=new_snapshot.id,
                 alert_type=alert_data["type"],
                 data=json.dumps(alert_data, ensure_ascii=False),
+                discord_eligible=alert_data.get("discord_eligible", True),
             )
             db.session.add(alert)
 
