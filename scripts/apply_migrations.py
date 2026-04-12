@@ -68,7 +68,19 @@ def apply_migrations():
                 app.logger.info("Migrations: %s is empty, skipping.", filename)
             else:
                 for statement in _split_statements(sql):
-                    db.session.execute(db.text(statement))
+                    try:
+                        db.session.execute(db.text(statement))
+                    except Exception as exc:
+                        msg = str(exc).lower()
+                        # Tolerate columns/indexes that already exist
+                        if "duplicate column" in msg or "already exists" in msg:
+                            app.logger.info(
+                                "Migrations: %s — skipped (already applied): %s",
+                                filename, exc,
+                            )
+                            db.session.rollback()
+                        else:
+                            raise
             db.session.execute(
                 db.text(
                     "INSERT INTO _migrations (filename, applied_at) "
