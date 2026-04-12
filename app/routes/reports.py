@@ -9,8 +9,6 @@ from ..auth_utils import login_required
 from ..database import db
 from ..models import BattleReport, AttackReport, Snapshot, SpyReport
 
-from ..auth_utils import login_required
-
 bp = Blueprint("reports", __name__)
 
 

@@ -100,7 +100,7 @@ def _remove_relation(alliance_name):
     rel = (
         DiplomaticRelation.query
         .filter(
-            DiplomaticRelation.active == True,
+            DiplomaticRelation.active.is_(True),
             func.lower(DiplomaticRelation.target_alliance_name) == alliance_name.lower(),
         )
         .first()
@@ -110,7 +110,7 @@ def _remove_relation(alliance_name):
         rel = (
             DiplomaticRelation.query
             .filter(
-                DiplomaticRelation.active == True,
+                DiplomaticRelation.active.is_(True),
                 DiplomaticRelation.target_alliance_name.ilike(f"%{alliance_name}%"),
             )
             .first()

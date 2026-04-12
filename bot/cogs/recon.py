@@ -9,6 +9,7 @@ from sqlalchemy import or_
 
 from bot.bot import db_query
 from bot.utils import (
+    COLOR_ATTACK,
     COLOR_INFO,
     COLOR_WARNING,
     FOOTER,
