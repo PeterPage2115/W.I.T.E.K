@@ -9,6 +9,7 @@ venv/
 
 # Environment
 .env
+.worktrees/
 
 # Database
 *.db
