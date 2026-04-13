@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import tribe_icon %}
+{% from "_macros.html" import tribe_icon, village_badges %}
 
 {% block title %}{{ player.name }}{% endblock %}
 
@@ -97,6 +97,8 @@
 </div>
 
 <!-- Villages Table -->
+{% set has_rof = villages | selectattr('is_capital') | first is not none or villages | selectattr('is_city') | first is not none or villages | selectattr('has_harbor') | first is not none or villages | selectattr('region') | first is not none %}
+{% set has_vp = villages | selectattr('victory_points') | first is not none %}
 <div class="trav-panel overflow-hidden">
     <div class="trav-panel-header">
         <h2 class="font-medieval text-base font-semibold">🏘️ Wioski ({{ villages | length }})</h2>
@@ -109,15 +111,19 @@
                     <th class="px-4 py-2.5 text-left">Nazwa</th>
                     <th class="px-4 py-2.5 text-center">Koordynaty</th>
                     <th class="px-4 py-2.5 text-right">Populacja</th>
+                    {% if has_vp %}<th class="px-4 py-2.5 text-right">🏆 VP</th>{% endif %}
                 </tr>
             </thead>
             <tbody>
                 {% for v in villages %}
                 <tr class="hover-row border-b border-trav-brown/10">
                     <td class="px-4 py-2 text-trav-text-muted">{{ loop.index }}</td>
-                    <td class="px-4 py-2 font-medium text-trav-text">{{ v.name }}</td>
+                    <td class="px-4 py-2 font-medium text-trav-text">
+                        {{ v.name }}{{ village_badges(v) }}
+                    </td>
                     <td class="px-4 py-2 text-center text-trav-text-light">({{ v.x }}|{{ v.y }})</td>
                     <td class="px-4 py-2 text-right font-semibold text-trav-text">{{ "{:,}".format(v.population) }}</td>
+                    {% if has_vp %}<td class="px-4 py-2 text-right text-trav-text-light">{{ "{:,}".format(v.victory_points) if v.victory_points else '—' }}</td>{% endif %}
                 </tr>
                 {% endfor %}
             </tbody>

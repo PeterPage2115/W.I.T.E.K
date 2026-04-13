@@ -1113,7 +1113,7 @@ class Economy(commands.Cog):
     @discord.option(
         "plemie", str,
         description="Plemię jednostek",
-        choices=["Rzymianie", "Germanie", "Galowie"],
+        choices=["Rzymianie", "Germanie", "Galowie", "Egipcjanie", "Hunowie", "Wikingowie", "Spartanie"],
     )
     @discord.option(
         "ts", int,
@@ -1373,7 +1373,7 @@ class Economy(commands.Cog):
     @discord.option("eta", str, description="Czas do ataku (h:mm) lub godziny np. 2:30 lub 2.5")
     @discord.option(
         "plemie", str, description="Twoje plemię",
-        choices=["Rzymianie", "Germanie", "Galowie"],
+        choices=["Rzymianie", "Germanie", "Galowie", "Egipcjanie", "Hunowie", "Wikingowie", "Spartanie"],
     )
     @discord.option(
         "ts", int, description="Poziom Placu Turniejowego (0-20)",
@@ -1414,7 +1414,7 @@ class Economy(commands.Cog):
             )
             return
 
-        tribe_map = {"Rzymianie": 1, "Germanie": 2, "Galowie": 3}
+        tribe_map = {"Rzymianie": 1, "Germanie": 2, "Galowie": 3, "Egipcjanie": 6, "Hunowie": 7, "Spartanie": 8, "Wikingowie": 9}
         tid = tribe_map[plemie]
         attack_eta_seconds = hours * 3600
 

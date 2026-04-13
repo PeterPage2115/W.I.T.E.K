@@ -67,7 +67,7 @@ INSERT INTO `x_world` VALUES (1,-200,-200,3,10187,'01',480,'player',38,'alliance
 ```
 16 fields: id, x, y, tid, vid, village_name, uid, player_name, aid, alliance_name, population, (5 NULLs)
 
-**Tribe IDs (tid):** 1=Romans, 2=Teutons, 3=Gauls, 4=Nature, 5=Natars, 6=Egyptians, 7=Huns, 8=Spartans, 9=Vikings
+**Tribe IDs (tid):** 1=Romans, 2=Teutons, 3=Gauls, 4=Nature, 5=Natars, 6=Egyptians, 7=Huns, 8=Spartans, 9=Vikings (RoF servers exclude tid=2 Teutons)
 
 `bot/tribes.py` is the single source of truth for all tribe/unit data (speeds, crop, combat stats). `bot/utils.py` generates its legacy dicts from it.
 
@@ -96,6 +96,19 @@ After each map.sql snapshot, `collector.py` runs `detect_alerts()` which compare
 ### Inactive Finder (/tnieaktywni)
 
 Cohort-based: anchors on latest snapshot to find nearby players, then checks earliest snapshot for same UIDs. Both `total_pop` AND `village_count` must be unchanged to flag as inactive. Uses bounding-box prefilter with torus wrap-around before exact distance calc.
+
+### Rise of Factions (RoF) Support
+
+Config-driven feature flags in `config/config.yaml` under `features:` allow the same codebase to support both classic and RoF servers.
+
+**Map Edge Wrapping** (`features.map_edge_wrapping`, default: `true`):
+- Controls whether distance calculations wrap around map edges
+- `torus_distance(wrap=True/False)` — `wrap=True` for classic servers (toroidal map), `wrap=False` for RoF (flat map)
+
+**Legionnaire Rebalance** (`features.legionnaire_rebalanced`, default: `false`):
+- When `true`, applies RoF stats to Legionnaire: def_cav 50→70, speed 6→7
+- `apply_legionnaire_rebalance()` in `tribes.py` runs at import time
+- Replaces `TRIBES[1]` with a modified `TribeDef` (frozen dataclass workaround)
 
 ## Commands
 
@@ -159,7 +172,7 @@ python -m pytest tests/ -v
 - **Language**: Comments and UI text in Polish; code identifiers in English
 - **Style**: No comments on obvious code; comment only what needs clarification
 - **Discord embeds**: Tactical colors — red=attack, green=defense/success, yellow=warning, blue=info, gold=identity
-- **Footer**: `"⚔️ W.I.T.E.K — Na cześć Gucio"` on all embeds
+- **Footer**: `"⚔️ W.I.T.E.K — Na cześć H2P_Gucio"` on all embeds
 - **Error handling**: Polish user-facing messages with emoji indicators (✅ ❌ ⚠️ 💡)
 - **Testing**: pytest; run `python -m pytest tests/ -v` before any commit
 - **User context**: Beginner programmer — explain choices clearly in plan docs

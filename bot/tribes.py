@@ -259,3 +259,53 @@ def get_legionnaire_stats(rebalanced: bool = False) -> dict:
         "def_cav": 70,
         "speed": 7,
     }
+
+
+def apply_legionnaire_rebalance():
+    """Apply Legionnaire rebalance if configured for RoF servers.
+
+    RoF rebalance: def_cav 50→70, speed 6→7.
+    Must replace frozen TribeDef since dataclasses are immutable.
+    """
+    try:
+        profile = _load_server_profile()
+    except Exception as e:
+        log.debug("Cannot load profile for legionnaire rebalance: %s", e)
+        return
+
+    if not profile.get("legionnaire_rebalanced", False):
+        return
+
+    old_tribe = TRIBES.get(1)
+    if old_tribe is None:
+        return
+
+    old_leg = old_tribe.units[0]  # Legionnaire is first unit
+    new_leg = UnitDef(
+        name=old_leg.name,
+        att=old_leg.att,
+        def_inf=old_leg.def_inf,
+        def_cav=70,
+        speed=7,
+        crop=old_leg.crop,
+        unit_type=old_leg.unit_type,
+        speed_name=old_leg.speed_name,
+        aliases=old_leg.aliases,
+    )
+
+    new_units = (new_leg,) + old_tribe.units[1:]
+    TRIBES[1] = TribeDef(
+        tid=old_tribe.tid,
+        name_pl=old_tribe.name_pl,
+        name_en=old_tribe.name_en,
+        emoji=old_tribe.emoji,
+        wall_type=old_tribe.wall_type,
+        units=new_units,
+        icon_slug=old_tribe.icon_slug,
+        settler_name=old_tribe.settler_name,
+        chief_idx=old_tribe.chief_idx,
+    )
+    log.info("Legionnaire rebalanced: def_cav=%d, speed=%d", new_leg.def_cav, new_leg.speed)
+
+
+apply_legionnaire_rebalance()

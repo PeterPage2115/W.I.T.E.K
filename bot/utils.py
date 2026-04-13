@@ -161,12 +161,17 @@ def calc_crop_consumption(troops: dict[str, int]) -> int:
     return total
 
 
-def torus_distance(x1: int, y1: int, x2: int, y2: int, map_size: int = 401) -> float:
-    """Calculate shortest distance on a Travian torus map."""
+def torus_distance(x1: int, y1: int, x2: int, y2: int, map_size: int = 401, wrap: bool = True) -> float:
+    """Calculate distance on a Travian map.
+
+    wrap=True: torus distance (shortest path, may wrap around edges)
+    wrap=False: flat Euclidean distance (no wrapping, for RoF servers)
+    """
     dx = abs(x1 - x2)
     dy = abs(y1 - y2)
-    dx = min(dx, map_size - dx)
-    dy = min(dy, map_size - dy)
+    if wrap:
+        dx = min(dx, map_size - dx)
+        dy = min(dy, map_size - dy)
     return (dx ** 2 + dy ** 2) ** 0.5
 
 

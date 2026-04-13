@@ -1,3 +1,11 @@
+{% macro village_badges(village) %}
+{%- if village.is_capital %}<span title="Stolica" class="rof-badge">⭐</span>{% endif -%}
+{%- if village.is_city %}<span title="Miasto" class="rof-badge">🏙️</span>{% endif -%}
+{%- if village.has_harbor %}<span title="Port" class="rof-badge">⚓</span>{% endif -%}
+{%- if village.region %}<span title="Region: {{ village.region }}" class="rof-badge rof-region">{{ village.region }}</span>{% endif -%}
+{%- if village.victory_points %}<span title="Punkty Zwycięstwa" class="rof-badge rof-vp">🏆{{ village.victory_points }}</span>{% endif -%}
+{% endmacro %}
+
 {% macro tribe_icon(tid, size='24px', tribe_names=None, tribe_icons=None) %}
 {%- set title = tribe_names.get(tid, 'Nieznane') if tribe_names else '' -%}
 {%- set icon = tribe_icons.get(tid, {}) if tribe_icons else {} -%}

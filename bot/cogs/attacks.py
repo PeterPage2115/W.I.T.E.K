@@ -926,6 +926,10 @@ class Attacks(commands.Cog):
         1: ("Pretorianin", 10, "Eq. Caesaris", 20),   # Romans
         2: ("Włócznik", 14, "Paladyn", 20),            # Teutons
         3: ("Falanga", 14, "Druid", 32),                # Gauls
+        6: ("Ash Warden", 6, "Resheph Chariot", 10),   # Egyptians
+        7: ("Mercenary", 7, "Marksman", 15),            # Huns
+        8: ("Shieldsman", 8, "Elpida Rider", 16),       # Spartans
+        9: ("Shield Maiden", 7, "Huskarl Rider", 12),   # Vikings
     }
 
     @discord.slash_command(name="tdef", description="Kto może wysłać def? Lista wiosek sojuszu z ETA")

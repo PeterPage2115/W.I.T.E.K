@@ -167,12 +167,22 @@
                           '" target="_blank" style="color:#2980b9">' + coordText + '</a>';
             }
 
+            let badges = '';
+            if (v.is_capital) badges += ' ⭐';
+            if (v.is_city) badges += ' 🏙️';
+            if (v.has_harbor) badges += ' ⚓';
+
+            let extra = '';
+            if (v.region) extra += '📍 ' + v.region + '<br>';
+            if (v.vp) extra += '🏆 VP: ' + v.vp.toLocaleString('pl-PL') + '<br>';
+
             marker.bindPopup(
                 '<div class="text-sm">' +
-                '<b>' + (v.name || '?') + '</b> ' + mapLink + '<br>' +
+                '<b>' + (v.name || '?') + '</b>' + badges + ' ' + mapLink + '<br>' +
                 '👤 ' + (v.player || 'Natury') + '<br>' +
                 '🏰 ' + (v.alliance || '—') + '<br>' +
                 '📊 Pop: ' + (v.pop != null ? v.pop.toLocaleString('pl-PL') : '?') + '<br>' +
+                extra +
                 tribe +
                 '</div>'
             );

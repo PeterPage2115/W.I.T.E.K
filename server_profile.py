@@ -18,6 +18,7 @@ _DEFAULT_FEATURES = {
     "cities": False,
     "harbors": False,
     "victory_points": False,
+    "map_edge_wrapping": True,
 }
 
 

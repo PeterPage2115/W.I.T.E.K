@@ -15,6 +15,7 @@ servers:
       cities: false
       harbors: false
       victory_points: false
+      map_edge_wrapping: true
     legionnaire_rebalanced: false
 
   # rof-x3:
@@ -30,6 +31,7 @@ servers:
   #     cities: true
   #     harbors: true
   #     victory_points: true
+  #     map_edge_wrapping: false
   #   legionnaire_rebalanced: true
 
 scheduler:

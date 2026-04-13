@@ -56,18 +56,27 @@ def api_villages():
 
     result = []
     for v in villages:
-        result.append(
-            {
-                "x": v.x,
-                "y": v.y,
-                "name": v.name,
-                "player": v.player_name,
-                "alliance": v.alliance_name,
-                "aid": v.aid,
-                "pop": v.population,
-                "tid": v.tid,
-                "is_ours": v.aid in our_alliances if v.aid else False,
-            }
-        )
+        entry = {
+            "x": v.x,
+            "y": v.y,
+            "name": v.name,
+            "player": v.player_name,
+            "alliance": v.alliance_name,
+            "aid": v.aid,
+            "pop": v.population,
+            "tid": v.tid,
+            "is_ours": v.aid in our_alliances if v.aid else False,
+        }
+        if v.is_capital:
+            entry["is_capital"] = True
+        if v.is_city:
+            entry["is_city"] = True
+        if v.has_harbor:
+            entry["has_harbor"] = True
+        if v.region:
+            entry["region"] = v.region
+        if v.victory_points:
+            entry["vp"] = v.victory_points
+        result.append(entry)
 
     return jsonify(result)

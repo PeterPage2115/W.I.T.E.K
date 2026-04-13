@@ -14,11 +14,13 @@ from . import paginate_query
 bp = Blueprint("attacks", __name__)
 
 
-def _torus_distance(x1, y1, x2, y2, map_size=401):
+def _torus_distance(x1, y1, x2, y2, map_size=401, wrap=True):
+    """wrap=True: torus distance; wrap=False: flat Euclidean (RoF servers)."""
     dx = abs(x1 - x2)
     dy = abs(y1 - y2)
-    dx = min(dx, map_size - dx)
-    dy = min(dy, map_size - dy)
+    if wrap:
+        dx = min(dx, map_size - dx)
+        dy = min(dy, map_size - dy)
     return sqrt(dx**2 + dy**2)
 
 

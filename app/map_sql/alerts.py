@@ -12,12 +12,17 @@ logger = logging.getLogger(__name__)
 SNAPSHOT_SIZE_TOLERANCE = 0.5
 
 
-def torus_distance(x1: int, y1: int, x2: int, y2: int, map_size: int = 401) -> float:
-    """Dystans na torusowej mapie Travian."""
+def torus_distance(x1: int, y1: int, x2: int, y2: int, map_size: int = 401, wrap: bool = True) -> float:
+    """Dystans na mapie Travian.
+
+    wrap=True: dystans torusowy (najkrótsza ścieżka, może zawijać)
+    wrap=False: dystans euklidesowy (bez zawijania, dla serwerów RoF)
+    """
     dx = abs(x1 - x2)
     dy = abs(y1 - y2)
-    dx = min(dx, map_size - dx)
-    dy = min(dy, map_size - dy)
+    if wrap:
+        dx = min(dx, map_size - dx)
+        dy = min(dy, map_size - dy)
     return (dx ** 2 + dy ** 2) ** 0.5
 
 
