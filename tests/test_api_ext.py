@@ -141,9 +141,9 @@ class TestRateLimiting:
         from app.routes.api_ext import _rate_limits
         _rate_limits.clear()
 
-        for _ in range(5):
+        for i in range(5):
             resp = client.post("/api/ext/report", headers=_headers(), json={
-                "attacker": {"name": "A"}, "defender": {"name": "D"},
+                "attacker": {"name": f"A{i}"}, "defender": {"name": "D"},
             })
             assert resp.status_code == 201
 
@@ -152,15 +152,15 @@ class TestRateLimiting:
         from app.routes.api_ext import _rate_limits, _RATE_LIMIT
         _rate_limits.clear()
 
-        for _ in range(_RATE_LIMIT):
+        for i in range(_RATE_LIMIT):
             resp = client.post("/api/ext/report", headers=_headers(), json={
-                "attacker": {"name": "A"}, "defender": {"name": "D"},
+                "attacker": {"name": f"A{i}"}, "defender": {"name": "D"},
             })
             assert resp.status_code == 201
 
         # 31st request should be blocked
         resp = client.post("/api/ext/report", headers=_headers(), json={
-            "attacker": {"name": "A"}, "defender": {"name": "D"},
+            "attacker": {"name": "A_extra"}, "defender": {"name": "D"},
         })
         assert resp.status_code == 429
         assert "Rate limit" in resp.get_json()["error"]
@@ -184,21 +184,21 @@ class TestRateLimiting:
         # Fill up the limit at t=0
         with patch("app.routes.api_ext.time") as mock_time:
             mock_time.time.return_value = 1000.0
-            for _ in range(_RATE_LIMIT):
+            for i in range(_RATE_LIMIT):
                 client.post("/api/ext/report", headers=_headers(), json={
-                    "attacker": {"name": "A"}, "defender": {"name": "D"},
+                    "attacker": {"name": f"A{i}"}, "defender": {"name": "D"},
                 })
 
             # Still at t=0 — should be blocked
             resp = client.post("/api/ext/report", headers=_headers(), json={
-                "attacker": {"name": "A"}, "defender": {"name": "D"},
+                "attacker": {"name": "A_blocked"}, "defender": {"name": "D"},
             })
             assert resp.status_code == 429
 
             # Jump forward 61 seconds — window expired
             mock_time.time.return_value = 1061.0
             resp = client.post("/api/ext/report", headers=_headers(), json={
-                "attacker": {"name": "A"}, "defender": {"name": "D"},
+                "attacker": {"name": "A_after_window"}, "defender": {"name": "D"},
             })
             assert resp.status_code == 201
 

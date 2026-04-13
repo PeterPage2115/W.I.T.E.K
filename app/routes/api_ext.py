@@ -170,6 +170,26 @@ def receive_report():
     atk_name = attacker.get("player") or attacker.get("name", "?")
     def_name = defender.get("player") or defender.get("name", "?")
 
+    atk_village = attacker.get("village", "")
+    def_village = defender.get("village", "")
+    atk_troops_json = json.dumps(attacker.get("troops", {}))
+    def_troops_json = json.dumps(defender.get("troops", {}))
+
+    # Duplicate check: same players, villages, and troop compositions
+    existing = BattleReport.query.filter_by(
+        attacker_name=atk_name,
+        defender_name=def_name,
+        attacker_village=atk_village,
+        defender_village=def_village,
+        attacker_troops=atk_troops_json,
+        defender_troops=def_troops_json,
+    ).first()
+
+    if existing:
+        log.info("Duplicate battle report detected: id=%s, att=%s vs def=%s",
+                 existing.id, atk_name, def_name)
+        return jsonify({"ok": True, "report_id": existing.id, "status": "duplicate"}), 200
+
     # Bounty lives inside attacker data (extension) or at top level (legacy)
     bounty_data = attacker.get("bounty") or data.get("bounty", {})
 
@@ -178,13 +198,13 @@ def receive_report():
         reported_by_name="Chrome Extension",
         attacker_name=atk_name,
         attacker_alliance=attacker.get("alliance", ""),
-        attacker_village=attacker.get("village", ""),
-        attacker_troops=json.dumps(attacker.get("troops", {})),
+        attacker_village=atk_village,
+        attacker_troops=atk_troops_json,
         attacker_losses=json.dumps(attacker.get("losses", {})),
         defender_name=def_name,
         defender_alliance=defender.get("alliance", ""),
-        defender_village=defender.get("village", ""),
-        defender_troops=json.dumps(defender.get("troops", {})),
+        defender_village=def_village,
+        defender_troops=def_troops_json,
         defender_losses=json.dumps(defender.get("losses", {})),
         bounty=json.dumps(bounty_data),
         battle_power_atk=data.get("battle_power_atk"),
@@ -200,7 +220,7 @@ def receive_report():
     log.info("Extension report saved: id=%s, att=%s vs def=%s",
              report.id, atk_name, def_name)
 
-    return jsonify({"ok": True, "report_id": report.id}), 201
+    return jsonify({"ok": True, "report_id": report.id, "status": "created"}), 201
 
 
 @bp.route("/troops", methods=["POST", "OPTIONS"])
@@ -306,6 +326,25 @@ def receive_spy_report():
 
     from app.models import SpyReport
 
+    troops_json = json.dumps(troops) if troops else None
+
+    # Duplicate check: same target, spy type, resources, and troops
+    existing = SpyReport.query.filter_by(
+        target_x=x,
+        target_y=y,
+        spy_type=spy_type,
+        resources_lumber=resources.get("lumber"),
+        resources_clay=resources.get("clay"),
+        resources_iron=resources.get("iron"),
+        resources_crop=resources.get("crop"),
+        troops=troops_json,
+    ).first()
+
+    if existing:
+        log.info("Duplicate spy report detected: id=%s, target=(%s|%s)",
+                 existing.id, x, y)
+        return jsonify({"ok": True, "report_id": existing.id, "status": "duplicate"}), 200
+
     report = SpyReport(
         spy_type=spy_type,
         target_player=data.get("target_player"),
@@ -316,7 +355,7 @@ def receive_spy_report():
         resources_clay=resources.get("clay"),
         resources_iron=resources.get("iron"),
         resources_crop=resources.get("crop"),
-        troops=json.dumps(troops) if troops else None,
+        troops=troops_json,
         defense_buildings=json.dumps(defense_buildings) if defense_buildings else None,
         submitted_by="extension",
     )
@@ -327,7 +366,7 @@ def receive_spy_report():
     log.info("Extension spy report saved: id=%s, target=(%s|%s) %s",
              report.id, x, y, data.get("target_player", "?"))
 
-    return jsonify({"ok": True, "report_id": report.id}), 201
+    return jsonify({"ok": True, "report_id": report.id, "status": "created"}), 201
 
 
 @bp.route("/incoming", methods=["POST", "OPTIONS"])
