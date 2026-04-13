@@ -13,6 +13,8 @@ venv/
 
 # Database
 *.db
+*.db-shm
+*.db-wal
 *.sqlite3
 
 # IDE
@@ -25,4 +27,8 @@ Thumbs.db
 
 # Cached data
 data_cache/
+
+# Tool caches
+.pytest_cache/
+.ruff_cache/
 

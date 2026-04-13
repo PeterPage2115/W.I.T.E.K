@@ -3,26 +3,27 @@ from flask_sqlalchemy import SQLAlchemy
 db = SQLAlchemy()
 
 
-def _ensure_columns(app):
-    """Add missing columns to existing tables (lightweight migration)."""
-    expected = {
+def _expected_column_types(*, is_sqlite):
+    false_default = "BOOLEAN DEFAULT 0" if is_sqlite else "BOOLEAN DEFAULT FALSE"
+    true_default = "BOOLEAN DEFAULT 1" if is_sqlite else "BOOLEAN DEFAULT TRUE"
+    return {
         "attack_reports": {
             "attacker_x": "INTEGER",
             "attacker_y": "INTEGER",
             "wall_level": "INTEGER",
             "crop_amount": "INTEGER",
             "crop_production": "INTEGER",
-            "auto_resolved": "BOOLEAN DEFAULT 0",
+            "auto_resolved": false_default,
         },
         "battle_reports": {
             "result": "TEXT",
-            "is_manual": "BOOLEAN DEFAULT 0",
+            "is_manual": false_default,
             "reported_by_name": "TEXT",
             "kill_cost_atk": "TEXT",
             "kill_cost_def": "TEXT",
         },
         "alerts": {
-            "discord_eligible": "BOOLEAN DEFAULT 1",
+            "discord_eligible": true_default,
         },
         "villages": {
             "region": "TEXT",
@@ -32,8 +33,13 @@ def _ensure_columns(app):
             "victory_points": "INTEGER",
         },
     }
+
+
+def _ensure_columns(app):
+    """Add missing columns to existing tables (lightweight migration)."""
     engine = db.engine
     is_sqlite = "sqlite" in str(engine.url)
+    expected = _expected_column_types(is_sqlite=is_sqlite)
     with engine.connect() as conn:
         for table, cols in expected.items():
             if is_sqlite:
@@ -59,9 +65,9 @@ def _ensure_columns(app):
         # had DEFAULT 1, making dashboard-only alerts appear on Discord
         conn.execute(
             db.text(
-                "UPDATE alerts SET discord_eligible = 0 "
+                "UPDATE alerts SET discord_eligible = false "
                 "WHERE alert_type IN ('new_village', 'alliance_change') "
-                "AND notified = 0"
+                "AND notified = false"
             )
         )
 

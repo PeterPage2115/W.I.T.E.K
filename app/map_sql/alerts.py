@@ -155,7 +155,7 @@ def _get_player_populations(snapshot_id: int) -> dict[int, dict]:
             db.func.sum(Village.population),
         )
         .filter(Village.snapshot_id == snapshot_id, Village.uid != 0)
-        .group_by(Village.uid)
+        .group_by(Village.uid, Village.player_name, Village.aid, Village.alliance_name)
         .all()
     )
     result = {}
@@ -211,7 +211,7 @@ def _get_player_alliance_map(snapshot_id: int) -> dict[int, dict]:
             db.func.sum(Village.population),
         )
         .filter(Village.snapshot_id == snapshot_id, Village.uid != 0)
-        .group_by(Village.uid)
+        .group_by(Village.uid, Village.player_name, Village.aid, Village.alliance_name)
         .all()
     )
     return {

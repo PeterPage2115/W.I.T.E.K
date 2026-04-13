@@ -1,7 +1,9 @@
 """Ogólne komendy W.I.T.E.K — /thelp, /tinfo, /tstats."""
 
 import logging
+import tomllib
 from datetime import datetime, timezone
+from pathlib import Path
 
 import discord
 from discord.ext import commands
@@ -10,6 +12,20 @@ from bot.bot import db_query
 from bot.utils import COLOR_GOLD, COLOR_MAIN, FOOTER
 
 log = logging.getLogger(__name__)
+
+
+def _load_project_version() -> str:
+    pyproject_path = Path(__file__).resolve().parents[2] / "pyproject.toml"
+
+    try:
+        with pyproject_path.open("rb") as pyproject_file:
+            return tomllib.load(pyproject_file)["project"]["version"]
+    except (FileNotFoundError, KeyError, tomllib.TOMLDecodeError) as exc:
+        log.warning("Nie udało się odczytać wersji projektu z %s: %s", pyproject_path, exc)
+        return "nieznana"
+
+
+PROJECT_VERSION = _load_project_version()
 
 
 class General(commands.Cog):
@@ -114,7 +130,7 @@ class General(commands.Cog):
         last_sync = await db_query(self.bot, _get_last_sync)
 
         embed = discord.Embed(title="🤖 W.I.T.E.K — Informacje", color=COLOR_GOLD)
-        embed.add_field(name="Wersja", value="1.0.0", inline=True)
+        embed.add_field(name="Wersja", value=PROJECT_VERSION, inline=True)
         embed.add_field(name="Uptime", value=f"{hours}h {minutes}m", inline=True)
         embed.add_field(name="Serwery", value=str(len(self.bot.guilds)), inline=True)
         embed.add_field(name="Ostatnia synchronizacja", value=last_sync, inline=False)

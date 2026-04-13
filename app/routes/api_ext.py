@@ -144,7 +144,7 @@ def receive_report():
 
     Expected JSON:
     {
-        "server_url": "https://ts31...",
+        "server_url": "https://server.example.travian.com",
         "report_id": 12345,
         "attacker": {"name": "...", "troops": {"1": 100}, "losses": {"1": 30}},
         "defender": {"name": "...", "troops": {"1": 200}, "losses": {"1": 80}},
@@ -230,7 +230,7 @@ def receive_troops():
 
     Expected JSON:
     {
-        "server_url": "https://ts31...",
+        "server_url": "https://server.example.travian.com",
         "x": 76, "y": 43,
         "village_name": "Wioska",
         "troops": {"1": 500, "2": 100}
@@ -282,7 +282,7 @@ def receive_spy_report():
 
     Expected JSON:
     {
-        "server_url": "https://ts31...",
+        "server_url": "https://server.example.travian.com",
         "target_player": "PlayerName",
         "target_village": "VillageName",
         "x": 76, "y": 43,

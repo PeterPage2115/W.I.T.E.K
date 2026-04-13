@@ -4,6 +4,20 @@ Wszystkie istotne zmiany w projekcie W.I.T.E.K.
 
 Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
+## [0.2.1] — 2026-04-13
+
+### Zmienione
+- Zsynchronizowano `README.md`, `DEPLOY.md` i `CLAUDE.md` z aktualnym układem repo po pivotcie RoF-first
+- Urealniono liczby w dokumentacji do bieżącego stanu repo: 9 cogów, 34 komendy slash i 882 testy pytest
+- Zaktualizowano opisy domyślnego Docker runtime (`docker compose up -d`, `run.py --scheduled`, interwał collectora z YAML)
+- Odświeżono przykłady tagów obrazów w `DEPLOY.md` pod cleanup release `0.2.1`
+
+### Naprawione
+- Usunięto lub przepisano odniesienia do starych, zduplikowanych ścieżek runtime po pivotcie RoF-first
+- `docs/PLAN.md` przestał udawać aktywny plan — został oznaczony jako archiwum po zakończonym cleanupie
+- `docs/ROADMAP.md` nie pokazuje już historycznie fałszywych wersji/liczb z epoki MVP
+- Doprecyzowano zakres danych rozszerzenia w `PRIVACY.md` i opisach API (raporty bitewne, szpiegowskie, wojska, incomingi oraz `game-data`: hero / marketplace / training)
+
 ## [0.2.0] — 2026-04-12
 
 ### Naprawione
@@ -42,3 +56,4 @@ Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
 ### Naprawione
 - Tribe ID bug — tid 8↔9 (Spartanie=8, Wikingowie=9)
+

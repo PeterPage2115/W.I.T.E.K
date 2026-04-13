@@ -83,11 +83,27 @@ def _normalize(profile: dict, name: str) -> dict:
 
 
 def _default_profile() -> dict:
-    return _normalize({
-        "url": os.environ.get("TRAVIAN_SERVER_URL", "https://ts31.x3.europe.travian.com"),
-        "speed": 3,
-        "tribes": [1, 2, 3],
-    }, "default")
+    return _normalize(
+        {
+            "url": os.environ.get(
+                "TRAVIAN_SERVER_URL", "https://rof.x3.international.travian.com"
+            ),
+            "speed": 3,
+            "tribes": [1, 3, 6, 7, 8, 9],
+            "features": {
+                "ships": True,
+                "regions": True,
+                "cities": True,
+                "harbors": True,
+                "victory_points": True,
+                "map_edge_wrapping": False,
+            },
+            "legionnaire_rebalanced": True,
+            "troop_speed_multiplier": 2,
+            "map_size": 401,
+        },
+        "default",
+    )
 
 
 def _from_flat_config(raw: dict) -> dict:

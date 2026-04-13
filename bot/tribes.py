@@ -217,7 +217,8 @@ def _build_tribes() -> dict[int, TribeDef]:
 
 
 # Build on import
-TRIBES.update(_build_tribes())
+_BASE_TRIBES = _build_tribes()
+TRIBES.update(_BASE_TRIBES)
 
 _VALID_TIDS = frozenset(TRIBES.keys())
 
@@ -250,7 +251,7 @@ def get_legionnaire_stats(rebalanced: bool = False) -> dict:
     Rebalanced (on servers with Vikings, no Teutons):
     - Cav def: 50 → 70, Speed: 6 → 7
     """
-    base = TRIBES[1].units[0]  # Legionnaire is first Roman unit
+    base = _BASE_TRIBES[1].units[0]  # Legionnaire is first Roman unit
     if not rebalanced:
         return {"att": base.att, "def_inf": base.def_inf, "def_cav": base.def_cav, "speed": base.speed}
     return {

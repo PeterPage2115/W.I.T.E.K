@@ -1,6 +1,19 @@
 # W.I.T.E.K — Przewodnik wdrożenia
 
-Kompletna instrukcja uruchomienia W.I.T.E.K w środowisku produkcyjnym i deweloperskim.
+Kompletna instrukcja uruchomienia W.I.T.E.K w aktualnym układzie **RoF-first**.
+
+---
+
+## Co uruchamia domyślny stack
+
+`docker compose up -d` to dziś **jedyny domyślny stack produkcyjny** repo:
+
+- `docker-compose.yml` — Flask + bot + scheduler + PostgreSQL
+- profil serwera: `SERVER_PROFILE=rof-x3`
+- start aplikacji: `python run.py --scheduled --port 5000`
+- kolektor `map.sql`: interwał z `scheduler.fetch_interval_minutes` (domyślnie 60 min)
+
+RoF to standardowy tryb działania repo — korzystasz po prostu z domyślnego stacku produkcyjnego.
 
 ---
 
@@ -9,10 +22,10 @@ Kompletna instrukcja uruchomienia W.I.T.E.K w środowisku produkcyjnym i dewelop
 | Składnik | Wersja | Uwagi |
 |----------|--------|-------|
 | Docker | 24+ | `docker --version` |
-| Docker Compose | v2+ | Wbudowany w Docker Desktop |
-| Token bota Discord | — | [Discord Developer Portal](https://discord.com/developers/applications) |
-| Serwer / VPS | — | Min. 512 MB RAM, otwarty port 5000 (lub inny) |
-| Git | — | Do klonowania repozytorium |
+| Docker Compose | v2+ | Wbudowany w Docker Desktop / plugin CLI |
+| Git | — | Do pobrania repozytorium |
+| Token bota Discord | opcjonalny dla web-only smoke, wymagany dla bota | Discord Developer Portal |
+| Serwer / VPS | — | Min. 512 MB RAM, otwarty port 5000 (lub inny z `WITEK_PORT`) |
 
 ---
 
@@ -25,30 +38,34 @@ git clone https://github.com/PeterPage2115/W.I.T.E.K.git
 cd W.I.T.E.K
 ```
 
-### 2. Utwórz plik `.env`
+### 2. Utwórz `.env`
 
 ```bash
 cp .env.example .env
 ```
 
-Otwórz `.env` i uzupełnij wartości:
+`.env.example` jest teraz głównym szablonem dla całego repo.
 
-| Zmienna | Opis | Przykład |
-|---------|------|---------|
-| `FLASK_SECRET_KEY` | Losowy ciąg znaków do sesji Flask | `python -c "import secrets; print(secrets.token_hex(32))"` |
-| `FLASK_DEBUG` | Tryb debugowania (`true` / `false`) | `false` (produkcja) |
-| `ALLIANCE_PASSWORD` | Hasło dostępu do strefy sojuszu | Ustaw własne |
-| `DISCORD_TOKEN` | Token bota Discord | Ze strony Developer Portal |
-| `DISCORD_GUILD_ID` | ID serwera Discord | Prawy klik → Kopiuj ID |
-| `DISCORD_ALERTS_CHANNEL_ID` | ID kanału alertów | Prawy klik → Kopiuj ID |
-| `DISCORD_DEFENSE_FORUM_ID` | ID forum obrony | Prawy klik → Kopiuj ID |
-| `DISCORD_DEF_ROLE_ID` | ID roli obrońców | Ustawienia serwera → Role |
-| `TRAVIAN_SERVER_URL` | URL serwera Travian | `https://ts31.x3.europe.travian.com` |
-| `DATABASE_URL` | Adres bazy (puste = SQLite) | Puste dla dev, automatyczne dla Docker prod |
-| `POSTGRES_DB` | Nazwa bazy PostgreSQL | `witek` |
-| `POSTGRES_USER` | Użytkownik PostgreSQL | `witek` |
-| `POSTGRES_PASSWORD` | Hasło PostgreSQL | Silne, losowe hasło |
-| `WITEK_PORT` | Port zewnętrzny | `5000` |
+| Zmienna | Czy wymagana | Opis |
+|---------|--------------|------|
+| `FLASK_SECRET_KEY` | ✅ | Sekret sesji Flask |
+| `ALLIANCE_PASSWORD` | ✅ | Hasło strefy sojuszu |
+| `DISCORD_TOKEN` | ⚠️ | Wymagany, jeśli ma wystartować bot |
+| `DISCORD_GUILD_ID` | ⚠️ | Potrzebny dla slash komend i integracji Discord |
+| `DISCORD_ALERTS_CHANNEL_ID` | ⚠️ | Kanał alertów mapowych |
+| `DISCORD_DEFENSE_FORUM_ID` | ⚠️ | Forum do wątków obrony |
+| `DISCORD_DEF_ROLE_ID` | ⚠️ | Rola pingowana przy obronie |
+| `DISCORD_CLIENT_ID` | opcjonalny | Login Discord OAuth do dashboardu |
+| `DISCORD_CLIENT_SECRET` | opcjonalny | Sekret OAuth |
+| `DISCORD_REDIRECT_URI` | opcjonalny | Callback OAuth, np. `http://localhost:5000/auth/callback` |
+| `SERVER_PROFILE` | ✅ | Aktywny profil serwera, domyślnie `rof-x3` |
+| `TRAVIAN_SERVER_URL` | opcjonalny | Tymczasowy override URL `map.sql` (np. smoke test x10) |
+| `EXT_API_TOKEN` | opcjonalny | Włącza API rozszerzenia Chrome |
+| `DATABASE_URL` | zwykle puste | Poza Dockerem: puste = SQLite, w Dockerze nadpisywane automatycznie |
+| `POSTGRES_DB` | ✅ dla domyślnego compose | Nazwa bazy PostgreSQL, domyślnie `witek_rof` |
+| `POSTGRES_USER` | ✅ dla domyślnego compose | Użytkownik PostgreSQL |
+| `POSTGRES_PASSWORD` | ✅ dla domyślnego compose | Hasło PostgreSQL |
+| `WITEK_PORT` | opcjonalny | Port publikowany przez Docker, domyślnie `5000` |
 
 ### 3. Utwórz konfigurację YAML
 
@@ -56,219 +73,215 @@ Otwórz `.env` i uzupełnij wartości:
 cp config/config.example.yaml config/config.yaml
 ```
 
-Edytuj `config/config.yaml` — najważniejsze:
+Najważniejsze ustawienia w `config/config.yaml`:
 
 ```yaml
 servers:
-  ts31:
-    our_alliances: [123, 456]  # ← Wstaw ID swoich sojuszy z map.sql
+  rof-x3:
+    our_alliances: [123, 456]
+
+scheduler:
+  fetch_interval_minutes: 60
+
+alerts:
+  pop_drop_threshold: 25
+  min_pop_for_alerts: 500
+  alert_cooldown_hours: 6
+  new_village_radius: 30
 ```
 
-ID sojuszy znajdziesz w map.sql (pole `aid` w danych wioski).
+Archiwalny preset klasycznego świata znajdziesz w `legacy\ts31\`.
 
 ---
 
 ## 🚀 Uruchomienie
 
-### Tryb deweloperski (SQLite)
-
-Prosty tryb do testowania — bez PostgreSQL, kod montowany z dysku:
+### Produkcja / domyślny Docker (PostgreSQL)
 
 ```bash
-docker compose -f docker-compose.dev.yml up -d
+docker compose up -d --build
 ```
 
-- Dashboard: http://localhost:5000
-- Baza: SQLite (plik `witek.db`)
-- Zmiany w kodzie widoczne po restarcie kontenera
+Co dostajesz:
 
-### Tryb produkcyjny (PostgreSQL)
+- dashboard na `http://localhost:5000` (lub porcie z `WITEK_PORT`),
+- PostgreSQL w kontenerze `witek-rof-db`,
+- bota Discord, jeśli ustawiono `DISCORD_TOKEN`,
+- scheduler `map.sql` uruchomiony przez `run.py --scheduled`.
 
-Pełna konfiguracja z bazą PostgreSQL:
+> **Ważne:** domyślny stack używa nazw RoF (`witek-rof-app`, `witek-rof-db`, `witek-rof-pgdata`) oraz bazy `witek_rof`, żeby nie mieszać danych nowego świata ze starym stackiem `witek-*`. Jeśli aktualizujesz dawny deployment `witek-app` / `witek-db` / `witek-pgdata`, samo `docker compose up -d --build` uruchomi nowy, pusty stack — to **nie** jest inplace upgrade. Najpierw zrób backup starej bazy i zdecyduj, czy chcesz czysty start, czy ręczne odtworzenie danych do `witek_rof`.
+
+### Deweloperski stack (SQLite)
 
 ```bash
-docker compose up -d
+docker compose -f docker-compose.dev.yml up -d --build
 ```
 
-- Dashboard: http://localhost:5000 (lub port z `WITEK_PORT`)
-- Baza: PostgreSQL w osobnym kontenerze
-- Dane zachowane w wolumenie `witek-pgdata`
+Tryb dev używa:
 
-### Reign of Fire (RoF)
+- SQLite (`witek.db`),
+- bind mountów kodu,
+- `FLASK_DEBUG=true`,
+- tego samego entrypointu i trybu `--scheduled`.
 
-Oddzielna instancja dla serwera RoF:
+### Tymczasowy smoke test na x10
+
+Jeśli chcesz tylko sprawdzić pobieranie `map.sql` przed live RoF x3:
 
 ```bash
-cp .env.rof.example .env.rof
-# Uzupełnij .env.rof (osobny token bota!)
-docker compose --env-file .env.rof -f docker-compose.rof.yml up -d
+# w .env ustaw tymczasowo
+TRAVIAN_SERVER_URL=https://rof.x10.international.travian.com
 ```
 
-- Dashboard: http://localhost:5001 (port 5001)
-- Baza: Oddzielny PostgreSQL (`witek_rof`)
-- Oddzielna sieć Docker, wolumen i token bota
+Po teście usuń override, aby wrócić do profilu `rof-x3`.
 
 ### Sprawdzenie statusu
 
 ```bash
-# Status kontenerów
 docker compose ps
-
-# Logi aplikacji (na żywo)
 docker compose logs -f witek-app
-
-# Logi bazy danych
 docker compose logs witek-db
 ```
 
 ---
 
-## 🎯 Pierwsze kroki po uruchomieniu
+## 🎯 Pierwsze kroki po starcie
 
 ### 1. Zaproś bota na serwer Discord
 
-Wejdź na [Discord Developer Portal](https://discord.com/developers/applications), wybierz aplikację bota i w zakładce **OAuth2 → URL Generator**:
+W Discord Developer Portal ustaw:
 
 - Scopes: `bot`, `applications.commands`
 - Bot Permissions: `Send Messages`, `Embed Links`, `Read Message History`, `Use Slash Commands`, `Create Public Threads`
-- Skopiuj wygenerowany URL i otwórz go w przeglądarce
 
-### 2. Skonfiguruj kanały Discord
+### 2. Skonfiguruj kanały i role
 
-- Utwórz kanał tekstowy na alerty (np. `#alerty-witek`)
-- Utwórz forum na obronę (np. `forum-obrona`)
-- Utwórz rolę obrońców (np. `@Obrońca`)
-- Wpisz ich ID do `.env`
+- kanał alertów (`DISCORD_ALERTS_CHANNEL_ID`),
+- forum obrony (`DISCORD_DEFENSE_FORUM_ID`),
+- rolę obrońców (`DISCORD_DEF_ROLE_ID`).
 
-### 3. Połącz konta Travian z Discord
+### 3. Pierwszy snapshot `map.sql`
 
-Każdy gracz na serwerze Discord powinien użyć:
-```
-/tlink <nazwa_gracza_travian>
-```
-
-### 4. Pierwsze pobranie map.sql
-
-Scheduler pobiera dane automatycznie raz dziennie (domyślnie o 02:00 UTC). Aby pobrać od razu:
+W trybie `--scheduled` aplikacja sama pobierze snapshot przy starcie, jeśli baza jest pusta. Możesz też wymusić pobranie ręcznie:
 
 ```bash
-# Wewnątrz kontenera
-docker exec witek-app python run.py --collect
-
-# Lub z pliku lokalnego
-docker exec witek-app python run.py --from-file /app/map.sql
+docker compose exec witek-app python run.py --collect
 ```
 
-### 5. System alertów
-
-Po pierwszym pobraniu map.sql, system alertów automatycznie porównuje kolejne snapshoty i generuje powiadomienia:
+### 4. Alerty mapowe
 
 | Typ alertu | Opis | Discord? |
 |------------|------|----------|
-| `pop_drop` | Spadek populacji gracza ≥ próg (domyślnie 25%) | ✅ Tak |
-| `new_village` | Nowa niealiancka wioska w pobliżu sojuszu | ❌ Tylko dashboard |
-| `alliance_change` | Gracz zmienił/opuścił/dołączył do sojuszu | ❌ Tylko dashboard |
+| `pop_drop` | Spadek populacji gracza ≥ próg | ✅ Tak |
+| `new_village` | Nowa niealiancka wioska w pobliżu | ❌ Dashboard only |
+| `alliance_change` | Wejście / wyjście / zmiana sojuszu | ❌ Dashboard only |
 
-Konfiguracja progów w `config/config.yaml`:
+### 5. API rozszerzenia Chrome (opcjonalnie)
 
-```yaml
-alerts:
-  pop_drop_threshold: 25    # % spadku populacji
-  new_village_radius: 15    # Promień w polach
-  min_pop: 100              # Min. populacja do monitoringu
-  cooldown_hours: 24        # Cooldown między alertami tego samego typu
-```
+Ustaw `EXT_API_TOKEN`, jeśli chcesz używać rozszerzenia do ręcznego importu danych z gry (raporty, wojska, incomingi oraz dane `hero` / `marketplace` / `training`). Aktualne endpointy:
 
-Alerty widoczne na dashboardzie (zakładka Alerty) i na kanale Discord ustawionym w `DISCORD_ALERTS_CHANNEL_ID`.
+- `POST /api/ext/report`
+- `POST /api/ext/spy-report`
+- `POST /api/ext/troops`
+- `POST /api/ext/incoming`
+- `POST /api/ext/game-data`
 
-### 6. Sprawdź dashboard
+### 6. Dashboard i OAuth
 
-Otwórz http://localhost:5000 (lub `http://YOUR_SERVER:5000`) — powinny się pojawić dane po pierwszym pobraniu.
+- podstawowy dostęp do strefy sojuszu działa przez hasło,
+- login Discord OAuth wymaga `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_REDIRECT_URI`.
 
 ---
 
 ## 🔄 Aktualizacja
 
-```bash
-# Pobierz najnowszy kod
-git pull
+Poniższa procedura dotyczy istniejącego stacku `witek-rof-*`.
 
-# Przebuduj i uruchom ponownie
+```bash
+git pull
 docker compose up -d --build
 ```
 
-Dane w PostgreSQL są zachowane w wolumenie — aktualizacja nie kasuje bazy.
+Dane PostgreSQL są trzymane w wolumenie `witek-rof-pgdata`, więc sama aktualizacja nie usuwa bazy.
 
-> **Uwaga:** Od wersji 0.2.0 migracje schematu bazy wykonywane są automatycznie przez `_ensure_columns()` przy starcie aplikacji. Nie ma potrzeby ręcznego uruchamiania skryptów migracyjnych.
+> **Uwaga:** Migracje schematu są wykonywane przy starcie aplikacji przez `_ensure_columns()`. Nie ma potrzeby uruchamiania osobnych skryptów migracyjnych.
+
+### Migracja ze starego stacku `witek-*`
+
+Jeśli przechodzisz ze starego deploymentu o nazwach `witek-app` / `witek-db` / `witek-pgdata`, potraktuj ten release jak migrację do nowej przestrzeni danych:
+
+```bash
+# 1. Zrób backup starej bazy
+docker compose exec -T witek-db pg_dump -U witek witek > backup_old_stack.sql
+
+# 2. Zatrzymaj stary stack
+docker compose down
+
+# 3. Wstań na nowym RoF-first stacku
+docker compose up -d --build
+
+# 4. Opcjonalnie odtwórz backup do nowej bazy RoF
+docker compose exec -T witek-db psql -U witek witek_rof < backup_old_stack.sql
+```
+
+Jeśli nie chcesz przenosić danych ze starego świata, pomiń krok 4 i zacznij od czystej bazy `witek_rof`.
 
 ---
 
 ## 💾 Backup i przywracanie
 
-### Backup bazy PostgreSQL
+### Backup PostgreSQL
 
 ```bash
-# Eksport do pliku SQL
-docker exec witek-db pg_dump -U witek witek > backup_$(date +%Y%m%d).sql
+docker compose exec -T witek-db pg_dump -U witek witek_rof > backup_$(date +%Y%m%d).sql
 ```
 
-### Przywracanie z backupu
+### Przywracanie
 
 ```bash
-# Import z pliku SQL
-docker exec -i witek-db psql -U witek witek < backup.sql
+docker compose exec -T witek-db psql -U witek witek_rof < backup.sql
 ```
 
-### Automatyczny backup (cron)
-
-Dodaj do crontab na serwerze:
+### Cron / harmonogram backupu (przykład Linux)
 
 ```bash
-# Codziennie o 03:00 — backup bazy W.I.T.E.K
-0 3 * * * docker exec witek-db pg_dump -U witek witek > /backups/witek_$(date +\%Y\%m\%d).sql
+0 3 * * * docker compose exec -T witek-db pg_dump -U witek witek_rof > /backups/witek_$(date +\%Y\%m\%d).sql
 ```
 
 ---
 
 ## 🐛 Troubleshooting
 
-### Bot nie łączy się z Discordem
+### Bot nie wystartował
 
-- Sprawdź `DISCORD_TOKEN` w `.env` — czy jest poprawny?
-- Sprawdź logi: `docker compose logs witek-app | grep -i discord`
-- Upewnij się, że bot ma włączone **Message Content Intent** w Developer Portal
+- sprawdź `DISCORD_TOKEN`,
+- sprawdź `docker compose logs witek-app | grep -i discord`,
+- jeśli chcesz tylko smoke test webu, brak tokena jest dozwolony — bot po prostu nie ruszy.
 
 ### Brak danych na dashboardzie
 
-- Uruchom ręczne pobranie: `docker exec witek-app python run.py --collect`
-- Sprawdź URL serwera Travian w `.env` (`TRAVIAN_SERVER_URL`)
-- Sprawdź logi: `docker compose logs witek-app | grep -i collect`
+- sprawdź `SERVER_PROFILE` i ewentualny `TRAVIAN_SERVER_URL`,
+- wymuś pobranie: `docker compose exec witek-app python run.py --collect`,
+- sprawdź logi: `docker compose logs witek-app | grep -i collect`.
+
+### Scheduler działa inaczej niż oczekiwano
+
+- interwał ustawia `scheduler.fetch_interval_minutes` w `config/config.yaml`,
+- domyślna wartość repo to `60`, a nie „raz dziennie”.
 
 ### Błędy bazy danych
 
-- Sprawdź czy kontener bazy działa: `docker compose ps witek-db`
-- Sprawdź `DATABASE_URL` — w trybie prod jest ustawiany automatycznie przez docker-compose
-- Zresetuj bazę (UWAGA — kasuje dane!): `docker compose down -v && docker compose up -d`
-
-### Kontener się restartuje
-
-```bash
-# Sprawdź logi ostatniego restartu
-docker compose logs --tail=50 witek-app
-
-# Sprawdź healthcheck
-docker inspect witek-app | grep -A 10 Health
-```
+- `docker compose ps witek-db`
+- sprawdź `POSTGRES_*` w `.env`,
+- pełny reset danych: `docker compose down -v && docker compose up -d`.
 
 ### Port zajęty
 
-Zmień `WITEK_PORT` w `.env` na inny wolny port, np. `8080`.
+Zmień `WITEK_PORT` w `.env`, np. na `8080`.
 
 ---
 
 ## 📦 Docker Registry (opcjonalnie)
-
-Aby opublikować obraz w GitHub Container Registry:
 
 ### Logowanie do GHCR
 
@@ -279,26 +292,20 @@ echo $GITHUB_TOKEN | docker login ghcr.io -u peterpage2115 --password-stdin
 ### Budowanie i publikacja
 
 ```bash
-# Zbuduj z tagiem
 docker build -t ghcr.io/peterpage2115/w.i.t.e.k:latest .
-
-# Wypchnij do registry
 docker push ghcr.io/peterpage2115/w.i.t.e.k:latest
 
-# Z wersjonowaniem
-docker build -t ghcr.io/peterpage2115/w.i.t.e.k:1.0.0 .
-docker push ghcr.io/peterpage2115/w.i.t.e.k:1.0.0
+docker build -t ghcr.io/peterpage2115/w.i.t.e.k:0.2.1 .
+docker push ghcr.io/peterpage2115/w.i.t.e.k:0.2.1
 ```
 
-### Użycie w docker-compose.yml
-
-Zamiast budowania lokalnego, użyj gotowego obrazu:
+### Użycie gotowego obrazu w compose
 
 ```yaml
 services:
   witek-app:
-    image: ghcr.io/peterpage2115/w.i.t.e.k:latest
-    # zakomentuj sekcję build:
+    image: ghcr.io/peterpage2115/w.i.t.e.k:0.2.1
+    # usuń / zakomentuj sekcję build:
     # build:
     #   context: .
     #   dockerfile: Dockerfile
@@ -309,21 +316,21 @@ services:
 ## 📁 Struktura plików
 
 ```
-witek/
-├── .env.example          # Szablon konfiguracji
-├── .env                  # Twoja konfiguracja (nie commituj!)
-├── config/
-│   ├── config.example.yaml  # Szablon YAML
-│   └── config.yaml          # Twoja konfiguracja
-├── Dockerfile            # Multi-stage build (produkcja)
-├── docker-compose.yml    # Produkcja (PostgreSQL)
-├── docker-compose.dev.yml # Deweloperski (SQLite)
-├── app/                  # Flask — dashboard webowy
-├── bot/                  # Discord bot — komendy slash
-├── tests/                # Testy pytest
-└── run.py                # Punkt wejścia aplikacji
+.env.example            # Jedyny aktywny template środowiska
+config/config.example.yaml
+docker-compose.yml      # Domyślny stack prod (RoF-first)
+docker-compose.dev.yml  # Stack dev (SQLite)
+Dockerfile              # Obraz uruchamia run.py --scheduled
+app/                    # Flask dashboard + API
+bot/                    # Discord bot
+extension/              # Chrome extension
+tests/                  # Testy pytest
+legacy/ts31/            # Archiwum klasycznego presetu
 ```
 
 ---
 
-*⚔️ W.I.T.E.K — Na cześć Gucio*
+*⚔️ W.I.T.E.K — Na cześć H2P_Gucio*
+
+
+

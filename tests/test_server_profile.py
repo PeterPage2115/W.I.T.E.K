@@ -120,3 +120,22 @@ travian:
     assert profile["url"] == "https://ts31.x3.europe.travian.com"
     assert profile["tribes"] == [1, 2, 3, 6, 7]
     assert profile["our_alliances"] == [14, 32]
+
+
+def test_missing_config_uses_rof_defaults(tmp_path):
+    """Missing config falls back to RoF-first defaults."""
+    missing_config = tmp_path / "missing.yaml"
+    from server_profile import load_profile
+
+    with patch.dict(os.environ, {}, clear=False):
+        os.environ.pop("SERVER_PROFILE", None)
+        os.environ.pop("TRAVIAN_SERVER_URL", None)
+        profile = load_profile(missing_config)
+
+    assert profile["url"] == "https://rof.x3.international.travian.com"
+    assert profile["tribes"] == [1, 3, 6, 7, 8, 9]
+    assert profile["features"]["ships"] is True
+    assert profile["features"]["map_edge_wrapping"] is False
+    assert profile["legionnaire_rebalanced"] is True
+
+

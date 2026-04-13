@@ -1118,9 +1118,7 @@ class Defense(commands.Cog):
         self.bot = bot
 
     def _server_url(self) -> str:
-        return self.bot.flask_app.config.get(
-            "TRAVIAN_SERVER_URL", "https://ts31.x3.europe.travian.com"
-        )
+        return self.bot.flask_app.config.get("TRAVIAN_SERVER_URL", "")
 
     async def _detect_thread_coords(self, channel_id: int):
         """Auto-detect village coords from a defense thread channel ID."""

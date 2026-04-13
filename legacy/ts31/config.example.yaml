@@ -1,30 +1,14 @@
-# W.I.T.E.K — Konfiguracja aktywna (RoF-first)
-# Jeśli dziś testujesz na x10, zostaw SERVER_PROFILE=rof-x3 i nadpisz tylko TRAVIAN_SERVER_URL w .env
+# W.I.T.E.K — Wirtualny Informator Taktyczno-Ekonomiczny Koalicji
+# Konfiguracja — wybór serwera: ustaw SERVER_PROFILE w .env
 
 servers:
-  rof-x3:
-    url: "https://rof.x3.international.travian.com"
-    speed: 3
-    map_size: 401
-    troop_speed_multiplier: 2
-    tribes: [1, 3, 6, 7, 8, 9]
-    our_alliances: []
-    features:
-      ships: true
-      regions: true
-      cities: true
-      harbors: true
-      victory_points: true
-      map_edge_wrapping: false
-    legionnaire_rebalanced: true
-
   ts31:
     url: "https://ts31.x3.europe.travian.com"
     speed: 3
     map_size: 401
     troop_speed_multiplier: 2
     tribes: [1, 2, 3, 6, 7]
-    our_alliances: [14, 32, 46, 120]
+    our_alliances: []
     features:
       ships: false
       regions: false
@@ -33,6 +17,22 @@ servers:
       victory_points: false
       map_edge_wrapping: true
     legionnaire_rebalanced: false
+
+  # rof-x3:
+  #   url: "https://rof.x3.international.travian.com"
+  #   speed: 3
+  #   map_size: 401
+  #   troop_speed_multiplier: 2
+  #   tribes: [1, 3, 6, 7, 8, 9]
+  #   our_alliances: []
+  #   features:
+  #     ships: true
+  #     regions: true
+  #     cities: true
+  #     harbors: true
+  #     victory_points: true
+  #     map_edge_wrapping: false
+  #   legionnaire_rebalanced: true
 
 scheduler:
   fetch_interval_minutes: 60

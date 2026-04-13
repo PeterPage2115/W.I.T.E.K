@@ -62,9 +62,7 @@ class Attacks(commands.Cog):
             self.auto_resolve_loop.cancel()
 
     def _server_url(self) -> str:
-        return self.bot.flask_app.config.get(
-            "TRAVIAN_SERVER_URL", "https://ts31.x3.europe.travian.com"
-        )
+        return self.bot.flask_app.config.get("TRAVIAN_SERVER_URL", "")
 
     # ------------------------------------------------------------------ #
     # /tatak — report a new attack

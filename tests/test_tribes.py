@@ -4,6 +4,7 @@ import pytest
 from unittest.mock import patch
 
 from bot.tribes import UnitDef, TribeDef, TRIBES
+from server_profile import load_profile
 
 
 class TestUnitDef:
@@ -95,13 +96,14 @@ class TestExistingTribes:
         assert chief.crop == 4
 
     def test_legionista_full_stats(self):
-        """Spot-check full stats for one Roman unit."""
+        """Spot-check runtime Legionnaire stats for the active profile."""
         leg = TRIBES[1].units[0]
+        profile = load_profile()
         assert leg.name == "Legionista"
         assert leg.att == 40
         assert leg.def_inf == 35
-        assert leg.def_cav == 50
-        assert leg.speed == 6
+        assert leg.def_cav == (70 if profile.get("legionnaire_rebalanced", False) else 50)
+        assert leg.speed == (7 if profile.get("legionnaire_rebalanced", False) else 6)
         assert leg.crop == 1
         assert leg.unit_type == "inf"
 

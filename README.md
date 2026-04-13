@@ -2,19 +2,28 @@
 
 [![CI](https://github.com/PeterPage2115/W.I.T.E.K/actions/workflows/ci.yml/badge.svg)](https://github.com/PeterPage2115/W.I.T.E.K/actions/workflows/ci.yml)
 
-Narzędzie analityczne sojuszu **Travian Legends** + bot Discord.
-Nazwane na cześć H2P_Gucio (Witold Tacikiewicz).
+Narzędzie analityczne dla Travian Legends: dashboard Flask, bot Discord oraz opcjonalne API/rozszerzenie do ręcznego importu raportów z gry.
 
 ---
 
+## Aktualny snapshot repo
+
+- 🌋 **RoF-first** — domyślny profil to `rof-x3`
+- 🤖 **9 cogów / 34 komendy slash** w bocie Discord
+- 🌐 **12 modułów tras Flask** dla dashboardu i API
+- ✅ **882 testy pytest** w aktualnym repo
+- 🐳 **Docker prod + dev** — `docker-compose.yml` (PostgreSQL) i `docker-compose.dev.yml` (SQLite)
+- 🗂️ **Klasyczny preset** został odłożony do `legacy\ts31\`
+
 ## Co to jest?
 
-W.I.T.E.K to narzędzie dla sojuszu UFOLODZY na serwerze Travian Legends, które:
+W.I.T.E.K przygotowany jest domyślnie pod **RoF x3** i łączy kilka narzędzi w jednym projekcie:
 
-- 🌐 **Dashboard webowy** — przeglądanie graczy, sojuszy, wiosek z danymi z map.sql
-- 🤖 **Bot Discord** — komendy slash do koordynacji ataków, statystyk, łączenia kont
-- 📊 **Automatyczne zbieranie danych** — codzienne pobieranie map.sql z serwera Travian
-- 🚨 **System alertów** — powiadomienia o atakach na wioski sojuszu
+- 🌐 **Dashboard webowy** — gracze, sojusze, wioski, alerty, dyplomacja, wyszukiwanie
+- 🤖 **Bot Discord** — koordynacja ataków i obrony, kalkulatory, statystyki, profile graczy
+- 📊 **Kolektor `map.sql`** — automatyczne pobieranie snapshotów serwera Travian
+- 🚨 **Alerty mapowe** — `pop_drop`, `new_village`, `alliance_change`
+- 🧩 **API + rozszerzenie Chrome** — ręczne wysyłanie raportów bitewnych, szpiegowskich, wojsk, incomingów oraz danych `hero` / `marketplace` / `training`
 
 ## Szybki start
 
@@ -29,129 +38,146 @@ cp config/config.example.yaml config/config.yaml
 
 ### 2. Uzupełnij konfigurację
 
-Edytuj `.env` — wpisz token bota Discord, hasło i pozostałe wartości.
-Edytuj `config/config.yaml` — wpisz ID swoich sojuszy.
+- `.env.example` jest teraz **jedynym** aktywnym szablonem środowiska dla całego repo
+- Domyślny profil repo to `SERVER_PROFILE=rof-x3`
+- Jeśli chcesz zrobić tylko chwilowy smoke test na x10, ustaw tymczasowo:
+
+```bash
+TRAVIAN_SERVER_URL=https://rof.x10.international.travian.com
+```
+
+- Po teście usuń override i wróć do `rof-x3`
+- Archiwalny preset starego świata znajdziesz w `legacy\ts31\`
+- W `config/config.yaml` wpisz przede wszystkim `servers.rof-x3.our_alliances`
 
 ### 3. Uruchom
 
 ```bash
-# Produkcja (PostgreSQL)
+# Produkcja / domyślny stack RoF-first (PostgreSQL)
 docker compose up -d
 
-# Deweloperski (SQLite)
+# Deweloperski stack (SQLite + bind mount kodu)
 docker compose -f docker-compose.dev.yml up -d
 ```
+
+Domyślny obraz startuje komendą `python run.py --scheduled --port 5000`, więc razem ruszają:
+
+- dashboard Flask,
+- bot Discord (jeśli `DISCORD_TOKEN` jest ustawiony),
+- scheduler `map.sql` z interwałem z `scheduler.fetch_interval_minutes` (domyślnie 60 min).
 
 Dashboard: http://localhost:5000
 
 📖 **Pełna instrukcja wdrożenia:** [DEPLOY.md](DEPLOY.md)
 
----
-
-## Komendy Discord
-
-| Komenda | Opis |
-|---------|------|
-| **ℹ️ Informacyjne** | |
-| `/thelp` | Lista komend |
-| `/tinfo` | Informacje o bocie + uptime |
-| `/tstats` | Statystyki serwera (gracze, sojusze, top 5) |
-| **🔐 Tożsamość** | |
-| `/tlink <gracz>` | Połącz konto Discord z graczem Travian |
-| `/tunlink` | Usuń połączenie |
-| `/twhoami` | Pokaż połączony profil Travian |
-| **⚔️ Ataki i Obrona** | |
-| `/tatak` | Zgłoś atak na wioskę sojuszu (tworzy wątek obrony) |
-| `/tdodaj` | Dodaj kolejny atak do istniejącego wątku |
-| `/tataki` | Lista aktywnych ataków |
-| `/trozwiaz` | Rozwiąż zgłoszenie ataku + archiwizacja wątku |
-| `/twojska` | Zarejestruj garnizon wojsk w wiosce |
-| `/twsparcie` | Zarejestruj wysłane wsparcie |
-| `/tstan` | Stan obrony wioski (garnizon + wsparcie + zboże) |
-| `/tdef` | Kto z sojuszu może wysłać def? (sortowane po ETA) |
-| **📜 Raporty** | |
-| `/traport` | Wklej raport bitewny (modal) |
-| `/traporty` | Lista ostatnich raportów bitewnych |
-| **🕊️ Dyplomacja** | |
-| `/tdyplomacja` | Pokaż relacje dyplomatyczne |
-| `/tdodaj_relacje` | Dodaj relację dyplomatyczną |
-| `/tusun_relacje` | Usuń relację dyplomatyczną |
-| **🗺️ Rozpoznanie** | |
-| `/tnieaktywni` | Znajdź nieaktywnych graczy w okolicy |
-| `/tcropper` | Szukaj cropperów (9c/15c) w zasięgu |
-| `/tszukaj` | Wyszukaj wioski po nazwie, graczu, sojuszu |
-| `/tporownaj` | Porównaj dwa sojusze (populacja, wioski, top gracze) |
-| **🧮 Kalkulatory taktyczne** | |
-| `/tbezpieczne` | Bezpieczne wysyłanie — minimalna odległość na czas nieobecności |
-| `/tileobrony` | Ile obrony potrzeba na daną armię atakującą |
-| `/tprzechwyc` | Kalkulator przechwycenia — kto zdąży wysłać def |
-| `/tsymulacja` | Symulator bitwy (modal) |
-| **📊 Analiza** | |
-| `/tdigest` | Tygodniowe podsumowanie zmian sojuszu |
-
-## Funkcje dashboardu
-
-- 📋 Lista graczy z sortowaniem i wyszukiwaniem
-- 🏘️ Szczegóły wiosek każdego gracza
-- 🏛️ Przegląd sojuszy i ich członków
-- 📈 Statystyki serwera (populacja, liczba graczy)
-- 🗺️ Historia snapshotów map.sql
-- 🔒 Strefa sojuszu zabezpieczona hasłem
-- 🔔 System alertów z filtrowaniem i historią
-- 🔍 Szybkie wyszukiwanie graczy i sojuszy
-- 🕊️ Dyplomacja — zarządzanie relacjami między sojuszami
-
-## Architektura
-
-```
-run.py                  # Punkt wejścia: Flask + bot + scheduler
-├── app/                # Aplikacja Flask (dashboard)
-│   ├── models.py       # Modele: Snapshot, Village, Player, Alliance
-│   ├── map_sql/        # Parser + kolektor danych Travian
-│   ├── routes/         # Blueprinty: dashboard, gracze, sojusze
-│   └── templates/      # Szablony Jinja2 (styl Travian)
-├── bot/                # Bot Discord (py-cord)
-│   ├── bot.py          # Fabryka bota + db_query()
-│   └── cogs/           # 9 kogów z komendami slash
-├── config/             # Konfiguracja YAML
-└── tests/              # 871 testów pytest
-```
-
-### Multi-server (RoF)
-
-W.I.T.E.K obsługuje wiele serwerów Travian jednocześnie. Konfiguracja przez `SERVER_PROFILE`:
-
-```bash
-# RoF x3 International
-docker compose --env-file .env.rof -f docker-compose.rof.yml up -d
-```
-
-Konfiguracja serwerów w `config/config.yaml` pod kluczem `servers:`.
-
 ## Uruchomienie lokalne (bez Dockera)
 
 ```bash
 python -m venv venv
-source venv/bin/activate  # Linux/Mac
 venv\Scripts\activate     # Windows
+# source venv/bin/activate  # Linux / macOS
 pip install -r requirements.txt
-python run.py             # Flask + bot (jeśli DISCORD_TOKEN ustawiony)
+python run.py --scheduled
+```
+
+## Komendy Discord (34)
+
+| Komenda | Opis |
+|---------|------|
+| **ℹ️ Informacyjne** | |
+| `/thelp` | Wyświetla listę komend W.I.T.E.K |
+| `/tinfo` | Informacje o bocie W.I.T.E.K |
+| `/tstats` | Szybkie statystyki serwera Travian |
+| **🔐 Tożsamość i profile** | |
+| `/tlink <gracz>` | Powiąż swoje konto Discord z graczem Travian |
+| `/tunlink` | Usuń powiązanie Discord ↔ Travian |
+| `/twhoami` | Pokaż powiązany profil Travian |
+| `/tprofil` | Pokaż profil gracza Travian |
+| **⚔️ Ataki i koordynacja obrony** | |
+| `/tatak` | Zgłoś atak na wioskę koalicji |
+| `/tdodaj` | Dodaj atak do istniejącego wątku obrony |
+| `/tataki` | Lista aktywnych ataków na sojusz |
+| `/trozwiaz` | Zamknij zgłoszenie ataku i archiwizuj wątek |
+| `/tdef` | Kto może wysłać def? Lista wiosek sojuszu z ETA |
+| `/traport` | Wklej raport bitewny z gry |
+| `/traport_reczny` | Ręczne dodanie raportu (np. z telefonu) |
+| `/traporty` | Lista raportów bitewnych |
+| `/twojska` | Zarejestruj wojska w wiosce |
+| `/twsparcie` | Zarejestruj wysłane wsparcie |
+| `/tstan` | Pokaż stan obrony wioski (wojska + wsparcie) |
+| `/tzboza` | Bilans zbożowy wioski (zużycie vs produkcja) |
+| **🗺️ Rozpoznanie i ekonomia** | |
+| `/tenemy` | Szukaj wrogów w okolicy (pomija sojusze i pakty) |
+| `/tnieaktywni` | Szukaj nieaktywnych graczy w okolicy |
+| `/tcropper` | Znajdź croppery (9c/15c) w okolicy |
+| `/tszukaj` | Szukaj wiosek w okolicy |
+| `/tporownaj` | Porównaj dwa sojusze |
+| **🧮 Kalkulatory taktyczne** | |
+| `/tsymulacja` | Symulacja walki — oblicz straty |
+| `/tbezpieczne` | Kalkulator bezpiecznego wysyłania (min. odległość) |
+| `/tileobrony` | Kalkulator obrony — ile wojsk potrzeba do odparcia ataku |
+| `/tprzechwyc` | Kalkulator przechwycenia — kiedy wysłać def |
+| `/tbuildtime` | Kalkulator czasu treningu — oblicz czas i koszt szkolenia jednostek |
+| `/ttraining` | Kalkulator szkolenia — czas i surowce dla jednostek |
+| **📊 Podsumowania** | |
+| `/tdigest` | Podsumowanie tygodnia sojuszu |
+| **🕊️ Dyplomacja** | |
+| `/tdyplomacja` | Pokaż relacje dyplomatyczne |
+| `/tdodaj_relacje` | Dodaj relację dyplomatyczną |
+| `/tusun_relacje` | Usuń relację dyplomatyczną |
+
+## Funkcje aplikacji
+
+- 📋 Lista graczy, sojuszy i wiosek z filtrowaniem
+- 🔍 Szybkie wyszukiwanie graczy i sojuszy
+- ⚔️ Widoki ataków, wątków obrony i raportów bitewnych
+- 🔔 Alerty z historii snapshotów (`pop_drop`, `new_village`, `alliance_change`)
+- 🕊️ Dyplomacja — relacje między sojuszami na dashboardzie i w bocie
+- 🗺️ Profil serwera przez `SERVER_PROFILE` + tymczasowy override `TRAVIAN_SERVER_URL`
+- 🔐 Strefa sojuszu chroniona hasłem + opcjonalny login Discord OAuth
+- 🧩 API rozszerzenia (`/api/ext/report`, `/api/ext/spy-report`, `/api/ext/troops`, `/api/ext/incoming`, `/api/ext/game-data`)
+
+## Architektura
+
+```
+run.py                  # CLI / entrypoint: Flask, bot, collector, tryb scheduled
+├── app/                # Dashboard Flask + API
+│   ├── map_sql/        # Parser, collector i alerty map.sql
+│   ├── routes/         # 12 modułów: alerts_web, alliances, api_ext, attacks,
+│   │                   # auth, dashboard, defense, diplomacy, map, players,
+│   │                   # reports, search
+│   └── templates/      # Szablony Jinja2
+├── bot/                # Bot Discord (py-cord)
+│   ├── cogs/           # 9 cogów / 34 komendy slash
+│   ├── deep_links.py   # Linki do gry Travian
+│   ├── tribes.py       # Źródło prawdy dla nacji i jednostek
+│   └── utils.py        # Dystans, prędkości, crop, parsowanie czasu
+├── extension/          # Rozszerzenie Chrome + relay do API
+├── server_profile.py   # Loader profilu serwera
+├── docker-compose.yml  # Domyślny stack prod (PostgreSQL)
+├── docker-compose.dev.yml # Stack dev (SQLite)
+└── tests/              # 882 testy pytest
 ```
 
 ## Testy
 
 ```bash
-python -m pytest tests/ -v
+python -m pytest tests/ -q
 ```
+
+Aktualny stan repo: **882 testy przechodzą lokalnie**.
 
 ## Technologie
 
 - **Backend**: Flask, SQLAlchemy
-- **Bot**: py-cord (Pycord)
-- **Baza**: PostgreSQL (prod) / SQLite (dev)
+- **Bot**: py-cord
+- **Baza**: PostgreSQL (domyślny Docker) / SQLite (dev)
 - **Scheduler**: APScheduler
-- **Docker**: Multi-stage build, Docker Compose
+- **Rozszerzenie**: Chrome Extension (Manifest V3)
+- **Deploy**: Docker Compose + opcjonalnie GHCR
 
 ---
 
-*⚔️ W.I.T.E.K — Na cześć Gucio*
+*⚔️ W.I.T.E.K — Na cześć H2P_Gucio*
+
+

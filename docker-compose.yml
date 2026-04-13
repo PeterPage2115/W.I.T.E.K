@@ -5,21 +5,21 @@
 services:
   # ---------- Baza danych PostgreSQL ----------
   # Przechowuje wszystkie dane W.I.T.E.K-a: snapshoty map.sql, graczy, sojusze.
-  # Dane są zachowane w wolumenie "witek-pgdata" nawet po usunięciu kontenera.
+  # Dane są zachowane w wolumenie "witek-rof-pgdata" nawet po usunięciu kontenera.
   witek-db:
     image: postgres:16-alpine
-    container_name: witek-db
+    container_name: witek-rof-db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-witek}
+      POSTGRES_DB: ${POSTGRES_DB:-witek_rof}
       POSTGRES_USER: ${POSTGRES_USER:-witek}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Ustaw POSTGRES_PASSWORD w pliku .env}
     volumes:
-      - witek-pgdata:/var/lib/postgresql/data
+      - witek-rof-pgdata:/var/lib/postgresql/data
     networks:
-      - witek-net
+      - witek-rof-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-witek} -d ${POSTGRES_DB:-witek}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-witek} -d ${POSTGRES_DB:-witek_rof}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -32,7 +32,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: witek-app
+    container_name: witek-rof-app
     restart: unless-stopped
     ports:
       - "${WITEK_PORT:-5000}:5000"
@@ -40,7 +40,8 @@ services:
       - .env
     environment:
       # Nadpisujemy DATABASE_URL żeby wskazywał na kontener PostgreSQL
-      DATABASE_URL: postgresql://${POSTGRES_USER:-witek}:${POSTGRES_PASSWORD}@witek-db:5432/${POSTGRES_DB:-witek}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-witek}:${POSTGRES_PASSWORD}@witek-db:5432/${POSTGRES_DB:-witek_rof}
+      SERVER_PROFILE: ${SERVER_PROFILE:-rof-x3}
       FLASK_DEBUG: "false"
     volumes:
       # Konfiguracja YAML (opcjonalnie montowana z hosta)
@@ -49,7 +50,7 @@ services:
       witek-db:
         condition: service_healthy
     networks:
-      - witek-net
+      - witek-rof-net
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/')"]
       interval: 30s
@@ -60,11 +61,11 @@ services:
 # ---------- Wolumeny ----------
 # Trwałe dane PostgreSQL — przetrwają restart i usunięcie kontenerów
 volumes:
-  witek-pgdata:
-    name: witek-pgdata
+  witek-rof-pgdata:
+    name: witek-rof-pgdata
 
 # ---------- Sieć ----------
 # Wewnętrzna sieć łącząca aplikację z bazą danych
 networks:
-  witek-net:
-    name: witek-net
+  witek-rof-net:
+    name: witek-rof-net

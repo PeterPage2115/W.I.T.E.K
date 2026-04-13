@@ -6,6 +6,7 @@ from bot.utils import (
     detect_possible_units,
     format_unit_analysis,
 )
+from bot.tribes import get_available_tribes
 
 
 # ------------------------------------------------------------------ #
@@ -148,8 +149,7 @@ class TestDetectPossibleUnits:
         results = detect_possible_units(10, travel, attacker_tribe=1)
         # Should detect catapult needing artifact, OR detect a unit with base speed 12
         names = [r["name"] for r in results]
-        # Legionista has speed 12 — should match without artifact
-        assert "Legionista" in names
+        assert {"Katapulta", "Legionista"} & set(names)
 
     def test_unknown_tribe_returns_all(self):
         # Speed 8 = Taran (all tribes) and Senator (Romans)
@@ -202,7 +202,7 @@ class TestDetectPossibleUnits:
                 assert max(siege_idx) < min(other_idx)
 
     def test_cross_tribe_dedup(self):
-        # Taran exists in all 3 tribes at speed 8 — should be grouped
+        # Taran exists in all classic tribes at speed 8 — should be grouped
         travel = _calc_travel_seconds(10, 8)
         results = detect_possible_units(10, travel, attacker_tribe=None)
         tarans = [r for r in results if r["name"] == "Taran"]
@@ -212,7 +212,8 @@ class TestDetectPossibleUnits:
             tribe = tarans[0]["tribe"]
             # Should list multiple tribes
             assert isinstance(tribe, list)
-            assert len(tribe) == 3
+            expected = [tid for tid in [1, 2, 3] if tid in get_available_tribes()]
+            assert sorted(tribe) == expected
 
     def test_result_has_required_keys(self):
         travel = _calc_travel_seconds(10, 6)

@@ -25,6 +25,21 @@ from app import create_app
 from app.map_sql.collector import collect_and_store
 
 
+def _configured_travian_url() -> str:
+    env_url = os.environ.get("TRAVIAN_SERVER_URL")
+    if env_url:
+        return env_url
+
+    try:
+        from server_profile import load_profile
+        return load_profile().get("url", "")
+    except ValueError as exc:
+        log.error("❌ Nieprawidłowy SERVER_PROFILE: %s", exc)
+    except Exception as exc:
+        log.warning("⚠️ Nie udało się odczytać profilu serwera: %s", exc)
+    return ""
+
+
 def _validate_env():
     """Sprawdź zmienne środowiskowe przed startem aplikacji."""
     issues: list[str] = []
@@ -39,8 +54,10 @@ def _validate_env():
     if not os.environ.get("EXT_API_TOKEN"):
         log.warning("⚠️ EXT_API_TOKEN nie ustawiony — API rozszerzenia wyłączone")
 
-    if not os.environ.get("TRAVIAN_SERVER_URL"):
-        issues.append("❌ TRAVIAN_SERVER_URL nie ustawiony — zbieranie map.sql wyłączone")
+    if not _configured_travian_url():
+        issues.append(
+            "❌ Brak aktywnego URL Travian — ustaw SERVER_PROFILE lub TRAVIAN_SERVER_URL"
+        )
 
     if issues:
         for issue in issues:

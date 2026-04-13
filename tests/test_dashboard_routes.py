@@ -56,6 +56,10 @@ class TestDashboardIndex:
         resp = client.get("/")
         assert b"<!DOCTYPE html>" in resp.data or b"<html" in resp.data
 
+    def test_server_label_uses_config_url(self, client):
+        resp = client.get("/")
+        assert "Przegląd serwera test.travian.com".encode() in resp.data
+
     def test_with_snapshot_returns_200(self, client, db_session):
         snap = Snapshot(fetched_at=datetime.now(timezone.utc), village_count=100)
         db_session.add(snap)

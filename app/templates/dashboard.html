@@ -7,7 +7,7 @@
 <!-- Header -->
 <div class="mb-6">
     <h1 class="font-medieval text-trav-parchment text-3xl font-bold mb-1 drop-shadow-lg">Panel Dowodzenia</h1>
-    <p class="text-trav-parchment/60 text-sm">Przegląd serwera ts31.x3.europe.travian.com</p>
+    <p class="text-trav-parchment/60 text-sm">Przegląd serwera {{ config.TRAVIAN_SERVER_URL | replace('https://', '') | replace('http://', '') }}</p>
 </div>
 
 {% if not snapshot %}
