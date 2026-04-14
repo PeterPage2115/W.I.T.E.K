@@ -27,11 +27,19 @@ MAX_RESULTS = 20
 MAX_VILLAGES_SHOWN = 3
 
 
-def _bbox_filter(col, center, radius, map_size):
-    """SQLAlchemy filter for one axis of a torus bounding box."""
+def _bbox_filter(col, center, radius, map_size, wrap=True):
+    """SQLAlchemy filter for one axis of a bounding box.
+
+    When wrap=True (torus map), handles edge wrapping.
+    When wrap=False (flat map), clamps to map boundaries.
+    """
     half = map_size // 2
     lo = center - radius
     hi = center + radius
+    if not wrap:
+        lo = max(lo, -half)
+        hi = min(hi, half)
+        return col.between(lo, hi)
     if lo >= -half and hi <= half:
         return col.between(lo, hi)
     elif lo < -half:
@@ -40,7 +48,7 @@ def _bbox_filter(col, center, radius, map_size):
         return or_(col >= lo, col <= hi - map_size)
 
 
-def _bbox_query(snapshot_id, center_x, center_y, radius, map_size):
+def _bbox_query(snapshot_id, center_x, center_y, radius, map_size, wrap=True):
     """Fetch villages within bounding box from a snapshot (SQL prefilter)."""
     from app.models import Village
 
@@ -49,15 +57,15 @@ def _bbox_query(snapshot_id, center_x, center_y, radius, map_size):
         .filter(
             Village.snapshot_id == snapshot_id,
             Village.uid > 0,
-            _bbox_filter(Village.x, center_x, radius, map_size),
-            _bbox_filter(Village.y, center_y, radius, map_size),
+            _bbox_filter(Village.x, center_x, radius, map_size, wrap),
+            _bbox_filter(Village.y, center_y, radius, map_size, wrap),
         )
         .all()
     )
 
 
 def _find_inactive_players(center_x, center_y, radius, min_pop, dni,
-                           our_alliances, server_url, map_size):
+                           our_alliances, server_url, map_size, wrap=True):
     """Find players with zero pop growth near center. Returns list of dicts or None."""
     from app.models import Snapshot
 
@@ -78,11 +86,11 @@ def _find_inactive_players(center_x, center_y, radius, min_pop, dni,
     our_aids = {int(a) for a in our_alliances if a is not None}
 
     # Step 1: Define cohort from LATEST snapshot (bounding-box prefilter)
-    latest_bbox = _bbox_query(latest.id, center_x, center_y, radius, map_size)
+    latest_bbox = _bbox_query(latest.id, center_x, center_y, radius, map_size, wrap)
 
     latest_players = {}
     for v in latest_bbox:
-        dist = torus_distance(center_x, center_y, v.x, v.y, map_size)
+        dist = torus_distance(center_x, center_y, v.x, v.y, map_size, wrap=wrap)
         if dist > radius:
             continue
         if int(v.aid or 0) in our_aids:
@@ -116,13 +124,13 @@ def _find_inactive_players(center_x, center_y, radius, min_pop, dni,
 
     # Step 2: Look up the SAME cohort UIDs in earliest snapshot
     cohort_uids = set(latest_players.keys())
-    earliest_bbox = _bbox_query(earliest.id, center_x, center_y, radius, map_size)
+    earliest_bbox = _bbox_query(earliest.id, center_x, center_y, radius, map_size, wrap)
 
     earliest_data = {}
     for v in earliest_bbox:
         if v.uid not in cohort_uids:
             continue
-        dist = torus_distance(center_x, center_y, v.x, v.y, map_size)
+        dist = torus_distance(center_x, center_y, v.x, v.y, map_size, wrap=wrap)
         if dist > radius:
             continue
         if v.uid not in earliest_data:
@@ -148,7 +156,7 @@ def _find_inactive_players(center_x, center_y, radius, min_pop, dni,
 
 
 def _find_enemy_players(center_x, center_y, radius, min_pop,
-                        our_alliances, server_url, map_size):
+                        our_alliances, server_url, map_size, wrap=True):
     """Find non-allied players near center. Returns list of dicts or None."""
     from app.models import Snapshot
 
@@ -162,11 +170,11 @@ def _find_enemy_players(center_x, center_y, radius, min_pop,
 
     our_aids = {int(a) for a in our_alliances if a is not None}
 
-    bbox = _bbox_query(latest.id, center_x, center_y, radius, map_size)
+    bbox = _bbox_query(latest.id, center_x, center_y, radius, map_size, wrap)
 
     players = {}
     for v in bbox:
-        dist = torus_distance(center_x, center_y, v.x, v.y, map_size)
+        dist = torus_distance(center_x, center_y, v.x, v.y, map_size, wrap=wrap)
         if dist > radius:
             continue
         if int(v.aid or 0) in our_aids:
@@ -397,12 +405,14 @@ class Recon(commands.Cog):
         our_alliances = cfg.get("TRAVIAN_OUR_ALLIANCES", [])
         server_url = cfg.get("TRAVIAN_SERVER_URL", "")
         map_size = cfg.get("TRAVIAN_MAP_SIZE", 401)
+        features = cfg.get("TRAVIAN_FEATURES", {})
+        wrap = features.get("map_edge_wrapping", True)
 
         result = await db_query(
             self.bot,
             lambda: _find_inactive_players(
                 cx, cy, radius, min_pop, dni,
-                our_alliances, server_url, map_size,
+                our_alliances, server_url, map_size, wrap,
             ),
         )
 
@@ -516,12 +526,14 @@ class Recon(commands.Cog):
         our_alliances = cfg.get("TRAVIAN_OUR_ALLIANCES", [])
         server_url = cfg.get("TRAVIAN_SERVER_URL", "")
         map_size = cfg.get("TRAVIAN_MAP_SIZE", 401)
+        features = cfg.get("TRAVIAN_FEATURES", {})
+        wrap = features.get("map_edge_wrapping", True)
 
         result = await db_query(
             self.bot,
             lambda: _find_enemy_players(
                 cx, cy, radius, min_pop,
-                our_alliances, server_url, map_size,
+                our_alliances, server_url, map_size, wrap,
             ),
         )
 

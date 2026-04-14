@@ -10,7 +10,7 @@ class TestTribeChoices:
 
     def test_def_units_has_all_tribes(self):
         from bot.cogs.attacks import Attacks
-        expected = {1, 2, 3, 6, 7, 8, 9}
+        expected = {1, 3, 6, 7, 8, 9}
         assert set(Attacks._DEF_UNITS.keys()) == expected
 
     def test_def_units_value_shape(self):

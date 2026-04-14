@@ -68,11 +68,7 @@ TRIBE_UNITS = {
         "Legionista", "Pretorianin", "Imperians",
         "Equites Legati", "Equites Imperatoris", "Equites Caesaris",
     ],
-    "Germanie": [
-        "Pałkarz", "Włócznik", "Topornik",
-        "Zwiadowca", "Paladyn", "Germański rycerz",
-    ],
-    "Galowie": [
+    "Galowie":[
         "Falangita", "Miecznik",
         "Zwiadowca galijski", "Druid", "Haeduanin",
     ],
@@ -102,13 +98,6 @@ TRAINING_COSTS: dict[str, dict] = {
     "Equites Legati": {"lumber": 140, "clay": 160, "iron": 20, "crop": 40, "time": 1360, "building": "Stajnia"},
     "Equites Imperatoris": {"lumber": 550, "clay": 440, "iron": 320, "crop": 100, "time": 2640, "building": "Stajnia"},
     "Equites Caesaris": {"lumber": 550, "clay": 640, "iron": 800, "crop": 180, "time": 3520, "building": "Stajnia"},
-    # Teutons
-    "Pałkarz": {"lumber": 95, "clay": 75, "iron": 40, "crop": 40, "time": 1120, "building": "Koszary"},
-    "Włócznik": {"lumber": 145, "clay": 70, "iron": 85, "crop": 40, "time": 1360, "building": "Koszary"},
-    "Topornik": {"lumber": 130, "clay": 120, "iron": 170, "crop": 70, "time": 1600, "building": "Koszary"},
-    "Zwiadowca": {"lumber": 160, "clay": 100, "iron": 50, "crop": 50, "time": 1280, "building": "Stajnia"},
-    "Paladyn": {"lumber": 370, "clay": 270, "iron": 290, "crop": 75, "time": 2240, "building": "Stajnia"},
-    "Germański rycerz": {"lumber": 450, "clay": 515, "iron": 480, "crop": 80, "time": 2880, "building": "Stajnia"},
     # Gauls
     "Falangita": {"lumber": 100, "clay": 130, "iron": 55, "crop": 30, "time": 1360, "building": "Koszary"},
     "Miecznik": {"lumber": 140, "clay": 150, "iron": 185, "crop": 60, "time": 1760, "building": "Koszary"},
@@ -169,11 +158,19 @@ def format_duration(total_seconds: float) -> str:
 # Shared torus bounding-box filter (same logic as recon.py)
 # ------------------------------------------------------------------ #
 
-def _bbox_filter(col, center, radius, map_size):
-    """SQLAlchemy filter for one axis of a torus bounding box."""
+def _bbox_filter(col, center, radius, map_size, wrap=True):
+    """SQLAlchemy filter for one axis of a bounding box.
+
+    When *wrap* is False (flat/RoF map), clamp to map boundaries
+    instead of wrapping around edges.
+    """
     half = map_size // 2
     lo = center - radius
     hi = center + radius
+    if not wrap:
+        lo = max(lo, -half)
+        hi = min(hi, half)
+        return col.between(lo, hi)
     if lo >= -half and hi <= half:
         return col.between(lo, hi)
     elif lo < -half:
@@ -186,9 +183,11 @@ def _bbox_filter(col, center, radius, map_size):
 # Tile coordinate generation
 # ------------------------------------------------------------------ #
 
-def _tiles_in_radius(cx, cy, radius, map_size):
-    """Generate (x, y) coordinates within circular radius on a torus map.
+def _tiles_in_radius(cx, cy, radius, map_size, wrap=True):
+    """Generate (x, y) coordinates within circular radius.
 
+    When *wrap* is True (torus), coordinates wrap around edges.
+    When *wrap* is False (flat/RoF), coordinates are clamped to map boundaries.
     Returns list sorted by distance from center (closest first).
     """
     half = map_size // 2
@@ -200,14 +199,18 @@ def _tiles_in_radius(cx, cy, radius, map_size):
                 continue
             tx = cx + dx
             ty = cy + dy
-            if tx > half:
-                tx -= map_size
-            elif tx < -half:
-                tx += map_size
-            if ty > half:
-                ty -= map_size
-            elif ty < -half:
-                ty += map_size
+            if wrap:
+                if tx > half:
+                    tx -= map_size
+                elif tx < -half:
+                    tx += map_size
+                if ty > half:
+                    ty -= map_size
+                elif ty < -half:
+                    ty += map_size
+            else:
+                if tx > half or tx < -half or ty > half or ty < -half:
+                    continue
             coords.append((tx, ty))
     coords.sort(key=lambda t: (t[0] - cx) ** 2 + (t[1] - cy) ** 2)
     return coords
@@ -325,7 +328,7 @@ async def _scan_tiles_api(server_url, coords_list):
 # DB helpers (return plain dicts — never raw SQLAlchemy objects)
 # ------------------------------------------------------------------ #
 
-def _get_occupancy(cx, cy, radius, map_size):
+def _get_occupancy(cx, cy, radius, map_size, wrap=True):
     """Get village occupancy in radius from latest snapshot.
 
     Returns (dict[(x,y) → info], snap_date_str) or ({}, None).
@@ -341,8 +344,8 @@ def _get_occupancy(cx, cy, radius, map_size):
         .filter(
             Village.snapshot_id == snap.id,
             Village.uid > 0,
-            _bbox_filter(Village.x, cx, radius, map_size),
-            _bbox_filter(Village.y, cy, radius, map_size),
+            _bbox_filter(Village.x, cx, radius, map_size, wrap),
+            _bbox_filter(Village.y, cy, radius, map_size, wrap),
         )
         .all()
     )
@@ -358,7 +361,8 @@ def _get_occupancy(cx, cy, radius, map_size):
     return occ, snap_date
 
 
-def _search_villages(cx, cy, radius, map_size, gracz, sojusz, min_pop, max_pop):
+def _search_villages(cx, cy, radius, map_size, gracz, sojusz, min_pop, max_pop,
+                     wrap=True):
     """Search occupied villages matching criteria.
 
     Returns (list[dict], snap_date_str) or (None, None) if no data.
@@ -372,8 +376,8 @@ def _search_villages(cx, cy, radius, map_size, gracz, sojusz, min_pop, max_pop):
     query = Village.query.filter(
         Village.snapshot_id == snap.id,
         Village.uid > 0,
-        _bbox_filter(Village.x, cx, radius, map_size),
-        _bbox_filter(Village.y, cy, radius, map_size),
+        _bbox_filter(Village.x, cx, radius, map_size, wrap),
+        _bbox_filter(Village.y, cy, radius, map_size, wrap),
     )
     if gracz:
         query = query.filter(Village.player_name.ilike(f"%{gracz}%"))
@@ -387,7 +391,7 @@ def _search_villages(cx, cy, radius, map_size, gracz, sojusz, min_pop, max_pop):
     villages = query.all()
     results = []
     for v in villages:
-        dist = torus_distance(cx, cy, v.x, v.y, map_size)
+        dist = torus_distance(cx, cy, v.x, v.y, map_size, wrap=wrap)
         if dist <= radius:
             results.append({
                 "x": v.x, "y": v.y,
@@ -768,6 +772,10 @@ class Economy(commands.Cog):
     def _map_size(self):
         return self.bot.flask_app.config.get("TRAVIAN_MAP_SIZE", 401)
 
+    def _wrap_setting(self):
+        features = self.bot.flask_app.config.get("TRAVIAN_FEATURES", {})
+        return features.get("map_edge_wrapping", True)
+
     # ------------------------------------------------------------------ #
     # /tcropper
     # ------------------------------------------------------------------ #
@@ -803,8 +811,7 @@ class Economy(commands.Cog):
 
         server_url = self._server_url()
         map_size = self._map_size()
-
-        # 1. Probe API availability (cached)
+        wrap = self._wrap_setting()
         api_ok = await _probe_travian_api(server_url, cx, cy)
         if not api_ok:
             embed = discord.Embed(
@@ -828,7 +835,7 @@ class Economy(commands.Cog):
             return
 
         # 2. Generate tiles to scan
-        all_tiles = _tiles_in_radius(cx, cy, zasieg, map_size)
+        all_tiles = _tiles_in_radius(cx, cy, zasieg, map_size, wrap)
         truncated = False
         if len(all_tiles) > MAX_SCAN_TILES:
             all_tiles = all_tiles[:MAX_SCAN_TILES]
@@ -852,7 +859,7 @@ class Economy(commands.Cog):
                 continue
             if typ != "oba" and crop_type != typ:
                 continue
-            dist = torus_distance(cx, cy, x, y, map_size)
+            dist = torus_distance(cx, cy, x, y, map_size, wrap=wrap)
             croppers.append({
                 "x": x, "y": y, "type": crop_type,
                 "dist": dist, "lt": lt,
@@ -869,7 +876,7 @@ class Economy(commands.Cog):
         # 5. Cross-reference with DB for occupancy
         occupancy, snap_date = await db_query(
             self.bot,
-            lambda: _get_occupancy(cx, cy, zasieg, map_size),
+            lambda: _get_occupancy(cx, cy, zasieg, map_size, wrap),
         )
 
         for c in croppers:
@@ -946,11 +953,13 @@ class Economy(commands.Cog):
 
         server_url = self._server_url()
         map_size = self._map_size()
+        wrap = self._wrap_setting()
 
         results, snap_date = await db_query(
             self.bot,
             lambda: _search_villages(
                 cx, cy, zasieg, map_size, gracz, sojusz, min_pop, max_pop,
+                wrap=wrap,
             ),
         )
 
@@ -1062,7 +1071,8 @@ class Economy(commands.Cog):
     # /tbezpieczne — safe-send distance calculator
     # ------------------------------------------------------------------ #
 
-    async def _find_safe_targets(self, cx, cy, min_dist, max_dist, map_size):
+    async def _find_safe_targets(self, cx, cy, min_dist, max_dist, map_size,
+                                    wrap=True):
         """Find villages in distance range [min_dist, max_dist] from (cx, cy).
 
         Returns list of dicts sorted: unoccupied first, then by distance.
@@ -1079,13 +1089,13 @@ class Economy(commands.Cog):
 
             rows = Village.query.filter(
                 Village.snapshot_id == snap.id,
-                _bbox_filter(Village.x, cx, search_radius, map_size),
-                _bbox_filter(Village.y, cy, search_radius, map_size),
+                _bbox_filter(Village.x, cx, search_radius, map_size, wrap),
+                _bbox_filter(Village.y, cy, search_radius, map_size, wrap),
             ).all()
 
             results = []
             for v in rows:
-                dist = torus_distance(cx, cy, v.x, v.y, map_size)
+                dist = torus_distance(cx, cy, v.x, v.y, map_size, wrap=wrap)
                 if min_dist <= dist <= max_dist:
                     results.append({
                         "x": v.x, "y": v.y,
@@ -1113,7 +1123,7 @@ class Economy(commands.Cog):
     @discord.option(
         "plemie", str,
         description="Plemię jednostek",
-        choices=["Rzymianie", "Germanie", "Galowie", "Egipcjanie", "Hunowie", "Wikingowie", "Spartanie"],
+        choices=["Rzymianie", "Galowie", "Egipcjanie", "Hunowie", "Wikingowie", "Spartanie"],
     )
     @discord.option(
         "ts", int,
@@ -1207,10 +1217,11 @@ class Economy(commands.Cog):
                 min_dist = distances[0]["dist"]
                 max_dist = distances[-1]["dist"] * 1.2
                 map_size = self._map_size()
+                wrap = self._wrap_setting()
                 server_url = self._server_url()
 
                 targets = await self._find_safe_targets(
-                    cx, cy, min_dist, max_dist, map_size,
+                    cx, cy, min_dist, max_dist, map_size, wrap=wrap,
                 )
 
                 if targets:
@@ -1373,7 +1384,7 @@ class Economy(commands.Cog):
     @discord.option("eta", str, description="Czas do ataku (h:mm) lub godziny np. 2:30 lub 2.5")
     @discord.option(
         "plemie", str, description="Twoje plemię",
-        choices=["Rzymianie", "Germanie", "Galowie", "Egipcjanie", "Hunowie", "Wikingowie", "Spartanie"],
+        choices=["Rzymianie", "Galowie", "Egipcjanie", "Hunowie", "Wikingowie", "Spartanie"],
     )
     @discord.option(
         "ts", int, description="Poziom Placu Turniejowego (0-20)",
@@ -1414,18 +1425,20 @@ class Economy(commands.Cog):
             )
             return
 
-        tribe_map = {"Rzymianie": 1, "Germanie": 2, "Galowie": 3, "Egipcjanie": 6, "Hunowie": 7, "Spartanie": 8, "Wikingowie": 9}
+        tribe_map = {"Rzymianie": 1, "Galowie": 3, "Egipcjanie": 6, "Hunowie": 7, "Spartanie": 8, "Wikingowie": 9}
         tid = tribe_map[plemie]
         attack_eta_seconds = hours * 3600
+        map_size = self._map_size()
+        wrap = self._wrap_setting()
 
         results = calc_interception_times(
             our_x, our_y, def_x, def_y,
             attack_eta_seconds, tid,
             ts_level=ts, boots_bonus=buty,
-            map_size=self._map_size(),
+            map_size=map_size, wrap=wrap,
         )
 
-        dist = torus_distance(our_x, our_y, def_x, def_y, self._map_size())
+        dist = torus_distance(our_x, our_y, def_x, def_y, map_size, wrap=wrap)
         server_url = self._server_url()
 
         embed = discord.Embed(

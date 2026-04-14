@@ -860,6 +860,7 @@ def calc_interception_times(
     boots_bonus: float = 0.0,
     artifact_mult: float = 1.0,
     map_size: int = 401,
+    wrap: bool = True,
 ) -> list[dict]:
     """Calculate when to send each unit type to intercept an attack.
 
@@ -870,7 +871,7 @@ def calc_interception_times(
         List of dicts sorted by send time (most urgent first):
             name, type, speed, travel_seconds, send_in_seconds, can_make_it
     """
-    distance = torus_distance(our_x, our_y, def_x, def_y, map_size)
+    distance = torus_distance(our_x, our_y, def_x, def_y, map_size, wrap=wrap)
 
     units = UNIT_SPEEDS.get(our_tribe, [])
     results = []

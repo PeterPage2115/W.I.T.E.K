@@ -34,11 +34,6 @@ REPORT_UNIT_ORDER: dict[int, list[str]] = {
         "Equites Legati", "Equites Imperatoris", "Equites Caesaris",
         "Taran", "Katapulta ognista", "Senator", "Osadnik",
     ],
-    2: [  # Teutons
-        "Pałkarz", "Włócznik", "Topornik",
-        "Zwiadowca", "Paladyn", "Germański rycerz",
-        "Taran", "Katapulta", "Wódz", "Osadnik",
-    ],
     3: [  # Gauls
         "Falangita", "Miecznik", "Tropiciel",
         "Grom Teutatesa", "Jeździec druidzki", "Haeduan",
@@ -897,7 +892,11 @@ class SupportModal(discord.ui.Modal):
         from_x, from_y = parse_coords(self.from_coords)
         to_x, to_y = parse_coords(self.to_coords)
         crop = calc_crop_consumption(troops)
-        dist = torus_distance(from_x, from_y, to_x, to_y)
+        cfg = self.bot.flask_app.config
+        map_size = cfg.get("TRAVIAN_MAP_SIZE", 401)
+        features = cfg.get("TRAVIAN_FEATURES", {})
+        wrap = features.get("map_edge_wrapping", True)
+        dist = torus_distance(from_x, from_y, to_x, to_y, map_size, wrap=wrap)
 
         def _save():
             from app.database import db

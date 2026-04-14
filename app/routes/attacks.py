@@ -131,10 +131,12 @@ def detail(attack_id):
         and attack.defender_y is not None
     ):
         map_size = current_app.config.get("TRAVIAN_MAP_SIZE", 401)
+        features = current_app.config.get("TRAVIAN_FEATURES", {})
+        wrap = features.get("map_edge_wrapping", True)
         distance = _torus_distance(
             attack.attacker_x, attack.attacker_y,
             attack.defender_x, attack.defender_y,
-            map_size,
+            map_size, wrap=wrap,
         )
 
     server_url = current_app.config.get("TRAVIAN_SERVER_URL", "")

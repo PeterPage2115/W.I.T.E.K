@@ -4,6 +4,18 @@ Wszystkie istotne zmiany w projekcie W.I.T.E.K.
 
 Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
+## [0.2.3] — 2026-04-14
+
+### Naprawione
+- **P0 flat-map:** Wszystkie wywołania `torus_distance()` teraz czytają `wrap` z profilu serwera — RoF używa płaskiej mapy (`wrap=False`)
+- **P0 bbox_filter:** `_bbox_filter()` i `_tiles_in_radius()` w `recon.py` i `economy.py` poprawnie clampują do granic mapy gdy `wrap=False`
+- **P0 Teutoni:** Usunięto referencje do tid=2 (Teutoni) z `_DEF_UNITS`, `REPORT_UNIT_ORDER`, `TRIBE_UNITS`, `TRAINING_COSTS` i list wyboru — niedostępni na RoF x3
+- Poprawiono testy (`test_economy.py`, `test_rof_features.py`) pod nowe dane RoF
+
+### Zmienione
+- `bot/cogs/recon.py`, `bot/cogs/economy.py`, `bot/cogs/attacks.py`, `bot/cogs/defense.py` — wrap+map_size z configu
+- `app/map_sql/alerts.py`, `app/map_sql/collector.py`, `app/routes/attacks.py` — propagacja `wrap` przez pipeline alertów
+
 ## [0.2.2] — 2026-04-14
 
 ### Zmienione

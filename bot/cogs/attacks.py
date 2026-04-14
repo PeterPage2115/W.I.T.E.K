@@ -707,7 +707,11 @@ class Attacks(commands.Cog):
 
         # --- Distance & travel time analysis ---
         if atk_x is not None and atk_y is not None:
-            dist = torus_distance(atk_x, atk_y, def_x, def_y)
+            cfg = self.bot.flask_app.config
+            _ms = cfg.get("TRAVIAN_MAP_SIZE", 401)
+            _features = cfg.get("TRAVIAN_FEATURES", {})
+            _wr = _features.get("map_edge_wrapping", True)
+            dist = torus_distance(atk_x, atk_y, def_x, def_y, _ms, wrap=_wr)
             seconds_left = attack_unix - int(_time.time())
             embed.add_field(
                 name="📏 Dystans",
@@ -922,7 +926,6 @@ class Attacks(commands.Cog):
     # Key defensive units per tribe: (inf_name, inf_speed, cav_name, cav_speed)
     _DEF_UNITS = {
         1: ("Pretorianin", 10, "Eq. Caesaris", 20),   # Romans
-        2: ("Włócznik", 14, "Paladyn", 20),            # Teutons
         3: ("Falanga", 14, "Druid", 32),                # Gauls
         6: ("Ash Warden", 6, "Resheph Chariot", 10),   # Egyptians
         7: ("Mercenary", 7, "Marksman", 15),            # Huns
@@ -1028,9 +1031,12 @@ class Attacks(commands.Cog):
             return
 
         # Calculate distances and ETAs, sort by distance
+        _features = self.bot.flask_app.config.get("TRAVIAN_FEATURES", {})
+        _wrap = _features.get("map_edge_wrapping", True)
+        _map_sz = self.bot.flask_app.config.get("TRAVIAN_MAP_SIZE", 401)
         entries = []
         for v in villages:
-            dist = torus_distance(v["x"], v["y"], def_x, def_y)
+            dist = torus_distance(v["x"], v["y"], def_x, def_y, _map_sz, wrap=_wrap)
             tid = v.get("tid") or 0
             def_info = self._DEF_UNITS.get(tid)
             if def_info:

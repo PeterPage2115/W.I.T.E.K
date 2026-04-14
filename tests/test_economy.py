@@ -721,7 +721,7 @@ class TestTrainingCosts:
         assert cost["crop"] * count == 3000
 
     def test_building_level_affects_time(self):
-        base = TRAINING_COSTS["Pałkarz"]["time"]
+        base = TRAINING_COSTS["Falangita"]["time"]
         t1 = calc_training_time(base, 1)
         t10 = calc_training_time(base, 10)
         t20 = calc_training_time(base, 20)

@@ -117,6 +117,8 @@ def detect_alerts(new_snapshot_id: int, prev_snapshot_id: int, config: dict) -> 
     map_size = config.get("TRAVIAN_MAP_SIZE", 401)
     min_pop = config.get("MIN_POP_FOR_ALERTS", 500)
     cooldown_hours = config.get("ALERT_COOLDOWN_HOURS", 6)
+    features = config.get("TRAVIAN_FEATURES", {})
+    wrap = features.get("map_edge_wrapping", True)
 
     alerts = []
 
@@ -126,11 +128,11 @@ def detect_alerts(new_snapshot_id: int, prev_snapshot_id: int, config: dict) -> 
     alerts.extend(pop_drops)
 
     new_villages = _detect_new_villages(
-        new_snapshot_id, prev_snapshot_id, our_alliances, radius, map_size)
+        new_snapshot_id, prev_snapshot_id, our_alliances, radius, map_size, wrap=wrap)
     alerts.extend(new_villages)
 
     alliance_changes = _detect_alliance_changes(
-        new_snapshot_id, prev_snapshot_id, our_alliances, map_size)
+        new_snapshot_id, prev_snapshot_id, our_alliances, map_size, wrap=wrap)
     alerts.extend(alliance_changes)
 
     logger.info(
@@ -292,7 +294,7 @@ def _detect_pop_drops(new_id, prev_id, our_alliances, threshold, map_size,
     return alerts
 
 
-def _detect_new_villages(new_id, prev_id, our_alliances, radius, map_size):
+def _detect_new_villages(new_id, prev_id, our_alliances, radius, map_size, *, wrap=True):
     """Wykrywa nowe wrogie wioski w pobliżu sojuszu.
 
     Diff po map_id: wioska jest "nowa" gdy map_id z uid>0 pojawia się
@@ -315,7 +317,7 @@ def _detect_new_villages(new_id, prev_id, our_alliances, radius, map_size):
         if v["aid"] in our_alliances:
             continue
 
-        min_dist = _min_distance_to_allies(v["x"], v["y"], ally_positions, map_size)
+        min_dist = _min_distance_to_allies(v["x"], v["y"], ally_positions, map_size, wrap=wrap)
         if min_dist > radius:
             continue
 
@@ -336,7 +338,7 @@ def _detect_new_villages(new_id, prev_id, our_alliances, radius, map_size):
     return alerts
 
 
-def _detect_alliance_changes(new_id, prev_id, our_alliances, map_size):
+def _detect_alliance_changes(new_id, prev_id, our_alliances, map_size, *, wrap=True):
     """Wykrywa zmiany przynależności do sojuszów.
 
     Diff DISTINCT (uid, aid) między snapshotami. Klasyfikacja:
@@ -380,7 +382,8 @@ def _detect_alliance_changes(new_id, prev_id, our_alliances, map_size):
             if new_aid == 0:
                 continue  # przeszedł na neutralny — nie interesuje nas
             if not _is_player_near_allies(
-                uid, new_id, prev_id, ally_positions, radius=50, map_size=map_size
+                uid, new_id, prev_id, ally_positions, radius=50, map_size=map_size,
+                wrap=wrap,
             ):
                 continue
             change_type = "switch"
@@ -416,15 +419,15 @@ def _get_ally_positions(snapshot_id, our_alliances, map_size):
     return [(r[0], r[1]) for r in rows]
 
 
-def _min_distance_to_allies(x, y, ally_positions, map_size):
-    """Minimalny dystans torusowy do wiosek sojuszniczych."""
+def _min_distance_to_allies(x, y, ally_positions, map_size, *, wrap=True):
+    """Minimalny dystans do wiosek sojuszniczych."""
     if not ally_positions:
         return float("inf")
-    return min(torus_distance(x, y, ax, ay, map_size) for ax, ay in ally_positions)
+    return min(torus_distance(x, y, ax, ay, map_size, wrap=wrap) for ax, ay in ally_positions)
 
 
 def _is_player_near_allies(uid, new_snapshot_id, prev_snapshot_id,
-                           ally_positions, radius, map_size):
+                           ally_positions, radius, map_size, *, wrap=True):
     """Sprawdza czy gracz ma wioskę blisko sojuszu.
 
     Sprawdza nowy snapshot, a jeśli gracz zniknął — fallback na poprzedni.
@@ -447,6 +450,6 @@ def _is_player_near_allies(uid, new_snapshot_id, prev_snapshot_id,
         )
 
     for vx, vy in rows:
-        if _min_distance_to_allies(vx, vy, ally_positions, map_size) <= radius:
+        if _min_distance_to_allies(vx, vy, ally_positions, map_size, wrap=wrap) <= radius:
             return True
     return False

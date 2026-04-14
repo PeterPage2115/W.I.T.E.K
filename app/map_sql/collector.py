@@ -191,6 +191,7 @@ def _run_alert_detection(app, new_snapshot):
             "TRAVIAN_MAP_SIZE": app.config.get("TRAVIAN_MAP_SIZE", 401),
             "MIN_POP_FOR_ALERTS": app.config.get("MIN_POP_FOR_ALERTS", 500),
             "ALERT_COOLDOWN_HOURS": app.config.get("ALERT_COOLDOWN_HOURS", 6),
+            "TRAVIAN_FEATURES": app.config.get("TRAVIAN_FEATURES", {}),
         }
 
         alerts = detect_alerts(new_snapshot.id, prev_snapshot.id, config)
