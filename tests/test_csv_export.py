@@ -55,7 +55,7 @@ def _login(client):
         sess["user_id"] = 1
         sess["discord_id"] = "123456789"
         sess["discord_name"] = "TestUser"
-        sess["role"] = "member"
+        sess["role"] = "officer"
 
 
 def _make_attack(db_session, **overrides):
@@ -108,6 +108,15 @@ class TestAttackExport:
         resp = client.get("/attacks/export")
         assert resp.status_code == 302
         assert "/login" in resp.headers.get("Location", "")
+
+    def test_requires_role(self, client):
+        with client.session_transaction() as sess:
+            sess["user_id"] = 1
+            sess["discord_id"] = "123456789"
+            sess["discord_name"] = "TestUser"
+            sess["role"] = "member"
+        resp = client.get("/attacks/export")
+        assert resp.status_code == 403
 
     def test_returns_csv_content_type(self, client, db_session):
         _login(client)
@@ -163,6 +172,15 @@ class TestReportExport:
         resp = client.get("/reports/export")
         assert resp.status_code == 302
         assert "/login" in resp.headers.get("Location", "")
+
+    def test_requires_role(self, client):
+        with client.session_transaction() as sess:
+            sess["user_id"] = 1
+            sess["discord_id"] = "123456789"
+            sess["discord_name"] = "TestUser"
+            sess["role"] = "member"
+        resp = client.get("/reports/export")
+        assert resp.status_code == 403
 
     def test_returns_csv_content_type(self, client, db_session):
         _login(client)

@@ -39,4 +39,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:5000/ || exit 1
 
 ENTRYPOINT ["./docker-entrypoint.sh"]
+# For web-only mode (no bot/scheduler): gunicorn wsgi:app -b 0.0.0.0:5000 -w 2
 CMD ["python", "run.py", "--scheduled", "--port", "5000"]

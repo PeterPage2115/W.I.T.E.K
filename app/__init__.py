@@ -1,6 +1,6 @@
 """W.I.T.E.K — Wirtualny Informator Taktyczno-Ekonomiczny Koalicji"""
 
-from flask import Flask
+from flask import Flask, render_template
 from .config import Config
 from .database import db, init_db
 
@@ -47,5 +47,13 @@ def create_app(config_class=Config):
     def inject_snapshot():
         from .snapshot_helpers import get_latest_snapshot
         return {"snapshot": get_latest_snapshot()}
+
+    @app.errorhandler(404)
+    def not_found(e):
+        return render_template("errors/404.html"), 404
+
+    @app.errorhandler(500)
+    def server_error(e):
+        return render_template("errors/500.html"), 500
 
     return app

@@ -4,6 +4,21 @@ Wszystkie istotne zmiany w projekcie W.I.T.E.K.
 
 Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
+## [0.2.4] — 2026-04-14
+
+### Dodane
+- Szablony błędów 404/500 w stylu Travian (`app/templates/errors/`)
+- RBAC `@role_required("leader", "officer")` na 4 trasach eksportu CSV + testy
+- `wsgi.py` + `gunicorn` w requirements.txt — opcja produkcyjnego WSGI
+- Uzupełnione jednostki: Grom Teutatesa (Galowie), Heimdall's Eye (Wikingowie)
+
+### Naprawione
+- Extension: race condition w `handleSend()` — guard `_isSending`
+- Extension: walidacja `isNaN()` w `getVillageCoords()`
+- Extension: structured error logging w service-worker (`[W.I.T.E.K]` prefix)
+- API mapy: auto-swap `x_min/x_max` gdy min > max
+- Komentarz tribe w `models.py` zaktualizowany do RoF (bez Teutonów)
+
 ## [0.2.3] — 2026-04-14
 
 ### Naprawione

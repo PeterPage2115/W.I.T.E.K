@@ -75,10 +75,14 @@
     document.body.appendChild(btn);
   }
 
+  let _isSending = false;
+
   /**
    * Handle send button click
    */
   async function handleSend(type, btn) {
+    if (_isSending) return;
+    _isSending = true;
     btn.disabled = true;
     btn.innerHTML = '⏳ Wysyłanie...';
 
@@ -140,6 +144,7 @@
    * Show status on button, then reset
    */
   function showStatus(btn, text, success) {
+    _isSending = false;
     btn.innerHTML = text;
     btn.style.borderColor = success ? '#2ecc71' : '#e74c3c';
     setTimeout(() => {
@@ -174,11 +179,17 @@
     const active = document.querySelector('.listEntry.village.active');
     if (active) {
       const match = active.textContent.match(/\(\s*(-?\d+)\s*\|\s*(-?\d+)\s*\)/);
-      if (match) return { x: parseInt(match[1]), y: parseInt(match[2]) };
+      if (match) {
+        const x = parseInt(match[1]), y = parseInt(match[2]);
+        if (!isNaN(x) && !isNaN(y)) return { x, y };
+      }
     }
     // Fallback: page title
     const titleMatch = document.title.match(/\((-?\d+)\|(-?\d+)\)/);
-    if (titleMatch) return { x: parseInt(titleMatch[1]), y: parseInt(titleMatch[2]) };
+    if (titleMatch) {
+      const x = parseInt(titleMatch[1]), y = parseInt(titleMatch[2]);
+      if (!isNaN(x) && !isNaN(y)) return { x, y };
+    }
     return { x: null, y: null };
   }
 

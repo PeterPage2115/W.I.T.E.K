@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}500 — Błąd serwera{% endblock %}
+{% block content %}
+<div class="max-w-lg mx-auto text-center py-16">
+    <h1 class="text-6xl font-bold text-red-500 mb-4">500</h1>
+    <p class="text-xl text-trav-text mb-6">💥 Katapulty trafiły w serwer...</p>
+    <a href="{{ url_for('dashboard.index') }}" class="px-6 py-2 bg-trav-green text-white rounded hover:bg-trav-green-dark">
+        🏠 Wróć do dashboardu
+    </a>
+</div>
+{% endblock %}

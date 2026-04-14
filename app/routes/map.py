@@ -34,6 +34,12 @@ def api_villages():
     y_min = request.args.get("y_min", type=int)
     y_max = request.args.get("y_max", type=int)
 
+    # Auto-swap if min > max
+    if x_min is not None and x_max is not None and x_min > x_max:
+        x_min, x_max = x_max, x_min
+    if y_min is not None and y_max is not None and y_min > y_max:
+        y_min, y_max = y_max, y_min
+
     if all(v is not None for v in [x_min, x_max, y_min, y_max]):
         query = query.filter(
             Village.x >= x_min,

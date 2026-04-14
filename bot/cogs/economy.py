@@ -68,9 +68,9 @@ TRIBE_UNITS = {
         "Legionista", "Pretorianin", "Imperians",
         "Equites Legati", "Equites Imperatoris", "Equites Caesaris",
     ],
-    "Galowie":[
+    "Galowie": [
         "Falangita", "Miecznik",
-        "Zwiadowca galijski", "Druid", "Haeduanin",
+        "Zwiadowca galijski", "Grom Teutatesa", "Druid", "Haeduanin",
     ],
     "Egipcjanie": [
         "Slave Militia", "Ash Warden", "Khopesh Warrior",
@@ -82,7 +82,7 @@ TRIBE_UNITS = {
     ],
     "Wikingowie": [
         "Thrall", "Shield Maiden", "Berserker",
-        "Huskarl Rider", "Valkyrie's Blessing",
+        "Heimdall's Eye", "Huskarl Rider", "Valkyrie's Blessing",
     ],
     "Spartanie": [
         "Hoplite", "Sentinel", "Shieldsman", "Twinsteel Therion",
@@ -103,6 +103,7 @@ TRAINING_COSTS: dict[str, dict] = {
     "Miecznik": {"lumber": 140, "clay": 150, "iron": 185, "crop": 60, "time": 1760, "building": "Koszary"},
     "Zwiadowca galijski": {"lumber": 170, "clay": 150, "iron": 20, "crop": 40, "time": 1280, "building": "Stajnia"},
     "Druid": {"lumber": 360, "clay": 330, "iron": 280, "crop": 120, "time": 2560, "building": "Stajnia"},
+    "Grom Teutatesa": {"lumber": 350, "clay": 450, "iron": 230, "crop": 60, "time": 2400, "building": "Stajnia"},
     "Haeduanin": {"lumber": 500, "clay": 620, "iron": 675, "crop": 170, "time": 3200, "building": "Stajnia"},
     # Egyptians
     "Slave Militia": {"lumber": 45, "clay": 60, "iron": 30, "crop": 15, "time": 720, "building": "Koszary"},
@@ -122,6 +123,7 @@ TRAINING_COSTS: dict[str, dict] = {
     "Thrall": {"lumber": 95, "clay": 120, "iron": 85, "crop": 50, "time": 1080, "building": "Koszary"},
     "Shield Maiden": {"lumber": 135, "clay": 70, "iron": 120, "crop": 55, "time": 1440, "building": "Koszary"},
     "Berserker": {"lumber": 140, "clay": 200, "iron": 100, "crop": 80, "time": 1720, "building": "Koszary"},
+    "Heimdall's Eye": {"lumber": 160, "clay": 100, "iron": 50, "crop": 50, "time": 1360, "building": "Stajnia"},
     "Huskarl Rider": {"lumber": 245, "clay": 140, "iron": 165, "crop": 80, "time": 2760, "building": "Stajnia"},
     "Valkyrie's Blessing": {"lumber": 355, "clay": 355, "iron": 305, "crop": 100, "time": 3520, "building": "Stajnia"},
     # Spartans

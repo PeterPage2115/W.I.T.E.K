@@ -11,6 +11,13 @@ const DEFAULT_CONFIG = {
 };
 
 /**
+ * Log errors to console with W.I.T.E.K prefix
+ */
+function logError(context, error) {
+  console.error(`[W.I.T.E.K] ${context}:`, error);
+}
+
+/**
  * Get config from chrome.storage.sync
  */
 function getConfig() {
@@ -63,6 +70,7 @@ async function sendToApi(endpoint, payload) {
     const data = await response.json();
     return { success: true, data };
   } catch (error) {
+    logError(`sendToApi ${endpoint}`, error);
     return { success: false, error: error.message };
   }
 }
@@ -79,6 +87,7 @@ async function testConnection(serverUrl, token) {
     });
     return { success: response.ok || response.status === 204 };
   } catch (error) {
+    logError('testConnection', error);
     return { success: false, error: error.message };
   }
 }

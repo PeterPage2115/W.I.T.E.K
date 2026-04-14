@@ -5,7 +5,7 @@ import io
 
 from flask import Blueprint, render_template, abort, jsonify, Response
 from sqlalchemy import func
-from ..auth_utils import login_required
+from ..auth_utils import login_required, role_required
 from ..database import db
 from ..models import Player, Village, Snapshot, TRIBE_NAMES
 from ..snapshot_helpers import get_latest_snapshot
@@ -162,6 +162,7 @@ def profile(uid):
 
 @bp.route("/players/export")
 @login_required
+@role_required("leader", "officer")
 def export_csv():
     """Export all players as CSV."""
     players = (

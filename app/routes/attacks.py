@@ -6,7 +6,7 @@ import json
 from math import sqrt
 
 from flask import Blueprint, render_template, request, current_app, abort, Response
-from ..auth_utils import login_required
+from ..auth_utils import login_required, role_required
 from ..database import db
 from ..models import AttackReport, DefenseThread, TroopSupport, BattleReport
 from . import paginate_query
@@ -154,6 +154,7 @@ def detail(attack_id):
 
 @bp.route("/attacks/export")
 @login_required
+@role_required("leader", "officer")
 def export_csv():
     """Export all attack reports as CSV."""
     attacks = (

@@ -5,7 +5,7 @@ import io
 import json
 
 from flask import Blueprint, render_template, request, current_app, abort, Response
-from ..auth_utils import login_required
+from ..auth_utils import login_required, role_required
 from ..database import db
 from ..models import BattleReport, AttackReport, SpyReport
 
@@ -270,6 +270,7 @@ def spy_report_list():
 
 @bp.route("/reports/export")
 @login_required
+@role_required("leader", "officer")
 def export_csv():
     """Export all battle reports as CSV."""
     reports = (

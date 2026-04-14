@@ -27,7 +27,7 @@ class Village(db.Model):
     )
     x = db.Column(db.Integer, nullable=False)
     y = db.Column(db.Integer, nullable=False)
-    tid = db.Column(db.Integer)  # tribe: 1=Romans, 2=Teutons, 3=Gauls
+    tid = db.Column(db.Integer)  # tribe: 1=Romans, 3=Gauls, 6=Egyptians, 7=Huns, 8=Spartans, 9=Vikings
     vid = db.Column(db.Integer)  # village id
     name = db.Column(db.Text)
     uid = db.Column(db.Integer)  # player id
