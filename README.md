@@ -64,7 +64,7 @@ Domyślny obraz startuje komendą `python run.py --scheduled --port 5000`, więc
 
 - dashboard Flask,
 - bot Discord (jeśli `DISCORD_TOKEN` jest ustawiony),
-- scheduler `map.sql` z interwałem z `scheduler.fetch_interval_minutes` (domyślnie 60 min).
+- scheduler `map.sql` — cron codziennie o 00:05 UTC (map.sql aktualizuje się raz dziennie o północy).
 
 Dashboard: http://localhost:5000
 

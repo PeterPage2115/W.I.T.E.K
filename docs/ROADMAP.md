@@ -11,7 +11,7 @@ W.I.T.E.K jest dziś ustawiony wokół domyślnego scenariusza **Reign of Fire x
 - `SERVER_PROFILE=rof-x3` jest standardowym profilem repo,
 - `docker compose up -d` uruchamia główny stack produkcyjny,
 - Dockerfile startuje aplikację jako `python run.py --scheduled --port 5000`,
-- `scheduler.fetch_interval_minutes` steruje kolektorem `map.sql` (domyślnie 60 min),
+- `scheduler.fetch_cron_hour` / `fetch_cron_minute` steruje kolektorem `map.sql` (domyślnie 00:05 UTC, raz dziennie),
 - klasyczny preset został przesunięty do `legacy\ts31\`.
 
 ## Dostarczone filary produktu

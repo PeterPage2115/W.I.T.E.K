@@ -35,7 +35,8 @@ servers:
     legionnaire_rebalanced: false
 
 scheduler:
-  fetch_interval_minutes: 60
+  fetch_cron_hour: 0
+  fetch_cron_minute: 5
 
 alerts:
   pop_drop_threshold: 25

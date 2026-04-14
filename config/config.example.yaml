@@ -20,7 +20,8 @@ servers:
     legionnaire_rebalanced: true
 
 scheduler:
-  fetch_interval_minutes: 60
+  fetch_cron_hour: 0      # map.sql updates once daily at midnight server time
+  fetch_cron_minute: 5    # collect 5 min after midnight to ensure data is ready
 
 alerts:
   pop_drop_threshold: 25

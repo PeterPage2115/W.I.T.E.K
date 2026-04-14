@@ -3,7 +3,7 @@
 Usage:
     python run.py                 # Start Flask web server
     python run.py --collect       # Fetch map.sql and store snapshot
-    python run.py --scheduled     # Start Flask + interval collection (every N min)
+    python run.py --scheduled     # Start Flask + daily cron collection (00:05 UTC)
     python run.py --bot-only      # Run only the Discord bot (no Flask)
 """
 
@@ -123,7 +123,7 @@ def main():
     parser.add_argument(
         "--scheduled",
         action="store_true",
-        help="Start Flask with scheduled map.sql collection (interval)",
+        help="Start Flask with daily cron map.sql collection (default 00:05 UTC)",
     )
     parser.add_argument(
         "--bot-only",
@@ -194,29 +194,32 @@ def main():
 
     if args.scheduled:
         from apscheduler.schedulers.background import BackgroundScheduler
-        from datetime import datetime, timezone
+        from datetime import datetime, timezone, date
 
-        interval_min = app.config["FETCH_INTERVAL_MINUTES"]
+        cron_hour = app.config["FETCH_CRON_HOUR"]
+        cron_minute = app.config["FETCH_CRON_MINUTE"]
 
         scheduler = BackgroundScheduler()
         scheduler.add_job(
             collect_and_store,
-            "interval",
+            "cron",
             args=[app],
-            minutes=interval_min,
-            id="map_sql_interval",
+            hour=cron_hour,
+            minute=cron_minute,
+            id="map_sql_cron",
         )
         scheduler.start()
         log.info(
-            "Scheduler uruchomiony: map.sql co %d min",
-            interval_min,
+            "Scheduler uruchomiony: map.sql codziennie o %02d:%02d UTC",
+            cron_hour,
+            cron_minute,
         )
 
         # Log startup configuration summary
         log.info("--- Konfiguracja startu ---")
         log.info("  Travian URL: %s", app.config.get("TRAVIAN_SERVER_URL"))
         log.info("  Nasze sojusze: %s", app.config.get("TRAVIAN_OUR_ALLIANCES"))
-        log.info("  Interwał zbierania: %d min", interval_min)
+        log.info("  Zbieranie: codziennie o %02d:%02d UTC", cron_hour, cron_minute)
         log.info("  Próg spadku pop: %d%%", app.config.get("POP_DROP_THRESHOLD", 15))
         log.info("  Promień nowych wiosek: %d pól", app.config.get("NEW_VILLAGE_RADIUS", 30))
         log.info("  Kanał alertów: %s", app.config.get("DISCORD_ALERTS_CHANNEL_ID"))
@@ -225,24 +228,22 @@ def main():
         log.info("  Extension API: %s", "TAK" if app.config.get("EXT_API_TOKEN") else "NIE")
         log.info("---------------------------")
 
-        # Fetch on startup if no recent snapshot exists
+        # Fetch on startup if no snapshot from today
         with app.app_context():
             from app.models import Snapshot
 
             latest = Snapshot.query.order_by(Snapshot.fetched_at.desc()).first()
             if latest is None:
-                print("Brak snapshotow - pobieram map.sql na starcie...")
+                print("Brak snapshotów — pobieram map.sql na starcie...")
                 collect_and_store(app)
             else:
-                now = datetime.now(timezone.utc)
                 fetched = latest.fetched_at
-                # SQLite stores naive datetimes — treat as UTC
                 if fetched.tzinfo is None:
                     fetched = fetched.replace(tzinfo=timezone.utc)
-                age_min = (now - fetched).total_seconds() / 60
-                if age_min > interval_min:
+                today = datetime.now(timezone.utc).date()
+                if fetched.date() < today:
                     print(
-                        f"Ostatni snapshot sprzed {int(age_min)} min - pobieram aktualne dane..."
+                        f"Ostatni snapshot z {fetched.date()} — pobieram dzisiejsze dane..."
                     )
                     collect_and_store(app)
 

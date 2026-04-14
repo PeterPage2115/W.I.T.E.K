@@ -75,7 +75,7 @@ class TestMapView:
         assert resp.status_code == 200
         html = resp.data.decode("utf-8")
         assert "Mapa świata" in html
-        assert "leaflet" in html.lower()
+        assert "map-canvas" in html
 
     def test_map_contains_legend(self, client):
         resp = client.get("/map")

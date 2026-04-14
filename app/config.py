@@ -56,9 +56,12 @@ class Config:
     _attacks = _yaml.get("attacks", {})
     AUTO_RESOLVE_AFTER_MINUTES = _attacks.get("auto_resolve_after_minutes", 120)
 
-    # Scheduler
+    # Scheduler — cron-based (map.sql updates once daily at midnight)
     scheduler = _yaml.get("scheduler", {})
-    FETCH_INTERVAL_MINUTES = scheduler.get("fetch_interval_minutes", 60)
+    FETCH_CRON_HOUR = scheduler.get("fetch_cron_hour", 0)
+    FETCH_CRON_MINUTE = scheduler.get("fetch_cron_minute", 5)
+    # Legacy fallback kept for backwards compatibility
+    FETCH_INTERVAL_MINUTES = scheduler.get("fetch_interval_minutes", None)
 
     # Alerts
     alerts = _yaml.get("alerts", {})

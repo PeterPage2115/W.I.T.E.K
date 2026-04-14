@@ -11,7 +11,7 @@ Kompletna instrukcja uruchomienia W.I.T.E.K w aktualnym układzie **RoF-first**.
 - `docker-compose.yml` — Flask + bot + scheduler + PostgreSQL
 - profil serwera: `SERVER_PROFILE=rof-x3`
 - start aplikacji: `python run.py --scheduled --port 5000`
-- kolektor `map.sql`: interwał z `scheduler.fetch_interval_minutes` (domyślnie 60 min)
+- kolektor `map.sql`: cron z `scheduler.fetch_cron_hour` / `fetch_cron_minute` (domyślnie 00:05 UTC — map.sql aktualizuje się raz dziennie o północy)
 
 RoF to standardowy tryb działania repo — korzystasz po prostu z domyślnego stacku produkcyjnego.
 
@@ -81,7 +81,8 @@ servers:
     our_alliances: [123, 456]
 
 scheduler:
-  fetch_interval_minutes: 60
+  fetch_cron_hour: 0      # map.sql updates once daily at midnight
+  fetch_cron_minute: 5    # collect 5 min after to ensure data is ready
 
 alerts:
   pop_drop_threshold: 25
@@ -266,8 +267,8 @@ docker compose exec -T witek-db psql -U witek witek_rof < backup.sql
 
 ### Scheduler działa inaczej niż oczekiwano
 
-- interwał ustawia `scheduler.fetch_interval_minutes` w `config/config.yaml`,
-- domyślna wartość repo to `60`, a nie „raz dziennie”.
+- czas zbierania ustawia `scheduler.fetch_cron_hour` i `fetch_cron_minute` w `config/config.yaml`,
+- domyślna wartość repo to `00:05 UTC` (map.sql aktualizuje się raz dziennie o północy).
 
 ### Błędy bazy danych
 

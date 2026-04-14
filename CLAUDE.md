@@ -86,7 +86,7 @@ The bot runs in a daemon thread alongside Flask. The Werkzeug reloader guard in 
 - **Prod/default**: `docker-compose.yml` — PostgreSQL 16 + app container
 - **Dev**: `docker-compose.dev.yml` — SQLite + bind mounts
 - **Container command**: Dockerfile defaults to `python run.py --scheduled --port 5000`
-- **Collector cadence**: `scheduler.fetch_interval_minutes` in YAML, default `60`
+- **Collector cadence**: `scheduler.fetch_cron_hour` / `fetch_cron_minute` in YAML, default `00:05 UTC` (once daily)
 - **No separate RoF compose file**: standard `docker compose up -d` is already the RoF-first path
 
 ### Alert System (map.sql)

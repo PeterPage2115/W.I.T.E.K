@@ -3,31 +3,62 @@
 {% block title %}Mapa{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
 <style>
-    #map-container {
+    #map-wrap {
+        position: relative;
         height: calc(100vh - 180px);
         min-height: 500px;
         border-radius: 6px;
         border: 2px solid #8b6f5e;
+        overflow: hidden;
+        background: #1a2810;
+        cursor: grab;
     }
-    .leaflet-popup-content-wrapper {
-        background: linear-gradient(135deg, #f5e6c8, #e8d4a8);
-        border: 2px solid #8b6f5e;
-        color: #3c2a1a;
-        font-family: 'Inter', sans-serif;
-    }
-    .leaflet-popup-tip { background: #e8d4a8; }
+    #map-wrap.dragging { cursor: grabbing; }
+    #map-canvas { display: block; width: 100%; height: 100%; }
+
+    /* Overlays */
     .map-panel {
-        position: absolute; z-index: 1000;
+        position: absolute; z-index: 10;
         background: rgba(245, 230, 200, 0.95); border: 2px solid #8b6f5e;
         border-radius: 6px; padding: 8px; font-size: 12px;
+        color: #3c2a1a;
     }
     .map-search { top: 10px; right: 10px; max-width: 280px; }
-    .map-legend { bottom: 30px; left: 10px; max-height: 300px; overflow-y: auto; }
-    .map-distance { bottom: 30px; right: 10px; display: none; }
+    .map-legend { bottom: 10px; left: 10px; max-height: 280px; overflow-y: auto; }
+    .map-distance { bottom: 10px; right: 10px; display: none; max-width: 260px; }
+    .map-minimap {
+        position: absolute; bottom: 10px; right: 10px; z-index: 10;
+        border: 2px solid #8b6f5e; border-radius: 4px;
+        background: #1a2810; cursor: pointer;
+    }
+    .map-minimap.has-distance { bottom: auto; top: 10px; left: 10px; }
+
+    /* Tooltip */
+    #map-tooltip {
+        position: absolute; z-index: 20; pointer-events: none;
+        background: rgba(60, 42, 26, 0.92); color: #f5e6c8;
+        padding: 4px 8px; border-radius: 4px; font-size: 11px;
+        white-space: nowrap; display: none;
+        border: 1px solid #8b6f5e;
+    }
+
+    /* Popup */
+    #map-popup {
+        position: absolute; z-index: 30;
+        background: linear-gradient(135deg, #f5e6c8, #e8d4a8);
+        border: 2px solid #8b6f5e; border-radius: 6px;
+        padding: 10px 14px; font-size: 12px; color: #3c2a1a;
+        min-width: 200px; max-width: 280px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        display: none;
+    }
+    #map-popup .close-btn {
+        position: absolute; top: 4px; right: 8px;
+        cursor: pointer; font-size: 16px; color: #8b6f5e;
+    }
+    #map-popup .close-btn:hover { color: #c0392b; }
+
     .filter-btn { cursor: pointer; transition: all 0.15s; }
     .filter-btn.active { outline: 2px solid #c8a415; outline-offset: 1px; }
     .filter-btn:hover { opacity: 0.85; }
@@ -36,16 +67,29 @@
     .tribe-btn img { width: 100%; height: 100%; }
     .legend-row { display: flex; align-items: center; gap: 4px; padding: 1px 0; }
     .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-    .marker-cluster-small { background-color: rgba(90, 154, 10, 0.6); }
-    .marker-cluster-small div { background-color: rgba(90, 154, 10, 0.8); }
-    .marker-cluster-medium { background-color: rgba(241, 211, 87, 0.6); }
-    .marker-cluster-medium div { background-color: rgba(241, 211, 87, 0.8); }
-    .marker-cluster-large { background-color: rgba(192, 57, 43, 0.6); }
-    .marker-cluster-large div { background-color: rgba(192, 57, 43, 0.8); }
-    .marker-cluster div { color: #fff; font-weight: bold; text-align: center; }
     .pop-slider { width: 100%; accent-color: #5a9a0a; }
     #alliance-select { max-width: 200px; font-size: 11px; }
-    .distance-line { stroke: #e74c3c; stroke-width: 2; stroke-dasharray: 6,4; }
+
+    /* Zoom controls */
+    .map-zoom {
+        position: absolute; top: 10px; left: 10px; z-index: 10;
+        display: flex; flex-direction: column; gap: 2px;
+    }
+    .zoom-btn {
+        width: 30px; height: 30px; border: 2px solid #8b6f5e;
+        background: rgba(245, 230, 200, 0.95); color: #3c2a1a;
+        font-size: 18px; font-weight: bold; cursor: pointer;
+        border-radius: 4px; display: flex; align-items: center;
+        justify-content: center; line-height: 1;
+    }
+    .zoom-btn:hover { background: #e8d4a8; }
+
+    /* Coords display */
+    .map-coords {
+        position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+        z-index: 10; background: rgba(60, 42, 26, 0.8); color: #f5e6c8;
+        padding: 2px 10px; border-radius: 10px; font-size: 11px; font-family: monospace;
+    }
 </style>
 {% endblock %}
 
@@ -54,66 +98,83 @@
     <div class="trav-panel-header">
         <h2 class="font-medieval text-lg">🗺️ Mapa świata</h2>
     </div>
-    <div class="p-1 relative">
-        <div id="map-container"></div>
+    <div class="p-1">
+        <div id="map-wrap">
+            <canvas id="map-canvas"></canvas>
 
-        <!-- Search + filters overlay -->
-        <div class="map-panel map-search">
-            <input id="search-input" type="text" placeholder="Szukaj gracza/wioski/sojuszu..."
-                   class="w-full px-3 py-1.5 text-sm bg-white border border-trav-brown-light rounded mb-2">
+            <!-- Tooltip + Popup -->
+            <div id="map-tooltip"></div>
+            <div id="map-popup"><span class="close-btn" id="popup-close">&times;</span><div id="popup-content"></div></div>
 
-            <!-- Category filter -->
-            <div class="flex flex-wrap gap-1 mb-2">
-                <button class="filter-btn px-2 py-0.5 text-xs rounded bg-trav-green text-white" data-filter="ours">Nasze</button>
-                <button class="filter-btn px-2 py-0.5 text-xs rounded bg-red-600 text-white" data-filter="war">Wojna</button>
-                <button class="filter-btn px-2 py-0.5 text-xs rounded bg-blue-500 text-white" data-filter="diplo">Dyplomacja</button>
-                <button class="filter-btn px-2 py-0.5 text-xs rounded bg-gray-500 text-white active" data-filter="all">Wszyscy</button>
+            <!-- Zoom -->
+            <div class="map-zoom">
+                <button class="zoom-btn" id="zoom-in" title="Przybliż">+</button>
+                <button class="zoom-btn" id="zoom-out" title="Oddal">−</button>
+                <button class="zoom-btn" id="zoom-fit" title="Pokaż całą mapę" style="font-size:13px">⊞</button>
             </div>
 
-            <!-- Tribe filter -->
-            <div class="flex flex-wrap gap-1 mb-2" id="tribe-filters">
-                <button class="tribe-btn active" data-tid="0" title="Wszystkie"><span style="font-size:16px">🌍</span></button>
+            <!-- Coords -->
+            <div class="map-coords" id="coords-display">0 | 0</div>
+
+            <!-- Minimap -->
+            <canvas class="map-minimap" id="minimap" width="160" height="160"></canvas>
+
+            <!-- Search + filters -->
+            <div class="map-panel map-search">
+                <input id="search-input" type="text" placeholder="Szukaj gracza/wioski/sojuszu..."
+                       class="w-full px-3 py-1.5 text-sm bg-white border border-trav-brown-light rounded mb-2"
+                       style="color:#3c2a1a">
+
+                <div class="flex flex-wrap gap-1 mb-2">
+                    <button class="filter-btn px-2 py-0.5 text-xs rounded bg-trav-green text-white" data-filter="ours">Nasze</button>
+                    <button class="filter-btn px-2 py-0.5 text-xs rounded bg-red-600 text-white" data-filter="war">Wojna</button>
+                    <button class="filter-btn px-2 py-0.5 text-xs rounded bg-blue-500 text-white" data-filter="diplo">Dyplomacja</button>
+                    <button class="filter-btn px-2 py-0.5 text-xs rounded bg-gray-500 text-white active" data-filter="all">Wszyscy</button>
+                </div>
+
+                <div class="flex flex-wrap gap-1 mb-2" id="tribe-filters">
+                    <button class="tribe-btn active" data-tid="0" title="Wszystkie"><span style="font-size:16px">🌍</span></button>
+                </div>
+
+                <select id="alliance-select" class="w-full px-2 py-1 text-sm bg-white border border-trav-brown-light rounded mb-2" style="color:#3c2a1a">
+                    <option value="">— Wszystkie sojusze —</option>
+                </select>
+
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-xs">Pop ≥</span>
+                    <input type="range" id="pop-min" class="pop-slider flex-1" min="0" max="2000" value="0" step="50">
+                    <span id="pop-min-val" class="text-xs font-mono w-10">0</span>
+                </div>
+
+                <div class="flex items-center gap-2 mt-1">
+                    <button id="distance-toggle" class="filter-btn px-2 py-0.5 text-xs rounded bg-amber-600 text-white">📏 Dystans</button>
+                    <span id="stats" class="text-xs" style="color:#8b7a68"></span>
+                </div>
             </div>
 
-            <!-- Alliance dropdown -->
-            <select id="alliance-select" class="w-full px-2 py-1 text-sm bg-white border border-trav-brown-light rounded mb-2">
-                <option value="">— Wszystkie sojusze —</option>
-            </select>
-
-            <!-- Pop range -->
-            <div class="flex items-center gap-2 mb-1">
-                <span class="text-xs">Pop ≥</span>
-                <input type="range" id="pop-min" class="pop-slider flex-1" min="0" max="2000" value="0" step="50">
-                <span id="pop-min-val" class="text-xs font-mono w-10">0</span>
+            <!-- Legend -->
+            <div class="map-panel map-legend" id="legend-container">
+                <div class="font-bold mb-1">Legenda:</div>
+                <div id="legend-items"></div>
             </div>
 
-            <!-- Distance tool toggle -->
-            <div class="flex items-center gap-2 mt-1">
-                <button id="distance-toggle" class="filter-btn px-2 py-0.5 text-xs rounded bg-amber-600 text-white">📏 Dystans</button>
-                <span id="stats" class="text-xs text-trav-text-muted"></span>
+            <!-- Distance panel -->
+            <div class="map-panel map-distance" id="distance-panel">
+                <div class="font-bold mb-1">📏 Dystans</div>
+                <div id="distance-info">Kliknij na pierwszą wioskę...</div>
             </div>
-        </div>
-
-        <!-- Dynamic legend -->
-        <div class="map-panel map-legend" id="legend-container">
-            <div class="font-bold mb-1">Legenda:</div>
-            <div id="legend-items"></div>
-        </div>
-
-        <!-- Distance panel -->
-        <div class="map-panel map-distance" id="distance-panel">
-            <div class="font-bold mb-1">📏 Dystans</div>
-            <div id="distance-info">Kliknij na pierwszą wioskę...</div>
         </div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script>
 (function() {
+    /* ================================================================
+     *  W.I.T.E.K — Canvas Pixel Map (GetterMap-style)
+     * ================================================================ */
+
     /* --- Helpers --- */
     function esc(s) {
         if (!s) return '';
@@ -122,9 +183,24 @@
         return d.innerHTML;
     }
 
-    function hslForAlliance(aid) {
+    function hslToRgb(h, s, l) {
+        s /= 100; l /= 100;
+        var c = (1 - Math.abs(2 * l - 1)) * s;
+        var x = c * (1 - Math.abs((h / 60) % 2 - 1));
+        var m = l - c / 2;
+        var r, g, b;
+        if (h < 60)       { r = c; g = x; b = 0; }
+        else if (h < 120) { r = x; g = c; b = 0; }
+        else if (h < 180) { r = 0; g = c; b = x; }
+        else if (h < 240) { r = 0; g = x; b = c; }
+        else if (h < 300) { r = x; g = 0; b = c; }
+        else               { r = c; g = 0; b = x; }
+        return 'rgb(' + Math.round((r+m)*255) + ',' + Math.round((g+m)*255) + ',' + Math.round((b+m)*255) + ')';
+    }
+
+    function colorForAlliance(aid) {
         var h = ((aid * 2654435761) >>> 0) % 360;
-        return 'hsl(' + h + ',60%,50%)';
+        return hslToRgb(h, 55, 50);
     }
 
     function flatDistance(x1, y1, x2, y2) {
@@ -139,7 +215,7 @@
         return h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
     }
 
-    /* --- Config --- */
+    /* --- Config from server --- */
     const OUR_ALLIANCES = {{ our_alliances | tojson }};
     const DIPLO_MAP = {{ diplo_map | tojson }};
     const SERVER_URL = {{ config.TRAVIAN_SERVER_URL | default('', true) | tojson }};
@@ -148,12 +224,8 @@
     const tribeNames = {{ TRIBE_NAMES | tojson }};
 
     const DIPLO_COLORS = {
-        ally: '#27ae60',
-        pact: '#2980b9',
-        nap:  '#f1c40f',
-        war:  '#c0392b',
+        ally: '#27ae60', pact: '#2980b9', nap: '#f1c40f', war: '#c0392b',
     };
-
     const UNIT_SPEEDS = [
         {name: 'Equites Imperatoris', speed: 14},
         {name: 'Jeździec (najszybszy)', speed: 19},
@@ -161,133 +233,300 @@
         {name: 'Katapulta', speed: 3},
     ];
 
-    /* --- Map init --- */
-    const map = L.map('map-container', {
-        crs: L.CRS.Simple,
-        minZoom: -2,
-        maxZoom: 5,
-        zoomSnap: 0.5,
-        zoomDelta: 0.5,
-    });
-    map.fitBounds([[-200, -200], [200, 200]]);
+    const MAP_MIN = -200, MAP_MAX = 200, MAP_RANGE = 401;
 
-    for (let i = -200; i <= 200; i += 50) {
-        L.polyline([[i, -200], [i, 200]], {color: '#555', weight: 0.3, opacity: 0.5}).addTo(map);
-        L.polyline([[-200, i], [200, i]], {color: '#555', weight: 0.3, opacity: 0.5}).addTo(map);
-    }
-    L.marker([0, 0], {
-        icon: L.divIcon({className: '', html: '<span style="font-size:18px">⭐</span>', iconSize: [20, 20], iconAnchor: [10, 10]})
-    }).addTo(map).bindPopup('Centrum mapy (0|0)');
-
-    let allVillages = [];
-    let markers = L.markerClusterGroup({
-        maxClusterRadius: 40,
-        spiderfyOnMaxZoom: true,
-        showCoverageOnHover: false,
-        zoomToBoundsOnClick: true,
-        disableClusteringAtZoom: 3,
-        chunkedLoading: true,
-        chunkInterval: 100,
-        chunkDelay: 10,
-    }).addTo(map);
+    /* --- DOM refs --- */
+    const wrap = document.getElementById('map-wrap');
+    const canvas = document.getElementById('map-canvas');
+    const ctx = canvas.getContext('2d');
+    const miniCanvas = document.getElementById('minimap');
+    const miniCtx = miniCanvas.getContext('2d');
+    const tooltip = document.getElementById('map-tooltip');
+    const popup = document.getElementById('map-popup');
+    const popupContent = document.getElementById('popup-content');
+    const coordsDisplay = document.getElementById('coords-display');
 
     /* --- State --- */
-    let activeFilter = 'all';
-    let activeTribe = 0;
-    let activeAlliance = '';
-    let popMin = 0;
-    let distanceMode = false;
-    let distanceFrom = null;
-    let distanceLine = null;
+    let allVillages = [];
+    let filtered = [];
+    let spatialGrid = {};
+    const GRID_CELL = 5; // Travian units per spatial cell
+
+    // View transform: canvas center = (viewX, viewY) in Travian coords, zoom = px per Travian unit
+    let viewX = 0, viewY = 0, zoom = 1;
+    let isDragging = false, dragStartX = 0, dragStartY = 0, dragViewX = 0, dragViewY = 0;
+    let hasDragged = false;
+
+    let activeFilter = 'all', activeTribe = 0, activeAlliance = '', popMin = 0;
+    let distanceMode = false, distanceFrom = null;
+    let selectedVillage = null;
+
+    /* --- Canvas sizing --- */
+    function resizeCanvas() {
+        var dpr = window.devicePixelRatio || 1;
+        var rect = wrap.getBoundingClientRect();
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        canvas.style.width = rect.width + 'px';
+        canvas.style.height = rect.height + 'px';
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        render();
+    }
+
+    function fitMap() {
+        var rect = wrap.getBoundingClientRect();
+        zoom = Math.min(rect.width, rect.height) / (MAP_RANGE + 20);
+        viewX = 0; viewY = 0;
+        render();
+    }
+
+    /* --- Coordinate conversion --- */
+    function travianToCanvas(tx, ty) {
+        var rect = wrap.getBoundingClientRect();
+        var cx = rect.width / 2 + (tx - viewX) * zoom;
+        var cy = rect.height / 2 - (ty - viewY) * zoom; // Y inverted
+        return [cx, cy];
+    }
+
+    function canvasToTravian(cx, cy) {
+        var rect = wrap.getBoundingClientRect();
+        var tx = viewX + (cx - rect.width / 2) / zoom;
+        var ty = viewY - (cy - rect.height / 2) / zoom;
+        return [tx, ty];
+    }
+
+    /* --- Spatial index --- */
+    function buildSpatialIndex(villages) {
+        spatialGrid = {};
+        for (var i = 0; i < villages.length; i++) {
+            var v = villages[i];
+            var gx = Math.floor(v.x / GRID_CELL);
+            var gy = Math.floor(v.y / GRID_CELL);
+            var key = gx + ',' + gy;
+            if (!spatialGrid[key]) spatialGrid[key] = [];
+            spatialGrid[key].push(v);
+        }
+    }
+
+    function findVillageAt(tx, ty, maxDist) {
+        var gx = Math.floor(tx / GRID_CELL);
+        var gy = Math.floor(ty / GRID_CELL);
+        var best = null, bestDist = maxDist * maxDist;
+        for (var dx = -1; dx <= 1; dx++) {
+            for (var dy = -1; dy <= 1; dy++) {
+                var key = (gx + dx) + ',' + (gy + dy);
+                var cell = spatialGrid[key];
+                if (!cell) continue;
+                for (var i = 0; i < cell.length; i++) {
+                    var v = cell[i];
+                    var d2 = (v.x - tx) * (v.x - tx) + (v.y - ty) * (v.y - ty);
+                    if (d2 < bestDist) { bestDist = d2; best = v; }
+                }
+            }
+        }
+        return best;
+    }
 
     /* --- Color logic --- */
     function getColor(v) {
         if (v.is_ours) return '#2ecc71';
         var dt = DIPLO_MAP[v.aid];
         if (dt) return DIPLO_COLORS[dt] || '#888';
-        if (v.aid > 0) return hslForAlliance(v.aid);
-        return '#888';
+        if (v.aid > 0) return colorForAlliance(v.aid);
+        return '#666';
     }
 
-    function getRadius(pop) {
-        if (pop > 1000) return 5;
-        if (pop > 500) return 4;
-        if (pop > 200) return 3;
+    function getDotSize(v) {
+        if (v.is_capital) return 4;
+        if (v.pop > 800) return 3;
+        if (v.pop > 300) return 2.5;
         return 2;
     }
 
-    function getWeight(v) {
-        return v.is_capital ? 3 : 1;
+    /* --- Main render --- */
+    function render() {
+        var rect = wrap.getBoundingClientRect();
+        var w = rect.width, h = rect.height;
+
+        ctx.save();
+        ctx.clearRect(0, 0, w, h);
+
+        // Background
+        ctx.fillStyle = '#1a2810';
+        ctx.fillRect(0, 0, w, h);
+
+        // Visible bounds in Travian coords
+        var tlT = canvasToTravian(0, 0);
+        var brT = canvasToTravian(w, h);
+        var vMinX = Math.max(MAP_MIN, Math.floor(tlT[0]));
+        var vMaxX = Math.min(MAP_MAX, Math.ceil(brT[0]));
+        var vMinY = Math.max(MAP_MIN, Math.floor(brT[1]));
+        var vMaxY = Math.min(MAP_MAX, Math.ceil(tlT[1]));
+
+        // Grid lines
+        ctx.strokeStyle = 'rgba(100, 130, 60, 0.25)';
+        ctx.lineWidth = 1;
+        var gridStep = zoom > 3 ? 10 : (zoom > 1 ? 25 : 50);
+        var startG = Math.floor(vMinX / gridStep) * gridStep;
+
+        ctx.beginPath();
+        for (var gx = startG; gx <= vMaxX; gx += gridStep) {
+            var p = travianToCanvas(gx, 0);
+            ctx.moveTo(p[0], 0); ctx.lineTo(p[0], h);
+        }
+        startG = Math.floor(vMinY / gridStep) * gridStep;
+        for (var gy = startG; gy <= vMaxY; gy += gridStep) {
+            var p = travianToCanvas(0, gy);
+            ctx.moveTo(0, p[1]); ctx.lineTo(w, p[1]);
+        }
+        ctx.stroke();
+
+        // Map border
+        var blPx = travianToCanvas(MAP_MIN, MAP_MIN);
+        var trPx = travianToCanvas(MAP_MAX, MAP_MAX);
+        ctx.strokeStyle = 'rgba(139, 111, 94, 0.5)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(blPx[0], trPx[1], trPx[0] - blPx[0], blPx[1] - trPx[1]);
+
+        // Axis lines
+        var originPx = travianToCanvas(0, 0);
+        ctx.strokeStyle = 'rgba(200, 164, 21, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(originPx[0], 0); ctx.lineTo(originPx[0], h);
+        ctx.moveTo(0, originPx[1]); ctx.lineTo(w, originPx[1]);
+        ctx.stroke();
+
+        // Grid labels
+        if (zoom > 0.5) {
+            ctx.fillStyle = 'rgba(200, 180, 140, 0.5)';
+            ctx.font = '10px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            var labelStep = zoom > 3 ? 10 : (zoom > 1 ? 25 : 50);
+            var ls = Math.floor(vMinX / labelStep) * labelStep;
+            for (var lx = ls; lx <= vMaxX; lx += labelStep) {
+                if (lx === 0) continue;
+                var lp = travianToCanvas(lx, 0);
+                if (lp[1] > 10 && lp[1] < h - 5) {
+                    ctx.fillText(lx, lp[0], lp[1] + 12);
+                }
+            }
+            ctx.textAlign = 'right';
+            ls = Math.floor(vMinY / labelStep) * labelStep;
+            for (var ly = ls; ly <= vMaxY; ly += labelStep) {
+                if (ly === 0) continue;
+                var lp = travianToCanvas(0, ly);
+                if (lp[0] > 5 && lp[0] < w - 5) {
+                    ctx.fillText(ly, lp[0] - 4, lp[1] + 3);
+                }
+            }
+        }
+
+        // Center marker
+        ctx.fillStyle = '#c8a415';
+        ctx.font = '14px serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('⭐', originPx[0], originPx[1] + 5);
+
+        // Villages
+        for (var i = 0; i < filtered.length; i++) {
+            var v = filtered[i];
+            if (v.x < vMinX - 2 || v.x > vMaxX + 2 || v.y < vMinY - 2 || v.y > vMaxY + 2) continue;
+            var p = travianToCanvas(v.x, v.y);
+            var sz = getDotSize(v) * Math.min(Math.max(zoom / 1.5, 0.8), 2.5);
+            ctx.fillStyle = getColor(v);
+            ctx.fillRect(p[0] - sz/2, p[1] - sz/2, sz, sz);
+
+            // Harbor ring
+            if (v.has_harbor && zoom > 2) {
+                ctx.strokeStyle = '#3498db';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.arc(p[0], p[1], sz + 1, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            // Capital highlight
+            if (v.is_capital && zoom > 2) {
+                ctx.strokeStyle = '#c8a415';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.arc(p[0], p[1], sz + 2, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        }
+
+        // Distance line
+        if (distanceFrom && selectedVillage && distanceFrom !== selectedVillage) {
+            var p1 = travianToCanvas(distanceFrom.x, distanceFrom.y);
+            var p2 = travianToCanvas(selectedVillage.x, selectedVillage.y);
+            ctx.strokeStyle = '#e74c3c';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([6, 4]);
+            ctx.beginPath();
+            ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        } else if (distanceFrom) {
+            // Highlight 'from' village
+            var pf = travianToCanvas(distanceFrom.x, distanceFrom.y);
+            ctx.strokeStyle = '#e74c3c';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(pf[0], pf[1], 6, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        ctx.restore();
+        renderMinimap();
     }
 
-    /* --- Rendering --- */
-    function renderMarkers(villages) {
-        markers.clearLayers();
-        var markerList = [];
-        villages.forEach(function(v) {
-            var color = getColor(v);
-            var opts = {
-                radius: getRadius(v.pop),
-                color: v.has_harbor ? '#3498db' : color,
-                fillColor: color,
-                fillOpacity: 0.75,
-                weight: getWeight(v),
-            };
-            var marker = L.circleMarker([v.y, v.x], opts);
+    /* --- Minimap --- */
+    function renderMinimap() {
+        var mw = miniCanvas.width, mh = miniCanvas.height;
+        miniCtx.clearRect(0, 0, mw, mh);
+        miniCtx.fillStyle = '#1a2810';
+        miniCtx.fillRect(0, 0, mw, mh);
 
-            var coordText = '[' + v.x + '|' + v.y + ']';
-            var mapLink = coordText;
-            if (SERVER_URL) {
-                mapLink = '<a href="' + SERVER_URL + '/karte.php?x=' + v.x + '&y=' + v.y +
-                          '" target="_blank" style="color:#2980b9">' + coordText + '</a>';
-            }
+        // Scale: fit 401 range into minimap
+        var scale = mw / MAP_RANGE;
 
-            var badges = '';
-            if (v.is_capital) badges += ' ⭐';
-            if (v.is_city) badges += ' 🏙️';
-            if (v.has_harbor) badges += ' ⚓';
+        // Grid
+        miniCtx.strokeStyle = 'rgba(100,130,60,0.15)';
+        miniCtx.lineWidth = 0.5;
+        miniCtx.beginPath();
+        for (var g = -200; g <= 200; g += 50) {
+            var gx = (g - MAP_MIN) * scale;
+            miniCtx.moveTo(gx, 0); miniCtx.lineTo(gx, mh);
+            miniCtx.moveTo(0, gx); miniCtx.lineTo(mw, gx);
+        }
+        miniCtx.stroke();
 
-            var tribeSlug = TRIBE_SLUGS[v.tid];
-            var tribeHtml = '';
-            if (tribeSlug) {
-                tribeHtml = '<img src="' + CDN + tribeSlug + '_small.png" style="width:16px;height:16px;vertical-align:middle" alt=""> ';
-            }
+        // Villages (tiny dots)
+        for (var i = 0; i < filtered.length; i++) {
+            var v = filtered[i];
+            var mx = (v.x - MAP_MIN) * scale;
+            var my = (MAP_MAX - v.y) * scale; // Y inverted
+            miniCtx.fillStyle = getColor(v);
+            miniCtx.fillRect(mx, my, 1.5, 1.5);
+        }
 
-            var extra = '';
-            if (v.region) extra += '📍 ' + esc(v.region) + '<br>';
-            if (v.vp) extra += '🏆 VP: ' + v.vp.toLocaleString('pl-PL') + '<br>';
-
-            var sendLink = '';
-            if (SERVER_URL) {
-                sendLink = ' <a href="' + SERVER_URL + '/build.php?id=39&tt=2&x=' + v.x + '&y=' + v.y +
-                           '" target="_blank" style="color:#e67e22;font-size:10px" title="Wyślij wojska">⚔️</a>';
-            }
-
-            marker.bindPopup(
-                '<div class="text-sm">' +
-                '<b>' + esc(v.name || '?') + '</b>' + badges + sendLink + '<br>' +
-                tribeHtml + (tribeNames[v.tid] || '?') + ' &middot; ' + mapLink + '<br>' +
-                '👤 ' + esc(v.player || 'Natury') + '<br>' +
-                '🏰 ' + esc(v.alliance || '—') + '<br>' +
-                '📊 Pop: ' + (v.pop != null ? v.pop.toLocaleString('pl-PL') : '?') + '<br>' +
-                extra +
-                '</div>'
-            );
-
-            marker.villageData = v;
-            marker.on('click', function() {
-                if (distanceMode) handleDistanceClick(v);
-            });
-
-            markerList.push(marker);
-        });
-        markers.addLayers(markerList);
+        // Viewport rectangle
+        var rect = wrap.getBoundingClientRect();
+        var tl = canvasToTravian(0, 0);
+        var br = canvasToTravian(rect.width, rect.height);
+        var rx = (tl[0] - MAP_MIN) * scale;
+        var ry = (MAP_MAX - tl[1]) * scale;
+        var rw = (br[0] - tl[0]) * scale;
+        var rh = (tl[1] - br[1]) * scale;
+        miniCtx.strokeStyle = '#c8a415';
+        miniCtx.lineWidth = 1.5;
+        miniCtx.strokeRect(rx, ry, rw, rh);
     }
 
     /* --- Filtering --- */
     function applyFilters() {
         var q = document.getElementById('search-input').value.toLowerCase();
-        var filtered = allVillages;
+        filtered = allVillages;
 
         if (activeFilter === 'ours') {
             filtered = filtered.filter(function(v) { return v.is_ours; });
@@ -300,17 +539,14 @@
         if (activeTribe > 0) {
             filtered = filtered.filter(function(v) { return v.tid === activeTribe; });
         }
-
         if (activeAlliance) {
             filtered = filtered.filter(function(v) {
                 return v.alliance && v.alliance.toLowerCase() === activeAlliance.toLowerCase();
             });
         }
-
         if (popMin > 0) {
             filtered = filtered.filter(function(v) { return v.pop >= popMin; });
         }
-
         if (q) {
             filtered = filtered.filter(function(v) {
                 return (v.player && v.player.toLowerCase().indexOf(q) !== -1) ||
@@ -319,17 +555,72 @@
             });
         }
 
-        renderMarkers(filtered);
+        buildSpatialIndex(filtered);
         document.getElementById('stats').textContent = filtered.length + '/' + allVillages.length;
+        render();
     }
+
+    /* --- Popup --- */
+    function showPopup(v, canvasX, canvasY) {
+        var coordText = '[' + v.x + '|' + v.y + ']';
+        var mapLink = coordText;
+        if (SERVER_URL) {
+            mapLink = '<a href="' + SERVER_URL + '/karte.php?x=' + v.x + '&y=' + v.y +
+                      '" target="_blank" style="color:#2980b9">' + coordText + '</a>';
+        }
+        var badges = '';
+        if (v.is_capital) badges += ' ⭐';
+        if (v.is_city) badges += ' 🏙️';
+        if (v.has_harbor) badges += ' ⚓';
+
+        var tribeSlug = TRIBE_SLUGS[v.tid];
+        var tribeHtml = '';
+        if (tribeSlug) {
+            tribeHtml = '<img src="' + CDN + tribeSlug + '_small.png" style="width:16px;height:16px;vertical-align:middle" alt=""> ';
+        }
+
+        var extra = '';
+        if (v.region) extra += '📍 ' + esc(v.region) + '<br>';
+        if (v.vp) extra += '🏆 VP: ' + v.vp.toLocaleString('pl-PL') + '<br>';
+
+        var sendLink = '';
+        if (SERVER_URL) {
+            sendLink = ' <a href="' + SERVER_URL + '/build.php?id=39&tt=2&x=' + v.x + '&y=' + v.y +
+                       '" target="_blank" style="color:#e67e22;font-size:11px" title="Wyślij wojska">⚔️</a>';
+        }
+
+        popupContent.innerHTML =
+            '<div style="font-size:13px">' +
+            '<b>' + esc(v.name || '?') + '</b>' + badges + sendLink + '<br>' +
+            tribeHtml + (tribeNames[v.tid] || '?') + ' · ' + mapLink + '<br>' +
+            '👤 ' + esc(v.player || 'Natury') + '<br>' +
+            '🏰 ' + esc(v.alliance || '—') + '<br>' +
+            '📊 Pop: ' + (v.pop != null ? v.pop.toLocaleString('pl-PL') : '?') + '<br>' +
+            extra +
+            '</div>';
+
+        var rect = wrap.getBoundingClientRect();
+        var px = Math.min(canvasX + 12, rect.width - 290);
+        var py = Math.min(canvasY - 10, rect.height - 180);
+        if (px < 10) px = 10;
+        if (py < 10) py = 10;
+        popup.style.left = px + 'px';
+        popup.style.top = py + 'px';
+        popup.style.display = 'block';
+    }
+
+    function hidePopup() { popup.style.display = 'none'; selectedVillage = null; }
 
     /* --- Distance tool --- */
     function handleDistanceClick(v) {
         if (!distanceFrom) {
             distanceFrom = v;
+            selectedVillage = v;
             document.getElementById('distance-info').innerHTML =
-                '<b>Od:</b> ' + esc(v.name) + ' ' + v.x + '|' + v.y + '<br>Kliknij drugą wioskę...';
+                '<b>Od:</b> ' + esc(v.name) + ' (' + v.x + '|' + v.y + ')<br>Kliknij drugą wioskę...';
+            render();
         } else {
+            selectedVillage = v;
             var dist = flatDistance(distanceFrom.x, distanceFrom.y, v.x, v.y);
             var html = '<b>Od:</b> ' + esc(distanceFrom.name) + ' (' + distanceFrom.x + '|' + distanceFrom.y + ')<br>' +
                        '<b>Do:</b> ' + esc(v.name) + ' (' + v.x + '|' + v.y + ')<br>' +
@@ -340,25 +631,22 @@
             });
             html += '<br><a href="#" id="distance-reset" style="color:#2980b9">🔄 Reset</a>';
             document.getElementById('distance-info').innerHTML = html;
+            render();
 
-            if (distanceLine) map.removeLayer(distanceLine);
-            distanceLine = L.polyline(
-                [[distanceFrom.y, distanceFrom.x], [v.y, v.x]],
-                {color: '#e74c3c', weight: 2, dashArray: '6,4'}
-            ).addTo(map);
-
-            document.getElementById('distance-reset').addEventListener('click', function(e) {
-                e.preventDefault();
-                resetDistance();
-            });
+            setTimeout(function() {
+                var resetBtn = document.getElementById('distance-reset');
+                if (resetBtn) resetBtn.addEventListener('click', function(e) {
+                    e.preventDefault(); resetDistance();
+                });
+            }, 0);
             distanceFrom = null;
         }
     }
 
     function resetDistance() {
-        distanceFrom = null;
-        if (distanceLine) { map.removeLayer(distanceLine); distanceLine = null; }
+        distanceFrom = null; selectedVillage = null;
         document.getElementById('distance-info').innerHTML = 'Kliknij na pierwszą wioskę...';
+        render();
     }
 
     /* --- Legend --- */
@@ -374,7 +662,6 @@
         var top = sorted.slice(0, 15);
 
         var html = '';
-        // Fixed categories first
         html += '<div class="legend-row"><div class="legend-dot" style="background:#2ecc71"></div> Nasz sojusz</div>';
         ['ally', 'pact', 'nap', 'war'].forEach(function(dt) {
             var labels = {ally: 'Sojusznik', pact: 'Pakt', nap: 'NAP', war: 'Wojna'};
@@ -384,15 +671,12 @@
             }
         });
         html += '<hr style="margin:4px 0;border-color:#8b6f5e">';
-
-        // Top alliances
         top.forEach(function(a) {
             var color = getColor({is_ours: OUR_ALLIANCES.indexOf(a.aid) !== -1, aid: a.aid});
             html += '<div class="legend-row"><div class="legend-dot" style="background:' + color + '"></div> ' +
                     esc(a.name) + ' <span style="color:#888">(' + a.count + ')</span></div>';
         });
-        html += '<div class="legend-row"><div class="legend-dot" style="background:#888"></div> Neutralni</div>';
-
+        html += '<div class="legend-row"><div class="legend-dot" style="background:#666"></div> Neutralni</div>';
         document.getElementById('legend-items').innerHTML = html;
     }
 
@@ -414,10 +698,125 @@
         });
     }
 
-    /* --- Event listeners --- */
+    /* --- Interaction: zoom --- */
+    canvas.addEventListener('wheel', function(e) {
+        e.preventDefault();
+        var rect = wrap.getBoundingClientRect();
+        var mx = e.clientX - rect.left;
+        var my = e.clientY - rect.top;
+
+        // Travian coords under mouse before zoom
+        var before = canvasToTravian(mx, my);
+        var factor = e.deltaY < 0 ? 1.15 : (1 / 1.15);
+        zoom = Math.max(0.3, Math.min(zoom * factor, 20));
+
+        // Adjust view so same Travian point stays under mouse
+        viewX = before[0] - (mx - rect.width / 2) / zoom;
+        viewY = before[1] + (my - rect.height / 2) / zoom;
+        render();
+    }, {passive: false});
+
+    /* --- Interaction: pan --- */
+    canvas.addEventListener('mousedown', function(e) {
+        if (e.button !== 0) return;
+        isDragging = true; hasDragged = false;
+        dragStartX = e.clientX; dragStartY = e.clientY;
+        dragViewX = viewX; dragViewY = viewY;
+        wrap.classList.add('dragging');
+    });
+
+    window.addEventListener('mousemove', function(e) {
+        if (isDragging) {
+            var dx = e.clientX - dragStartX;
+            var dy = e.clientY - dragStartY;
+            if (Math.abs(dx) > 3 || Math.abs(dy) > 3) hasDragged = true;
+            viewX = dragViewX - dx / zoom;
+            viewY = dragViewY + dy / zoom;
+            render();
+        }
+
+        // Hover detection
+        var rect = wrap.getBoundingClientRect();
+        var mx = e.clientX - rect.left;
+        var my = e.clientY - rect.top;
+        if (mx < 0 || my < 0 || mx > rect.width || my > rect.height) {
+            tooltip.style.display = 'none';
+            return;
+        }
+        var t = canvasToTravian(mx, my);
+        coordsDisplay.textContent = Math.round(t[0]) + ' | ' + Math.round(t[1]);
+
+        // Hit detection radius scales with zoom
+        var hitRadius = Math.max(3, 8 / zoom);
+        var v = findVillageAt(t[0], t[1], hitRadius);
+        if (v) {
+            tooltip.innerHTML = '<b>' + esc(v.name) + '</b> (' + v.x + '|' + v.y + ')<br>' +
+                                esc(v.player || 'Natury') + ' · ' + esc(v.alliance || '—') + ' · pop ' + (v.pop || '?');
+            tooltip.style.left = (mx + 14) + 'px';
+            tooltip.style.top = (my - 10) + 'px';
+            tooltip.style.display = 'block';
+            canvas.style.cursor = 'pointer';
+        } else {
+            tooltip.style.display = 'none';
+            canvas.style.cursor = isDragging ? 'grabbing' : 'grab';
+        }
+    });
+
+    window.addEventListener('mouseup', function(e) {
+        if (!isDragging) return;
+        isDragging = false;
+        wrap.classList.remove('dragging');
+
+        if (!hasDragged) {
+            // Click — find village
+            var rect = wrap.getBoundingClientRect();
+            var mx = e.clientX - rect.left;
+            var my = e.clientY - rect.top;
+            var t = canvasToTravian(mx, my);
+            var hitRadius = Math.max(3, 8 / zoom);
+            var v = findVillageAt(t[0], t[1], hitRadius);
+
+            if (v) {
+                if (distanceMode) {
+                    handleDistanceClick(v);
+                } else {
+                    selectedVillage = v;
+                    showPopup(v, mx, my);
+                }
+            } else {
+                hidePopup();
+            }
+        }
+    });
+
+    /* --- Minimap click → navigate --- */
+    miniCanvas.addEventListener('click', function(e) {
+        var rect = miniCanvas.getBoundingClientRect();
+        var mx = e.clientX - rect.left;
+        var my = e.clientY - rect.top;
+        var scale = miniCanvas.width / MAP_RANGE;
+        viewX = MAP_MIN + mx / scale;
+        viewY = MAP_MAX - my / scale;
+        render();
+    });
+
+    /* --- Close popup --- */
+    document.getElementById('popup-close').addEventListener('click', hidePopup);
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') hidePopup(); });
+
+    /* --- Zoom buttons --- */
+    document.getElementById('zoom-in').addEventListener('click', function() {
+        zoom = Math.min(zoom * 1.4, 20); render();
+    });
+    document.getElementById('zoom-out').addEventListener('click', function() {
+        zoom = Math.max(zoom / 1.4, 0.3); render();
+    });
+    document.getElementById('zoom-fit').addEventListener('click', fitMap);
+
+    /* --- Filter listeners --- */
     document.getElementById('search-input').addEventListener('input', applyFilters);
 
-    document.querySelectorAll('.filter-btn').forEach(function(btn) {
+    document.querySelectorAll('.filter-btn[data-filter]').forEach(function(btn) {
         btn.addEventListener('click', function() {
             document.querySelectorAll('.filter-btn[data-filter]').forEach(function(b) { b.classList.remove('active'); });
             this.classList.add('active');
@@ -427,8 +826,7 @@
     });
 
     document.getElementById('alliance-select').addEventListener('change', function() {
-        activeAlliance = this.value;
-        applyFilters();
+        activeAlliance = this.value; applyFilters();
     });
 
     document.getElementById('pop-min').addEventListener('input', function() {
@@ -442,6 +840,8 @@
         this.classList.toggle('active');
         var panel = document.getElementById('distance-panel');
         panel.style.display = distanceMode ? 'block' : 'none';
+        // Move minimap when distance panel is shown
+        miniCanvas.classList.toggle('has-distance', distanceMode);
         if (!distanceMode) resetDistance();
     });
 
@@ -470,15 +870,21 @@
         applyFilters();
     });
 
+    /* --- Resize handler --- */
+    window.addEventListener('resize', resizeCanvas);
+
     /* --- Load data --- */
+    resizeCanvas();
     fetch('/api/map/villages')
         .then(function(resp) { return resp.json(); })
         .then(function(data) {
             allVillages = data;
-            renderMarkers(allVillages);
+            filtered = data;
+            buildSpatialIndex(filtered);
             buildLegend();
             populateAllianceDropdown();
             document.getElementById('stats').textContent = allVillages.length + ' wiosek';
+            fitMap();
         });
 })();
 </script>

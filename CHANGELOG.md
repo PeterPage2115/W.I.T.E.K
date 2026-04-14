@@ -4,6 +4,25 @@ Wszystkie istotne zmiany w projekcie W.I.T.E.K.
 
 Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
+## [0.3.0] — 2026-04-14
+
+### Dodane
+- **Mapa Canvas** — pełna przebudowa z Leaflet/MarkerCluster → HTML5 Canvas pixel map w stylu GetterMap
+  - Wioski jako kolorowe piksele (2-5px) na siatce 401×401
+  - Zoom (scroll) + pan (drag) natywnie w Canvas — płynne dla 17k+ wiosek
+  - Minimap z podglądem viewportu i nawigacją kliknięciem
+  - Spatial index (grid-bucket) — O(1) hover/click detection
+  - HiDPI support (devicePixelRatio)
+  - Usunięte zależności CDN: Leaflet.js, MarkerCluster.js
+- **Scheduler cron** — zmiana z interwału 60 min → cron 1× dziennie o 00:05 UTC (map.sql aktualizuje się raz dziennie o północy)
+  - Startup freshness check: jeśli brak snapshotu z dzisiaj → pobierz na starcie
+  - Config: `fetch_cron_hour` / `fetch_cron_minute` zamiast `fetch_interval_minutes`
+- **Extension Research** — dokument analizy TravianResourceBarPlus (`docs/EXTENSION_RESEARCH.md`)
+
+### Zmienione
+- Zachowane wszystkie filtry mapy: plemiona, sojusze, kategorie, zakres populacji
+- Zachowane: wyszukiwarka, narzędzie dystansu, legenda, popup z detalami wioski
+
 ## [0.2.5] — 2026-04-14
 
 ### Dodane
