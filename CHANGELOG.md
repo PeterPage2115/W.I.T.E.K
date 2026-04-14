@@ -4,6 +4,21 @@ Wszystkie istotne zmiany w projekcie W.I.T.E.K.
 
 Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
+## [0.2.5] — 2026-04-14
+
+### Dodane
+- **Mapa — kolory per-sojusz:** Każdy sojusz ma unikalny kolor (hash → HSL), legenda z top 15 sojuszami
+- **Mapa — kolory dyplomacji:** Sojusznik=zielony, pakt=niebieski, NAP=żółty, wojna=czerwony
+- **Mapa — filtry:** Przyciski plemion (CDN ikony), dropdown sojuszów, slider populacji, kategorie (Nasze/Wojna/Dyplomacja/Wszyscy)
+- **Mapa — narzędzie dystansu:** Klik 2 wioski → odległość + czasy podróży (4 prędkości)
+- **Mapa — ulepszone popupy:** Ikona plemienia, link "wyślij wojska" (⚔️), badge stolica/miasto/port
+- **Mapa — wyszukiwarka:** Szukaj wioski/gracza/sojuszu z podpowiedziami
+- **Mapa — dynamiczna legenda:** Top sojusze z liczbą wiosek, kolory dyplomacji
+
+### Naprawione
+- `/ttraining` — usunięto "Germanie" (tid=2 Teutoni) z listy wyboru
+- **Mapa XSS** — HTML-escapowanie wszystkich danych użytkownika w popupach (`esc()`)
+
 ## [0.2.4] — 2026-04-14
 
 ### Dodane

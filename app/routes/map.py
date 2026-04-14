@@ -1,7 +1,7 @@
 """Interactive 2D map of Travian world (S4.5)."""
 
 from flask import Blueprint, render_template, jsonify, request, current_app
-from ..models import Village
+from ..models import Village, DiplomaticRelation
 from ..snapshot_helpers import get_latest_snapshot
 
 bp = Blueprint("map", __name__)
@@ -11,7 +11,16 @@ bp = Blueprint("map", __name__)
 def map_view():
     """Render the map page."""
     our_alliances = current_app.config.get("TRAVIAN_OUR_ALLIANCES", [])
-    return render_template("map.html", our_alliances=our_alliances)
+
+    diplo_map = {}
+    for r in DiplomaticRelation.query.filter_by(active=True).all():
+        diplo_map[r.target_alliance_id] = r.relation_type
+
+    return render_template(
+        "map.html",
+        our_alliances=our_alliances,
+        diplo_map=diplo_map,
+    )
 
 
 @bp.route("/api/map/villages")

@@ -20,40 +20,32 @@
         font-family: 'Inter', sans-serif;
     }
     .leaflet-popup-tip { background: #e8d4a8; }
-    .map-search {
-        position: absolute; top: 10px; right: 10px; z-index: 1000;
+    .map-panel {
+        position: absolute; z-index: 1000;
         background: rgba(245, 230, 200, 0.95); border: 2px solid #8b6f5e;
-        border-radius: 6px; padding: 8px; max-width: 280px;
+        border-radius: 6px; padding: 8px; font-size: 12px;
     }
-    .map-legend {
-        position: absolute; bottom: 30px; left: 10px; z-index: 1000;
-        background: rgba(245, 230, 200, 0.95); border: 2px solid #8b6f5e;
-        border-radius: 6px; padding: 8px;
-    }
+    .map-search { top: 10px; right: 10px; max-width: 280px; }
+    .map-legend { bottom: 30px; left: 10px; max-height: 300px; overflow-y: auto; }
+    .map-distance { bottom: 30px; right: 10px; display: none; }
+    .filter-btn { cursor: pointer; transition: all 0.15s; }
     .filter-btn.active { outline: 2px solid #c8a415; outline-offset: 1px; }
-    .marker-cluster-small {
-        background-color: rgba(90, 154, 10, 0.6);
-    }
-    .marker-cluster-small div {
-        background-color: rgba(90, 154, 10, 0.8);
-    }
-    .marker-cluster-medium {
-        background-color: rgba(241, 211, 87, 0.6);
-    }
-    .marker-cluster-medium div {
-        background-color: rgba(241, 211, 87, 0.8);
-    }
-    .marker-cluster-large {
-        background-color: rgba(192, 57, 43, 0.6);
-    }
-    .marker-cluster-large div {
-        background-color: rgba(192, 57, 43, 0.8);
-    }
-    .marker-cluster div {
-        color: #fff;
-        font-weight: bold;
-        text-align: center;
-    }
+    .filter-btn:hover { opacity: 0.85; }
+    .tribe-btn { width: 28px; height: 28px; border: 2px solid transparent; border-radius: 4px; cursor: pointer; padding: 0; }
+    .tribe-btn.active { border-color: #c8a415; }
+    .tribe-btn img { width: 100%; height: 100%; }
+    .legend-row { display: flex; align-items: center; gap: 4px; padding: 1px 0; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .marker-cluster-small { background-color: rgba(90, 154, 10, 0.6); }
+    .marker-cluster-small div { background-color: rgba(90, 154, 10, 0.8); }
+    .marker-cluster-medium { background-color: rgba(241, 211, 87, 0.6); }
+    .marker-cluster-medium div { background-color: rgba(241, 211, 87, 0.8); }
+    .marker-cluster-large { background-color: rgba(192, 57, 43, 0.6); }
+    .marker-cluster-large div { background-color: rgba(192, 57, 43, 0.8); }
+    .marker-cluster div { color: #fff; font-weight: bold; text-align: center; }
+    .pop-slider { width: 100%; accent-color: #5a9a0a; }
+    #alliance-select { max-width: 200px; font-size: 11px; }
+    .distance-line { stroke: #e74c3c; stroke-width: 2; stroke-dasharray: 6,4; }
 </style>
 {% endblock %}
 
@@ -65,24 +57,53 @@
     <div class="p-1 relative">
         <div id="map-container"></div>
 
-        <!-- Search overlay -->
-        <div class="map-search">
-            <input id="search-input" type="text" placeholder="Szukaj gracza/sojuszu..."
-                   class="w-full px-3 py-1.5 text-sm bg-white border border-trav-brown-light rounded">
-            <div class="flex flex-wrap gap-1 mt-2">
+        <!-- Search + filters overlay -->
+        <div class="map-panel map-search">
+            <input id="search-input" type="text" placeholder="Szukaj gracza/wioski/sojuszu..."
+                   class="w-full px-3 py-1.5 text-sm bg-white border border-trav-brown-light rounded mb-2">
+
+            <!-- Category filter -->
+            <div class="flex flex-wrap gap-1 mb-2">
                 <button class="filter-btn px-2 py-0.5 text-xs rounded bg-trav-green text-white" data-filter="ours">Nasze</button>
-                <button class="filter-btn px-2 py-0.5 text-xs rounded bg-trav-red text-white" data-filter="enemies">Wrogowie</button>
+                <button class="filter-btn px-2 py-0.5 text-xs rounded bg-red-600 text-white" data-filter="war">Wojna</button>
+                <button class="filter-btn px-2 py-0.5 text-xs rounded bg-blue-500 text-white" data-filter="diplo">Dyplomacja</button>
                 <button class="filter-btn px-2 py-0.5 text-xs rounded bg-gray-500 text-white active" data-filter="all">Wszyscy</button>
             </div>
-            <div id="stats" class="text-xs mt-2 text-trav-text-muted"></div>
+
+            <!-- Tribe filter -->
+            <div class="flex flex-wrap gap-1 mb-2" id="tribe-filters">
+                <button class="tribe-btn active" data-tid="0" title="Wszystkie"><span style="font-size:16px">🌍</span></button>
+            </div>
+
+            <!-- Alliance dropdown -->
+            <select id="alliance-select" class="w-full px-2 py-1 text-sm bg-white border border-trav-brown-light rounded mb-2">
+                <option value="">— Wszystkie sojusze —</option>
+            </select>
+
+            <!-- Pop range -->
+            <div class="flex items-center gap-2 mb-1">
+                <span class="text-xs">Pop ≥</span>
+                <input type="range" id="pop-min" class="pop-slider flex-1" min="0" max="2000" value="0" step="50">
+                <span id="pop-min-val" class="text-xs font-mono w-10">0</span>
+            </div>
+
+            <!-- Distance tool toggle -->
+            <div class="flex items-center gap-2 mt-1">
+                <button id="distance-toggle" class="filter-btn px-2 py-0.5 text-xs rounded bg-amber-600 text-white">📏 Dystans</button>
+                <span id="stats" class="text-xs text-trav-text-muted"></span>
+            </div>
         </div>
 
-        <!-- Legend -->
-        <div class="map-legend text-xs">
+        <!-- Dynamic legend -->
+        <div class="map-panel map-legend" id="legend-container">
             <div class="font-bold mb-1">Legenda:</div>
-            <div><span class="inline-block w-3 h-3 rounded-full bg-[#5a9a0a] mr-1"></span> Nasz sojusz</div>
-            <div><span class="inline-block w-3 h-3 rounded-full bg-[#c0392b] mr-1"></span> Wrogowie</div>
-            <div><span class="inline-block w-3 h-3 rounded-full bg-gray-400 mr-1"></span> Neutralni</div>
+            <div id="legend-items"></div>
+        </div>
+
+        <!-- Distance panel -->
+        <div class="map-panel map-distance" id="distance-panel">
+            <div class="font-bold mb-1">📏 Dystans</div>
+            <div id="distance-info">Kliknij na pierwszą wioskę...</div>
         </div>
     </div>
 </div>
@@ -93,30 +114,70 @@
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script>
 (function() {
+    /* --- Helpers --- */
+    function esc(s) {
+        if (!s) return '';
+        var d = document.createElement('div');
+        d.appendChild(document.createTextNode(s));
+        return d.innerHTML;
+    }
+
+    function hslForAlliance(aid) {
+        var h = ((aid * 2654435761) >>> 0) % 360;
+        return 'hsl(' + h + ',60%,50%)';
+    }
+
+    function flatDistance(x1, y1, x2, y2) {
+        var dx = x2 - x1, dy = y2 - y1;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function formatTime(seconds) {
+        var h = Math.floor(seconds / 3600);
+        var m = Math.floor((seconds % 3600) / 60);
+        var s = Math.floor(seconds % 60);
+        return h + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+    }
+
+    /* --- Config --- */
+    const OUR_ALLIANCES = {{ our_alliances | tojson }};
+    const DIPLO_MAP = {{ diplo_map | tojson }};
+    const SERVER_URL = {{ config.TRAVIAN_SERVER_URL | default('', true) | tojson }};
+    const CDN = 'https://cdn.legends.travian.com/gpack/417.3/img_ltr/global/tribes/';
+    const TRIBE_SLUGS = {1:'roman',3:'gaul',6:'egyptian',7:'hun',8:'spartan',9:'viking'};
+    const tribeNames = {{ TRIBE_NAMES | tojson }};
+
+    const DIPLO_COLORS = {
+        ally: '#27ae60',
+        pact: '#2980b9',
+        nap:  '#f1c40f',
+        war:  '#c0392b',
+    };
+
+    const UNIT_SPEEDS = [
+        {name: 'Equites Imperatoris', speed: 14},
+        {name: 'Jeździec (najszybszy)', speed: 19},
+        {name: 'Piechota (średnia)', speed: 7},
+        {name: 'Katapulta', speed: 3},
+    ];
+
+    /* --- Map init --- */
     const map = L.map('map-container', {
         crs: L.CRS.Simple,
         minZoom: -2,
-        maxZoom: 4,
+        maxZoom: 5,
         zoomSnap: 0.5,
         zoomDelta: 0.5,
     });
+    map.fitBounds([[-200, -200], [200, 200]]);
 
-    const bounds = [[-200, -200], [200, 200]];
-    map.fitBounds(bounds);
-
-    // Grid lines every 50 fields
     for (let i = -200; i <= 200; i += 50) {
         L.polyline([[i, -200], [i, 200]], {color: '#555', weight: 0.3, opacity: 0.5}).addTo(map);
         L.polyline([[-200, i], [200, i]], {color: '#555', weight: 0.3, opacity: 0.5}).addTo(map);
     }
-
-    // Center marker
     L.marker([0, 0], {
-        icon: L.divIcon({className: 'text-lg', html: '⭐', iconSize: [20, 20], iconAnchor: [10, 10]})
+        icon: L.divIcon({className: '', html: '<span style="font-size:18px">⭐</span>', iconSize: [20, 20], iconAnchor: [10, 10]})
     }).addTo(map).bindPopup('Centrum mapy (0|0)');
-
-    const OUR_ALLIANCES = {{ our_alliances | tojson }};
-    const SERVER_URL = {{ config.TRAVIAN_SERVER_URL | default('', true) | tojson }};
 
     let allVillages = [];
     let markers = L.markerClusterGroup({
@@ -129,11 +190,22 @@
         chunkInterval: 100,
         chunkDelay: 10,
     }).addTo(map);
-    let activeFilter = 'all';
 
-    function getColor(village) {
-        if (village.is_ours) return '#5a9a0a';
-        if (village.aid > 0) return '#c0392b';
+    /* --- State --- */
+    let activeFilter = 'all';
+    let activeTribe = 0;
+    let activeAlliance = '';
+    let popMin = 0;
+    let distanceMode = false;
+    let distanceFrom = null;
+    let distanceLine = null;
+
+    /* --- Color logic --- */
+    function getColor(v) {
+        if (v.is_ours) return '#2ecc71';
+        var dt = DIPLO_MAP[v.aid];
+        if (dt) return DIPLO_COLORS[dt] || '#888';
+        if (v.aid > 0) return hslForAlliance(v.aid);
         return '#888';
     }
 
@@ -144,62 +216,99 @@
         return 2;
     }
 
-    const tribeNames = {{ TRIBE_NAMES | tojson }};
+    function getWeight(v) {
+        return v.is_capital ? 3 : 1;
+    }
 
+    /* --- Rendering --- */
     function renderMarkers(villages) {
         markers.clearLayers();
-        const markerList = [];
+        var markerList = [];
         villages.forEach(function(v) {
-            const color = getColor(v);
-            const marker = L.circleMarker([v.y, v.x], {
+            var color = getColor(v);
+            var opts = {
                 radius: getRadius(v.pop),
-                color: color,
+                color: v.has_harbor ? '#3498db' : color,
                 fillColor: color,
-                fillOpacity: 0.7,
-                weight: 1,
-            });
+                fillOpacity: 0.75,
+                weight: getWeight(v),
+            };
+            var marker = L.circleMarker([v.y, v.x], opts);
 
-            const tribe = tribeNames[v.tid] || '?';
-            const coordText = '[' + v.x + '|' + v.y + ']';
-            let mapLink = coordText;
+            var coordText = '[' + v.x + '|' + v.y + ']';
+            var mapLink = coordText;
             if (SERVER_URL) {
                 mapLink = '<a href="' + SERVER_URL + '/karte.php?x=' + v.x + '&y=' + v.y +
                           '" target="_blank" style="color:#2980b9">' + coordText + '</a>';
             }
 
-            let badges = '';
+            var badges = '';
             if (v.is_capital) badges += ' ⭐';
             if (v.is_city) badges += ' 🏙️';
             if (v.has_harbor) badges += ' ⚓';
 
-            let extra = '';
-            if (v.region) extra += '📍 ' + v.region + '<br>';
+            var tribeSlug = TRIBE_SLUGS[v.tid];
+            var tribeHtml = '';
+            if (tribeSlug) {
+                tribeHtml = '<img src="' + CDN + tribeSlug + '_small.png" style="width:16px;height:16px;vertical-align:middle" alt=""> ';
+            }
+
+            var extra = '';
+            if (v.region) extra += '📍 ' + esc(v.region) + '<br>';
             if (v.vp) extra += '🏆 VP: ' + v.vp.toLocaleString('pl-PL') + '<br>';
+
+            var sendLink = '';
+            if (SERVER_URL) {
+                sendLink = ' <a href="' + SERVER_URL + '/build.php?id=39&tt=2&x=' + v.x + '&y=' + v.y +
+                           '" target="_blank" style="color:#e67e22;font-size:10px" title="Wyślij wojska">⚔️</a>';
+            }
 
             marker.bindPopup(
                 '<div class="text-sm">' +
-                '<b>' + (v.name || '?') + '</b>' + badges + ' ' + mapLink + '<br>' +
-                '👤 ' + (v.player || 'Natury') + '<br>' +
-                '🏰 ' + (v.alliance || '—') + '<br>' +
+                '<b>' + esc(v.name || '?') + '</b>' + badges + sendLink + '<br>' +
+                tribeHtml + (tribeNames[v.tid] || '?') + ' &middot; ' + mapLink + '<br>' +
+                '👤 ' + esc(v.player || 'Natury') + '<br>' +
+                '🏰 ' + esc(v.alliance || '—') + '<br>' +
                 '📊 Pop: ' + (v.pop != null ? v.pop.toLocaleString('pl-PL') : '?') + '<br>' +
                 extra +
-                tribe +
                 '</div>'
             );
+
+            marker.villageData = v;
+            marker.on('click', function() {
+                if (distanceMode) handleDistanceClick(v);
+            });
 
             markerList.push(marker);
         });
         markers.addLayers(markerList);
     }
 
+    /* --- Filtering --- */
     function applyFilters() {
-        const q = document.getElementById('search-input').value.toLowerCase();
-        let filtered = allVillages;
+        var q = document.getElementById('search-input').value.toLowerCase();
+        var filtered = allVillages;
 
         if (activeFilter === 'ours') {
             filtered = filtered.filter(function(v) { return v.is_ours; });
-        } else if (activeFilter === 'enemies') {
-            filtered = filtered.filter(function(v) { return !v.is_ours && v.aid > 0; });
+        } else if (activeFilter === 'war') {
+            filtered = filtered.filter(function(v) { return DIPLO_MAP[v.aid] === 'war'; });
+        } else if (activeFilter === 'diplo') {
+            filtered = filtered.filter(function(v) { return v.is_ours || DIPLO_MAP[v.aid]; });
+        }
+
+        if (activeTribe > 0) {
+            filtered = filtered.filter(function(v) { return v.tid === activeTribe; });
+        }
+
+        if (activeAlliance) {
+            filtered = filtered.filter(function(v) {
+                return v.alliance && v.alliance.toLowerCase() === activeAlliance.toLowerCase();
+            });
+        }
+
+        if (popMin > 0) {
+            filtered = filtered.filter(function(v) { return v.pop >= popMin; });
         }
 
         if (q) {
@@ -211,28 +320,165 @@
         }
 
         renderMarkers(filtered);
-        document.getElementById('stats').textContent =
-            filtered.length + ' / ' + allVillages.length + ' wiosek';
+        document.getElementById('stats').textContent = filtered.length + '/' + allVillages.length;
     }
 
+    /* --- Distance tool --- */
+    function handleDistanceClick(v) {
+        if (!distanceFrom) {
+            distanceFrom = v;
+            document.getElementById('distance-info').innerHTML =
+                '<b>Od:</b> ' + esc(v.name) + ' ' + v.x + '|' + v.y + '<br>Kliknij drugą wioskę...';
+        } else {
+            var dist = flatDistance(distanceFrom.x, distanceFrom.y, v.x, v.y);
+            var html = '<b>Od:</b> ' + esc(distanceFrom.name) + ' (' + distanceFrom.x + '|' + distanceFrom.y + ')<br>' +
+                       '<b>Do:</b> ' + esc(v.name) + ' (' + v.x + '|' + v.y + ')<br>' +
+                       '<b>Dystans:</b> ' + dist.toFixed(1) + ' pól<br><hr style="margin:4px 0">';
+            UNIT_SPEEDS.forEach(function(u) {
+                var secs = (dist / u.speed) * 3600;
+                html += u.name + ': <b>' + formatTime(secs) + '</b><br>';
+            });
+            html += '<br><a href="#" id="distance-reset" style="color:#2980b9">🔄 Reset</a>';
+            document.getElementById('distance-info').innerHTML = html;
+
+            if (distanceLine) map.removeLayer(distanceLine);
+            distanceLine = L.polyline(
+                [[distanceFrom.y, distanceFrom.x], [v.y, v.x]],
+                {color: '#e74c3c', weight: 2, dashArray: '6,4'}
+            ).addTo(map);
+
+            document.getElementById('distance-reset').addEventListener('click', function(e) {
+                e.preventDefault();
+                resetDistance();
+            });
+            distanceFrom = null;
+        }
+    }
+
+    function resetDistance() {
+        distanceFrom = null;
+        if (distanceLine) { map.removeLayer(distanceLine); distanceLine = null; }
+        document.getElementById('distance-info').innerHTML = 'Kliknij na pierwszą wioskę...';
+    }
+
+    /* --- Legend --- */
+    function buildLegend() {
+        var counts = {};
+        allVillages.forEach(function(v) {
+            if (v.alliance && v.aid > 0) {
+                if (!counts[v.aid]) counts[v.aid] = {name: v.alliance, count: 0, aid: v.aid};
+                counts[v.aid].count++;
+            }
+        });
+        var sorted = Object.values(counts).sort(function(a, b) { return b.count - a.count; });
+        var top = sorted.slice(0, 15);
+
+        var html = '';
+        // Fixed categories first
+        html += '<div class="legend-row"><div class="legend-dot" style="background:#2ecc71"></div> Nasz sojusz</div>';
+        ['ally', 'pact', 'nap', 'war'].forEach(function(dt) {
+            var labels = {ally: 'Sojusznik', pact: 'Pakt', nap: 'NAP', war: 'Wojna'};
+            var hasAny = Object.values(DIPLO_MAP).indexOf(dt) !== -1;
+            if (hasAny) {
+                html += '<div class="legend-row"><div class="legend-dot" style="background:' + DIPLO_COLORS[dt] + '"></div> ' + labels[dt] + '</div>';
+            }
+        });
+        html += '<hr style="margin:4px 0;border-color:#8b6f5e">';
+
+        // Top alliances
+        top.forEach(function(a) {
+            var color = getColor({is_ours: OUR_ALLIANCES.indexOf(a.aid) !== -1, aid: a.aid});
+            html += '<div class="legend-row"><div class="legend-dot" style="background:' + color + '"></div> ' +
+                    esc(a.name) + ' <span style="color:#888">(' + a.count + ')</span></div>';
+        });
+        html += '<div class="legend-row"><div class="legend-dot" style="background:#888"></div> Neutralni</div>';
+
+        document.getElementById('legend-items').innerHTML = html;
+    }
+
+    function populateAllianceDropdown() {
+        var alliances = {};
+        allVillages.forEach(function(v) {
+            if (v.alliance && v.aid > 0) {
+                if (!alliances[v.aid]) alliances[v.aid] = {name: v.alliance, count: 0};
+                alliances[v.aid].count++;
+            }
+        });
+        var sorted = Object.entries(alliances).sort(function(a, b) { return b[1].count - a[1].count; });
+        var sel = document.getElementById('alliance-select');
+        sorted.forEach(function(entry) {
+            var opt = document.createElement('option');
+            opt.value = entry[1].name;
+            opt.textContent = entry[1].name + ' (' + entry[1].count + ')';
+            sel.appendChild(opt);
+        });
+    }
+
+    /* --- Event listeners --- */
     document.getElementById('search-input').addEventListener('input', applyFilters);
 
     document.querySelectorAll('.filter-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
-            document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+            document.querySelectorAll('.filter-btn[data-filter]').forEach(function(b) { b.classList.remove('active'); });
             this.classList.add('active');
             activeFilter = this.dataset.filter;
             applyFilters();
         });
     });
 
+    document.getElementById('alliance-select').addEventListener('change', function() {
+        activeAlliance = this.value;
+        applyFilters();
+    });
+
+    document.getElementById('pop-min').addEventListener('input', function() {
+        popMin = parseInt(this.value) || 0;
+        document.getElementById('pop-min-val').textContent = popMin;
+        applyFilters();
+    });
+
+    document.getElementById('distance-toggle').addEventListener('click', function() {
+        distanceMode = !distanceMode;
+        this.classList.toggle('active');
+        var panel = document.getElementById('distance-panel');
+        panel.style.display = distanceMode ? 'block' : 'none';
+        if (!distanceMode) resetDistance();
+    });
+
+    /* --- Tribe filter buttons --- */
+    var tribeContainer = document.getElementById('tribe-filters');
+    Object.keys(TRIBE_SLUGS).forEach(function(tidStr) {
+        var tid = parseInt(tidStr);
+        var slug = TRIBE_SLUGS[tid];
+        var btn = document.createElement('button');
+        btn.className = 'tribe-btn';
+        btn.dataset.tid = tid;
+        btn.title = tribeNames[tid] || slug;
+        btn.innerHTML = '<img src="' + CDN + slug + '_small.png" alt="' + slug + '">';
+        btn.addEventListener('click', function() {
+            tribeContainer.querySelectorAll('.tribe-btn').forEach(function(b) { b.classList.remove('active'); });
+            this.classList.add('active');
+            activeTribe = parseInt(this.dataset.tid);
+            applyFilters();
+        });
+        tribeContainer.appendChild(btn);
+    });
+    tribeContainer.querySelector('[data-tid="0"]').addEventListener('click', function() {
+        tribeContainer.querySelectorAll('.tribe-btn').forEach(function(b) { b.classList.remove('active'); });
+        this.classList.add('active');
+        activeTribe = 0;
+        applyFilters();
+    });
+
+    /* --- Load data --- */
     fetch('/api/map/villages')
         .then(function(resp) { return resp.json(); })
         .then(function(data) {
             allVillages = data;
             renderMarkers(allVillages);
-            document.getElementById('stats').textContent =
-                allVillages.length + ' wiosek na mapie';
+            buildLegend();
+            populateAllianceDropdown();
+            document.getElementById('stats').textContent = allVillages.length + ' wiosek';
         });
 })();
 </script>

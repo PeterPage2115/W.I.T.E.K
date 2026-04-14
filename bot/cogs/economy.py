@@ -1699,7 +1699,7 @@ class CombatSimModal(discord.ui.Modal):
         description="Kalkulator szkolenia — czas i surowce dla jednostek",
     )
     @discord.option("tribe", str, description="Plemię", required=True,
-                    choices=["Rzymianie", "Germanie", "Galowie", "Egipcjanie", "Hunowie", "Wikingowie", "Spartanie"])
+                    choices=["Rzymianie", "Galowie", "Egipcjanie", "Hunowie", "Wikingowie", "Spartanie"])
     @discord.option("unit_name", str, description="Nazwa jednostki", required=True)
     @discord.option("count", int, description="Liczba jednostek", required=True)
     @discord.option("building_level", int, description="Poziom budynku (1-20)", required=False, default=10)
