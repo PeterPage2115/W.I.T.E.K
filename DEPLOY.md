@@ -291,25 +291,59 @@ echo $GITHUB_TOKEN | docker login ghcr.io -u peterpage2115 --password-stdin
 
 ### Budowanie i publikacja
 
+CI automatycznie buduje i publikuje obraz na GHCR przy każdym push na `main`:
+- `ghcr.io/peterpage2115/w.i.t.e.k:latest`
+- `ghcr.io/peterpage2115/w.i.t.e.k:vX.Y.Z` (z pyproject.toml)
+- `ghcr.io/peterpage2115/w.i.t.e.k:<sha>`
+
+Ręczne budowanie (opcjonalnie):
 ```bash
 docker build -t ghcr.io/peterpage2115/w.i.t.e.k:latest .
 docker push ghcr.io/peterpage2115/w.i.t.e.k:latest
-
-docker build -t ghcr.io/peterpage2115/w.i.t.e.k:0.2.1 .
-docker push ghcr.io/peterpage2115/w.i.t.e.k:0.2.1
 ```
 
 ### Użycie gotowego obrazu w compose
 
+Domyślny `docker-compose.yml` już używa gotowego obrazu z GHCR:
 ```yaml
 services:
   witek-app:
-    image: ghcr.io/peterpage2115/w.i.t.e.k:0.2.1
-    # usuń / zakomentuj sekcję build:
-    # build:
-    #   context: .
-    #   dockerfile: Dockerfile
+    image: ghcr.io/peterpage2115/w.i.t.e.k:latest
 ```
+
+Do lokalnego developmentu użyj `docker-compose.dev.yml` (buduje z source).
+
+---
+
+## Aktualizacja działającego deploymentu
+
+### Na Unraid (Docker Compose Manager)
+
+1. Kliknij **Update** w Docker Compose Manager — plugin automatycznie pobierze najnowszy obraz i zrestartuje kontenery.
+
+Alternatywnie z terminala:
+```bash
+cd /mnt/user/appdata/witek/W.I.T.E.K
+docker compose pull
+docker compose up -d
+docker compose logs --tail=20 witek-app
+```
+
+### Konfiguracja
+
+- `.env` — nie zmienia się przy aktualizacjach (sekrety lokalne)
+- `config/config.yaml` — montowany z hosta, nie nadpisywany przez obraz
+  - Jeśli brak `config.yaml` przy starcie, entrypoint automatycznie kopiuje domyślny z `config.example.yaml`
+
+### Konwencja wersjonowania
+
+Źródło prawdy wersji: `pyproject.toml` → bot czyta w runtime, CI taguje obraz.
+
+| Typ zmiany | Bump | Przykład |
+|------------|------|----------|
+| Bugfix, drobna poprawka | patch | 0.2.1 → 0.2.2 |
+| Nowa funkcja, komenda | minor | 0.2.2 → 0.3.0 |
+| Przełomowa zmiana | major | 0.3.0 → 1.0.0 |
 
 ---
 

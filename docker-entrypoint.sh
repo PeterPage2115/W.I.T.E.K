@@ -1,6 +1,14 @@
 #!/bin/sh
 set -e
 
+# ── Auto-create config.yaml if missing ───────────────────────────
+if [ ! -f /app/config/config.yaml ]; then
+    if [ -f /app/config/config.example.yaml ]; then
+        cp /app/config/config.example.yaml /app/config/config.yaml
+        echo "[entrypoint] Skopiowano domyślny config.yaml (uzupełnij our_alliances!)"
+    fi
+fi
+
 # ── Wait for PostgreSQL (skip for SQLite) ────────────────────────
 if echo "$DATABASE_URL" | grep -qi "^postgres"; then
     echo "[entrypoint] Waiting for PostgreSQL …"

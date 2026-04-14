@@ -4,6 +4,14 @@ Wszystkie istotne zmiany w projekcie W.I.T.E.K.
 
 Format oparty na [Keep a Changelog](https://keepachangelog.com/pl/1.0.0/).
 
+## [0.2.2] — 2026-04-14
+
+### Zmienione
+- `docker-compose.yml` — przełączono z `build:` na `image: ghcr.io/peterpage2115/w.i.t.e.k:latest` (pull-based update zamiast ręcznego budowania)
+- CI (`ci.yml`) — obraz Docker tagowany też wersją semver (`:vX.Y.Z`) obok `:latest` i `:sha`
+- `docker-entrypoint.sh` — auto-kopia `config.example.yaml` → `config.yaml` przy pierwszym starcie jeśli brak
+- `DEPLOY.md` — dodano sekcję "Aktualizacja" z instrukcją pull-based update i konwencją wersjonowania
+
 ## [0.2.1] — 2026-04-13
 
 ### Zmienione

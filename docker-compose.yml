@@ -29,9 +29,7 @@ services:
   # Serwer webowy z dashboardem, bot Discord i codzienny scheduler pobierający map.sql.
   # Łączy się z bazą PostgreSQL przez zmienną DATABASE_URL.
   witek-app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/peterpage2115/w.i.t.e.k:latest
     container_name: witek-rof-app
     restart: unless-stopped
     ports:
