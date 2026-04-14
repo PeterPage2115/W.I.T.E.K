@@ -42,8 +42,8 @@ services:
       SERVER_PROFILE: ${SERVER_PROFILE:-rof-x3}
       FLASK_DEBUG: "false"
     volumes:
-      # Konfiguracja YAML (opcjonalnie montowana z hosta)
-      - ./config/config.yaml:/app/config/config.yaml:ro
+      # Konfiguracja YAML — cały folder, entrypoint auto-kopiuje example jeśli brakuje
+      - ./config:/app/config
     depends_on:
       witek-db:
         condition: service_healthy
